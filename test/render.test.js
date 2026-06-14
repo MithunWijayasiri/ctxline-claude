@@ -222,7 +222,7 @@ test('threshold: 65 <= used < 80 is orange', () => {
 test('threshold: used >= 80 is blinking red, no emoji', () => {
   const { raw, clean } = run(fixture(10));             // used 90
   assert.ok(raw.includes(BLINK) && raw.includes(RED), 'expected blink + red');
-  assert.ok(!clean.includes('\u{1F480}'), 'skull emoji should be removed');
+  assert.ok(!clean.includes('\u{1F480}'), 'skull emoji should not be present');
   assert.match(clean, /C90 /);
 });
 
