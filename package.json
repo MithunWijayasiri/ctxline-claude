@@ -1,6 +1,6 @@
 {
   "name": "ctxline-claude",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A customizable statusline for Claude Code that tracks context usage and session limits",
   "bin": {
     "ctxline-claude": "bin/install.js"
