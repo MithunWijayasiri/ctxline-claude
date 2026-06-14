@@ -106,7 +106,7 @@ test('line assembly: dir basename | model | context, separated by │', () => {
   const parts = clean.split(' │ ');
   assert.strictEqual(parts[0], 'cool-project');        // basename only
   assert.strictEqual(parts[1], 'Sonnet 4.6');          // model passes through
-  assert.match(parts[2], /^CTX /);
+  assert.match(parts[2], /^C\d+ /);                    // compact context label "C60 ███░░░"
 });
 
 test('model name is shortened: "(1M context)" -> "(1M)"', () => {
@@ -201,7 +201,7 @@ test('effort = xhigh is dim (not highlighted red/purple)', () => {
 
 test('context bar shows used% = 100 - remaining', () => {
   const { clean } = run(fixture(65));
-  assert.match(clean, /CTX .* 35%/);              // remaining 65 -> used 35
+  assert.match(clean, /C35 /);                    // remaining 65 -> used 35 -> "C35 <bar>"
 });
 
 test('threshold: used < 50 is green', () => {
@@ -222,8 +222,8 @@ test('threshold: 65 <= used < 80 is orange', () => {
 test('threshold: used >= 80 is blinking red, no emoji', () => {
   const { raw, clean } = run(fixture(10));             // used 90
   assert.ok(raw.includes(BLINK) && raw.includes(RED), 'expected blink + red');
-  assert.ok(!clean.includes('\u{1F480}'), 'skull emoji should be removed');
-  assert.match(clean, / 90%/);
+  assert.ok(!clean.includes('\u{1F480}'), 'skull emoji should not be present');
+  assert.match(clean, /C90 /);
 });
 
 // The contract that must never break: always print, always exit 0.
@@ -231,20 +231,20 @@ test('empty stdin -> fallback line, exit 0', () => {
   const { code, clean } = run('');
   assert.strictEqual(code, 0);
   assert.ok(clean.includes('│'), 'expected a separator in fallback');
-  assert.ok(clean.includes('CTX'), 'expected context label in fallback');
+  assert.match(clean, /C\d+ /, 'expected context label in fallback');
 });
 
 test('malformed JSON -> fallback line, exit 0', () => {
   const { code, clean } = run('not json at all');
   assert.strictEqual(code, 0);
-  assert.ok(clean.includes('CTX'));
+  assert.match(clean, /C\d+ /);
 });
 
 test('missing fields -> no crash, exit 0', () => {
   const { code, clean } = run('{}');
   assert.strictEqual(code, 0);
   assert.ok(clean.includes('Claude'));                 // default model name
-  assert.ok(clean.includes('CTX'));
+  assert.match(clean, /C\d+ /);
 });
 
 // Usage bar: cache-first behavior and the stale fallback that fixes the
@@ -254,24 +254,24 @@ test('fresh cache -> current + weekly rendered from cache (no API call)', () => 
   const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 }); // < FRESH_TTL (30s)
   const { code, clean } = run(fixture(40), { home, usage: true });
   assert.strictEqual(code, 0);
-  assert.match(clean, /5h .* 42%/);
-  assert.match(clean, /7d .* 31%/);
-  assert.match(clean, /7d .* 31% \(2d\d{1,2}h\)/);             // day-aware reset countdown (Xd Yh)
+  assert.match(clean, /H42\b/);
+  assert.match(clean, /W31\b/);
+  assert.match(clean, /W31 ↺ 2d\d{1,2}h/);                    // day-aware reset countdown (Xd Yh)
 });
 
 test('stale cache + failing API -> usage stays visible (does not disappear)', () => {
   const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH, < STALE
   const { clean } = run(fixture(40), { home, usage: true });
-  assert.match(clean, /5h .* 57%/);
+  assert.match(clean, /H57\b/);
 });
 
 test('expired cache + failing API -> usage omitted', () => {
   const home = seedHome({ cacheAgeMs: 20 * 60 * 1000, percentage: 57 }); // > STALE_TTL (10m)
   const { code, clean } = run(fixture(40), { home, usage: true });
   assert.strictEqual(code, 0);                                  // ran successfully
-  assert.ok(clean.includes('CTX'), 'expected the normal line to still render');
-  assert.ok(!clean.includes('5h '), 'current usage should be omitted once cache is too old');
-  assert.ok(!clean.includes('7d '), 'weekly usage should be omitted once cache is too old');
+  assert.match(clean, /C\d+ /, 'expected the normal line to still render');
+  assert.ok(!clean.includes('↺'), 'usage (and its reset glyph) should be omitted once cache is too old');
+  assert.ok(!clean.includes('H57'), 'current usage should be omitted once cache is too old');
 });
 
 // Usage from stdin `rate_limits`: the network/cache path is bypassed entirely.
@@ -281,15 +281,15 @@ test('stdin rate_limits -> 5h/7d render with no cache and no creds', () => {
   // can render is straight from stdin rate_limits (proves the API/cache path is skipped).
   const { code, clean } = run(fixtureWithRateLimits(40), { usage: true });
   assert.strictEqual(code, 0);
-  assert.match(clean, /5h .* 24%/);                             // 23.5 -> 24 (fractional, rounded)
-  assert.match(clean, /7d .* 41%/);                             // 41.2 -> 41
-  assert.match(clean, /7d .* 41% \(2d\d{1,2}h\)/);              // epoch-seconds -> day-aware countdown
+  assert.match(clean, /H24\b/);                                 // 23.5 -> 24 (fractional, rounded)
+  assert.match(clean, /W41\b/);                                 // 41.2 -> 41
+  assert.match(clean, /W41 ↺ 2d\d{1,2}h/);                      // epoch-seconds -> day-aware countdown
 });
 
 test('stdin rate_limits takes precedence over a fresh cache', () => {
   // Fresh cache says 42% / 31%; stdin says 23.5% / 41.2%. stdin must win (cache not read).
   const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 });
   const { clean } = run(fixtureWithRateLimits(40), { home, usage: true });
-  assert.match(clean, /5h .* 24%/);
-  assert.ok(!clean.includes('42%'), 'cached 5h value must not appear when stdin rate_limits is present');
+  assert.match(clean, /H24\b/);
+  assert.ok(!clean.includes('H42'), 'cached 5h value must not appear when stdin rate_limits is present');
 });

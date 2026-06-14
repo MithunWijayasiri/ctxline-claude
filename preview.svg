@@ -29,7 +29,7 @@
     <text x="30" y="140" font-size="15"><tspan fill="#7d8590">▸▸ ready · </tspan><tspan fill="#58a6ff">←</tspan><tspan fill="#7d8590"> for agents</tspan></text>
 
     
-    <text x="28" y="323" font-size="14"><tspan fill="#d97757" font-weight="700">my-project</tspan><tspan fill="#7d8590"> ⎇ main</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#c9d1d9">Opus 4.8 (1M)</tspan><tspan fill="#7d8590"> · high</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">CTX </tspan><tspan fill="#3fb950">███</tspan><tspan fill="#2d333b">░░░</tspan><tspan fill="#c9d1d9"> 45%</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">5h </tspan><tspan fill="#f0883e">█████</tspan><tspan fill="#2d333b">░</tspan><tspan fill="#f0883e" font-weight="700"> 81%</tspan><tspan fill="#7d8590"> (2h21m)</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">7d </tspan><tspan fill="#3fb950">██</tspan><tspan fill="#2d333b">░░░░</tspan><tspan fill="#c9d1d9"> 31%</tspan><tspan fill="#7d8590"> (2d14h)</tspan></text>
+    <text x="28" y="323" font-size="14"><tspan fill="#d97757" font-weight="700">my-project</tspan><tspan fill="#7d8590"> ⎇ main</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#c9d1d9">Opus 4.8 (1M)</tspan><tspan fill="#7d8590"> · high</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#3fb950">C45 ███</tspan><tspan fill="#2d333b">░░░</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#f0883e">H81</tspan><tspan fill="#7d8590"> ↺ 2h21m</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#3fb950">W31</tspan><tspan fill="#7d8590"> ↺ 2d14h</tspan></text>
   </g>
 
   

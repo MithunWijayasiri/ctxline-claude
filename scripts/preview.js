@@ -69,9 +69,9 @@ const base = {
   model: 'Opus 4.8 (1M context)',
   remaining: 55,             // context 45% used
   current: 14,
-  currentResetsInMin: 261,   // renders ~(4h21m)
+  currentResetsInMin: 261,   // renders "H14 ↺ 4h21m"
   weekly: 31,
-  weeklyResetsInMin: 3720    // renders ~(2d14h)
+  weeklyResetsInMin: 3720    // renders "W31 ↺ 2d14h"
 };
 
 // Primary line (default effort). NOTE: this MUST stay the first printed line —

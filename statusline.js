@@ -109,23 +109,21 @@ function getContextBar(remaining) {
   const filled = Math.round((used / 100) * BAR_WIDTH);
   const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(BAR_WIDTH - filled);
 
-  let coloredBar;
-  if (used < 50) {
-    coloredBar = `${colors.green}${bar} ${used}%${colors.reset}`;
-  } else if (used < 65) {
-    coloredBar = `${colors.yellow}${bar} ${used}%${colors.reset}`;
-  } else if (used < 80) {
-    coloredBar = `${colors.orange}${bar} ${used}%${colors.reset}`;
-  } else {
-    coloredBar = `${colors.blink}${colors.red}${bar} ${used}%${colors.reset}`;
-  }
+  // Context color: green <50 / yellow <65 / orange <80 / blink-red >=80.
+  let color;
+  if (used < 50) color = colors.green;
+  else if (used < 65) color = colors.yellow;
+  else if (used < 80) color = colors.orange;
+  else color = colors.blink + colors.red;
 
-  return coloredBar;
+  // Compact label form: "C<used> <bar>" (e.g. "C45 ███░░░"), colored as a whole.
+  return `${color}C${used} ${bar}${colors.reset}`;
 }
 
-// Render the usage bar from raw data. Called on every read (live or cached) so the
-// reset countdown is always recomputed from resetsAt rather than frozen at fetch time.
-function buildUsageBar(percentage, resetsAt) {
+// Render a compact usage segment from raw data: "<label><pct> ↺ <countdown>"
+// (e.g. "H81 ↺ 2h21m") — no bar. Called on every read (live or cached) so the reset
+// countdown is always recomputed from resetsAt rather than frozen at fetch time.
+function buildUsageBar(label, percentage, resetsAt) {
   let timeStr = '';
   if (resetsAt) {
     const diffMins = Math.max(0, Math.floor((new Date(resetsAt) - new Date()) / 60000));
@@ -137,21 +135,18 @@ function buildUsageBar(percentage, resetsAt) {
     else timeStr = `${mins}m`;
   }
 
-  const filledWidth = Math.max(0, Math.min(BAR_WIDTH, Math.round((percentage / 100) * BAR_WIDTH)));
-  const filled = '█'.repeat(filledWidth);
-  const empty = '░'.repeat(BAR_WIDTH - filledWidth);
   const color = getUsageColor(percentage);
-  const timePart = timeStr ? `${colors.dim} (${timeStr})${colors.reset}` : '';
+  const timePart = timeStr ? `${colors.dim} ↺ ${timeStr}${colors.reset}` : '';
 
-  return `${color}${filled}${empty} ${percentage}%${colors.reset}${timePart}`;
+  return `${color}${label}${percentage}${colors.reset}${timePart}`;
 }
 
-// Build both usage bars from raw entries. Each entry is { percentage, resetsAt } or
-// null/absent. Returns { current, weekly } where each is a rendered bar string or null.
+// Build both usage segments from raw entries. Each entry is { percentage, resetsAt } or
+// null/absent. Returns { current, weekly } where each is a rendered segment string or null.
 function buildUsageBars(fiveHour, weekly) {
   return {
-    current: fiveHour ? buildUsageBar(fiveHour.percentage, fiveHour.resetsAt) : null,
-    weekly: weekly ? buildUsageBar(weekly.percentage, weekly.resetsAt) : null
+    current: fiveHour ? buildUsageBar('H', fiveHour.percentage, fiveHour.resetsAt) : null,
+    weekly: weekly ? buildUsageBar('W', weekly.percentage, weekly.resetsAt) : null
   };
 }
 
@@ -404,10 +399,10 @@ function outputStatus(data, usage) {
     const parts = [];
     parts.push(branch ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}` : dirname);
     parts.push(effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model);
-    parts.push(`CTX ${contextBar}`);
+    parts.push(contextBar);
 
-    if (usage?.current) parts.push(`5h ${usage.current}`);
-    if (usage?.weekly) parts.push(`7d ${usage.weekly}`);
+    if (usage?.current) parts.push(usage.current);
+    if (usage?.weekly) parts.push(usage.weekly);
 
     if (task) parts.push(`${colors.dim}${task}${colors.reset}`);
     process.stdout.write(parts.join(' \u2502 '));
@@ -418,9 +413,9 @@ function outputStatus(data, usage) {
 
 function outputFallback(usage) {
   const contextBar = getContextBar(undefined);
-  const parts = ['~', 'Claude', `CTX ${contextBar}`];
-  if (usage?.current) parts.push(`5h ${usage.current}`);
-  if (usage?.weekly) parts.push(`7d ${usage.weekly}`);
+  const parts = ['~', 'Claude', contextBar];
+  if (usage?.current) parts.push(usage.current);
+  if (usage?.weekly) parts.push(usage.weekly);
   process.stdout.write(parts.join(' \u2502 '));
 }
 

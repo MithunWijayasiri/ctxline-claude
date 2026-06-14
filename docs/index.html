@@ -124,6 +124,7 @@
   .term .dim{color:var(--term-dim)}
   .term .lbl{color:#a7a191}
   .term .pct{font-weight:700}
+  .term .val{color:var(--green);font-weight:700}
   .bar{display:inline-flex;gap:2px;vertical-align:middle;margin:0 7px 0 5px}
   .bar i{width:6px;height:12px;border-radius:1.5px;background:var(--green-dim);display:inline-block}
   .bar i.on{background:var(--green)}
@@ -311,17 +312,12 @@
         <span class="sep">│</span>
         <span>Opus&nbsp;4.8&nbsp;(1M)<span class="dim">&nbsp;· high</span></span>
         <span class="sep">│</span>
-        <span class="lbl">CTX</span>
+        <span class="val">C45</span>
         <span class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>
-        <span class="pct">45%</span>
         <span class="sep">│</span>
-        <span class="lbl">5h</span>
-        <span class="bar"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span>
-        <span class="pct">14%</span>&nbsp;<span class="dim">(4h21m)</span>
+        <span class="val">H14</span>&nbsp;<span class="dim">↺ 4h21m</span>
         <span class="sep">│</span>
-        <span class="lbl">7d</span>
-        <span class="bar"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span>
-        <span class="pct">31%</span>&nbsp;<span class="dim">(2d14h)</span>
+        <span class="val">W31</span>&nbsp;<span class="dim">↺ 2d14h</span>
       </div>
     </div>
 
@@ -420,13 +416,13 @@
        tok:'<span class="dim">· high</span>'},
       {tag:'CONTEXT', title:'Context bar',     field:'context_window.remaining_percentage',
        desc:'Context-window usage. The bar shifts color as it fills toward the limit.',
-       tok:'<span class="lbl">CTX</span> '+bar(3)+' <span class="pct">45%</span>'},
+       tok:'<span class="val">C45</span> '+bar(3)},
       {tag:'5H',      title:'5-hour session',  field:'rate_limits.five_hour',
        desc:'Live 5-hour session limit with a reset countdown, read straight from your session data.',
-       tok:'<span class="lbl">5h</span> '+bar(1)+' <span class="pct">14%</span> <span class="dim">(4h20m)</span>'},
+       tok:'<span class="val">H14</span> <span class="dim">↺ 4h20m</span>'},
       {tag:'7D',      title:'Weekly allowance',field:'rate_limits.seven_day',
        desc:'Your weekly usage and the time remaining until the weekly reset.',
-       tok:'<span class="lbl">7d</span> '+bar(2)+' <span class="pct">31%</span> <span class="dim">(2d13h)</span>'},
+       tok:'<span class="val">W31</span> <span class="dim">↺ 2d13h</span>'},
       {tag:'TASK',    title:'Current task',    field:'todos/<session>-agent.json',
        desc:'The in-progress to-do surfaces inline whenever there is active work.',
        tok:'<span class="dim">Refactoring usage cache</span>'}
