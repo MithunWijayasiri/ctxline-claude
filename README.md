@@ -103,6 +103,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 | **Context** | Visual bar of context-window usage |
 | **Current** | Live 5-hour session limit + reset countdown (subscription users) |
 | **Weekly** | Weekly usage allowance + time until the weekly reset (subscription users) |
+| **Cost** | Running session cost in USD (e.g. `$0.42`) |
 | **Task** | The in-progress todo, when there is one |
 
 > [!NOTE]
@@ -126,6 +127,13 @@ Yes — the same 5-hour and weekly limits. It reads them from the session data C
 </details>
 
 <details>
+<summary>Is the session cost my actual bill?</summary>
+
+It's the cost Claude Code computes for the session (tokens × per-model API pricing), read straight from the session data. For subscription (Pro/Max) users it's the *equivalent* pay-as-you-go API cost — useful as a gauge of session weight, but not what you're billed (you pay the flat subscription). It's an estimate, accurate to the extent your Claude Code pricing tables are current.
+
+</details>
+
+<details>
 <summary>Does it work with API keys?</summary>
 
 Yes. The statusline automatically detects subscription vs API-key usage.
@@ -135,7 +143,7 @@ Yes. The statusline automatically detects subscription vs API-key usage.
 <details>
 <summary>Can it break Claude Code?</summary>
 
-No. All failures are handled silently and the statusline always renders.
+No. [Statuslines are a built-in Claude Code feature](https://code.claude.com/docs/en/statusline) — this provides the command Claude Code runs. All failures are handled silently and the statusline always renders.
 
 </details>
 
