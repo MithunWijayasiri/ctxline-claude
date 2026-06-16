@@ -359,6 +359,15 @@ function getUsageWithCache(callback) {
   });
 }
 
+// Session cost from stdin `cost.total_cost_usd` (USD float, computed client-side by
+// Claude Code as tokens × per-model API pricing). Pure stdin — no network/cache.
+// Returns "$0.00" rendered dim, or '' when absent/non-finite so the segment is omitted.
+function getCostSegment(data) {
+  const usd = data?.cost?.total_cost_usd;
+  if (!Number.isFinite(usd)) return '';
+  return `${colors.dim}$${usd.toFixed(2)}${colors.reset}`;
+}
+
 function getCurrentTask(sessionId) {
   if (!sessionId) return '';
 
@@ -395,6 +404,7 @@ function outputStatus(data, usage) {
     const remaining = data?.context_window?.remaining_percentage;
 
     const contextBar = getContextBar(remaining);
+    const cost = getCostSegment(data);
     const task = getCurrentTask(sessionId);
     const parts = [];
     parts.push(branch ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}` : dirname);
@@ -404,6 +414,7 @@ function outputStatus(data, usage) {
     if (usage?.current) parts.push(usage.current);
     if (usage?.weekly) parts.push(usage.weekly);
 
+    if (cost) parts.push(cost);
     if (task) parts.push(`${colors.dim}${task}${colors.reset}`);
     process.stdout.write(parts.join(' \u2502 '));
   } catch (e) {

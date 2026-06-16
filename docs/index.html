@@ -212,7 +212,7 @@
   .inspect .term{margin:0}
   .insp-line{flex-wrap:wrap;row-gap:7px}
   .insp-seg{cursor:pointer;position:relative;white-space:nowrap;padding:4px 1px;border-radius:4px;transition:color .18s,opacity .18s}
-  .insp-line:hover .insp-seg{opacity:.5}
+  .insp-line:hover .insp-seg:not(:hover):not(.sel){opacity:.5}
   .insp-seg:hover,.insp-seg.sel{color:#fff;opacity:1}
   .insp-seg:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;opacity:1}
   .insp-seg.sel::after{content:"";position:absolute;left:3px;right:3px;bottom:-3px;height:2px;background:var(--accent);border-radius:2px}
@@ -318,6 +318,8 @@
         <span class="val">H14</span>&nbsp;<span class="dim">↺ 4h21m</span>
         <span class="sep">│</span>
         <span class="val">W31</span>&nbsp;<span class="dim">↺ 2d14h</span>
+        <span class="sep">│</span>
+        <span class="dim">$44.21</span>
       </div>
     </div>
 
@@ -338,7 +340,7 @@
   <section class="block" id="features">
     <div class="sec-head">
       <span class="kicker">What it shows</span>
-      <h2>Eight signals, one line</h2>
+      <h2>Nine signals, one line</h2>
       <p>Read left to right, it's the whole picture. Everything is best-effort and silent — if a source is missing, the line just skips it and still renders.</p>
     </div>
     <div class="inspect">
@@ -423,6 +425,9 @@
       {tag:'7D',      title:'Weekly allowance',field:'rate_limits.seven_day',
        desc:'Your weekly usage and the time remaining until the weekly reset.',
        tok:'<span class="val">W31</span> <span class="dim">↺ 2d13h</span>'},
+      {tag:'COST',    title:'Session cost',    field:'cost.total_cost_usd',
+       desc:'Running session cost in USD. For subscriptions it\'s the equivalent pay-as-you-go API cost, not your actual bill.',
+       tok:'<span class="dim">$44.21</span>'},
       {tag:'TASK',    title:'Current task',    field:'todos/<session>-agent.json',
        desc:'The in-progress to-do surfaces inline whenever there is active work.',
        tok:'<span class="dim">Refactoring usage cache</span>'}

@@ -55,7 +55,7 @@ function seedHome({ cacheAgeMs, percentage = 42, weeklyPercentage = 31 } = {}) {
   return home;
 }
 
-function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort) {
+function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, cost) {
   const obj = {
     model: { display_name: model },
     workspace: { current_dir: dir },
@@ -63,6 +63,7 @@ function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort) 
     context_window: { remaining_percentage: remaining }
   };
   if (effort) obj.effort = { level: effort };
+  if (cost != null) obj.cost = { total_cost_usd: cost };
   return JSON.stringify(obj);
 }
 
@@ -197,6 +198,32 @@ test('effort = xhigh is dim (not highlighted red/purple)', () => {
   assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · xhigh');
   assert.ok(raw.includes(DIM), 'xhigh effort uses the dim style');
   assert.ok(!raw.includes(PURPLE) && !raw.includes(RED), 'xhigh must not be highlighted');
+});
+
+test('session cost renders as $X.XX (two decimals)', () => {
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.4));
+  assert.match(clean, /\$0\.40\b/);                    // 0.4 -> "$0.40"
+});
+
+test('session cost is dim', () => {
+  const { raw } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 1.5));
+  assert.ok(raw.includes(`${DIM}$1.50`), 'expected dim-rendered cost');
+});
+
+test('no cost field -> segment omitted (finite-guarded, no $)', () => {
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8'));
+  assert.ok(!clean.includes('$'), 'cost segment should be absent without cost.total_cost_usd');
+});
+
+test('cost renders after usage and before task', () => {
+  // Fresh-cache usage + cost present; no in_progress todo in FAKE_HOME -> cost is last.
+  const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 });
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), { home, usage: true });
+  const parts = clean.split(' │ ');
+  const costIdx = parts.findIndex(p => p.includes('$0.42'));
+  const weeklyIdx = parts.findIndex(p => /^W\d+/.test(p));
+  assert.ok(costIdx > weeklyIdx, 'cost should come after the weekly usage segment');
+  assert.strictEqual(costIdx, parts.length - 1, 'cost is the last segment when no task is active');
 });
 
 test('context bar shows used% = 100 - remaining', () => {
