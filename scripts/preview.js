@@ -14,7 +14,7 @@ const SCRIPT = path.join(__dirname, '..', 'statusline.js');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-preview-'));
 process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true }));
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits }) {
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost }) {
   const home = fs.mkdtempSync(path.join(TMP, 'home-'));
   const cacheDir = path.join(home, '.claude', 'cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -47,6 +47,7 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
       session_id: 'preview',
       context_window: { remaining_percentage: remaining },
       effort: { level: effort },
+      ...(cost != null ? { cost: { total_cost_usd: cost } } : {}),
       ...(rateLimits ? { rate_limits: rateLimits } : {})
     }),
     encoding: 'utf8',
@@ -71,7 +72,8 @@ const base = {
   current: 14,
   currentResetsInMin: 261,   // renders "H14 ↺ 4h21m"
   weekly: 31,
-  weeklyResetsInMin: 3720    // renders "W31 ↺ 2d14h"
+  weeklyResetsInMin: 3720,   // renders "W31 ↺ 2d14h"
+  cost: 44.21                // renders dim "$44.21" (stdin cost.total_cost_usd)
 };
 
 // Primary line (default effort). NOTE: this MUST stay the first printed line —
