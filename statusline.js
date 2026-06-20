@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const https = require('https');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
@@ -35,6 +35,13 @@ const FRESH_TTL_MS = 30000;            // 30 seconds
 // Stale: used only as a fallback when a live API call fails, so the usage bar stays
 // visible through transient timeouts/errors instead of disappearing.
 const STALE_TTL_MS = 10 * 60 * 1000;   // 10 minutes
+
+// Git ahead/behind cache (single repo entry, keyed by git dir). Throttles the one
+// `git rev-list` subprocess so a burst of renders in a turn runs it once, not per render.
+const GIT_CACHE_FILE = path.join(CACHE_DIR, 'git-cache.json');
+const GIT_FRESH_TTL_MS = 5000;          // 5s: reuse counts within a render burst
+const GIT_STALE_TTL_MS = 60000;         // 60s: fall back to last counts if git fails
+const GIT_TIMEOUT_MS = 500;             // hard cap on the rev-list subprocess (warm ~130ms)
 
 // ANSI color codes
 const colors = {
@@ -76,30 +83,35 @@ function truncateBranch(name) {
   return name.length > MAX_BRANCH_LEN ? name.slice(0, MAX_BRANCH_LEN - 1) + '…' : name;
 }
 
-// Resolve the current git branch by reading .git/HEAD directly (no `git` subprocess —
-// keeps the render fast and dependency-free). Walks up from `dir` to find the repo,
-// handles worktrees (.git as a file) and detached HEAD (short sha). Best-effort: '' on any failure.
+// Resolve the repo's git dir by walking up from `dir` (no `git` subprocess). Handles
+// worktrees/submodules (".git" as a file pointing at the real dir). '' on any failure.
+function resolveGitDir(dir) {
+  let cur = dir;
+  let gitPath = '';
+  for (let i = 0; i < 50 && cur; i++) {
+    const candidate = path.join(cur, '.git');
+    if (fs.existsSync(candidate)) { gitPath = candidate; break; }
+    const parent = path.dirname(cur);
+    if (parent === cur) break;          // reached filesystem root
+    cur = parent;
+  }
+  if (!gitPath) return '';
+
+  if (fs.statSync(gitPath).isFile()) {
+    // ".git" is a file like "gitdir: /path/to/.git/worktrees/x".
+    const m = fs.readFileSync(gitPath, 'utf8').match(/gitdir:\s*(.+)/);
+    if (!m) return '';
+    return path.resolve(path.dirname(gitPath), m[1].trim());
+  }
+  return gitPath;
+}
+
+// Current git branch, read straight from .git/HEAD (no `git` subprocess — fast,
+// dependency-free). Detached HEAD -> short sha. Best-effort: '' on any failure.
 function getGitBranch(dir) {
   try {
-    let cur = dir;
-    let gitPath = '';
-    for (let i = 0; i < 50 && cur; i++) {
-      const candidate = path.join(cur, '.git');
-      if (fs.existsSync(candidate)) { gitPath = candidate; break; }
-      const parent = path.dirname(cur);
-      if (parent === cur) break;        // reached filesystem root
-      cur = parent;
-    }
-    if (!gitPath) return '';
-
-    let gitDir = gitPath;
-    if (fs.statSync(gitPath).isFile()) {
-      // Worktree/submodule: ".git" is a file like "gitdir: /path/to/.git/worktrees/x".
-      const m = fs.readFileSync(gitPath, 'utf8').match(/gitdir:\s*(.+)/);
-      if (!m) return '';
-      gitDir = path.resolve(path.dirname(gitPath), m[1].trim());
-    }
-
+    const gitDir = resolveGitDir(dir);
+    if (!gitDir) return '';
     const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
     const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
     if (ref) return truncateBranch(ref[1]);
@@ -108,6 +120,72 @@ function getGitBranch(dir) {
   } catch (e) {
     return '';
   }
+}
+
+// Read the cached ahead/behind for `gitDir`. Single-entry file: a different repo
+// invalidates it. Returns { age, ahead, behind } or null.
+function readGitCache(gitDir) {
+  try {
+    const c = JSON.parse(fs.readFileSync(GIT_CACHE_FILE, 'utf8'));
+    if (!c || c.gitDir !== gitDir || !Number.isFinite(c.timestamp)) return null;
+    if (!Number.isFinite(c.ahead) || !Number.isFinite(c.behind)) return null;
+    return { age: Date.now() - c.timestamp, ahead: c.ahead, behind: c.behind };
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeGitCache(gitDir, ahead, behind) {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    fs.writeFileSync(GIT_CACHE_FILE, JSON.stringify({ gitDir, timestamp: Date.now(), ahead, behind }), 'utf8');
+  } catch (e) {}
+}
+
+// Commits ahead/behind the upstream (@{u}), cache-fronted. The single `git` call in the
+// whole script — gated by GIT_FRESH_TTL_MS so a render burst runs it once. No upstream /
+// detached / no git -> the subprocess errors -> null (segment omitted). On a slow/failed
+// call, falls back to the last counts up to GIT_STALE_TTL_MS so they don't flicker.
+function getGitAheadBehind(dir) {
+  const gitDir = resolveGitDir(dir);
+  if (!gitDir) return null;
+
+  const cached = readGitCache(gitDir);
+  if (cached && cached.age < GIT_FRESH_TTL_MS) {
+    return { ahead: cached.ahead, behind: cached.behind };
+  }
+
+  try {
+    // execFileSync (no shell): faster cold spawn than execSync and passes `@{u}` literally.
+    // `@{u}...HEAD` with --left-right --count prints "<behind>\t<ahead>" (left = upstream).
+    const out = execFileSync('git', ['rev-list', '--left-right', '--count', '@{u}...HEAD'], {
+      cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+    const parts = out.split(/\s+/);
+    const behind = parseInt(parts[0], 10);
+    const ahead = parseInt(parts[1], 10);
+    if (Number.isFinite(ahead) && Number.isFinite(behind)) {
+      writeGitCache(gitDir, ahead, behind);
+      return { ahead, behind };
+    }
+    return null;
+  } catch (e) {
+    if (cached && cached.age < GIT_STALE_TTL_MS) {
+      return { ahead: cached.ahead, behind: cached.behind };
+    }
+    return null;
+  }
+}
+
+// "↑N↓M" from ahead/behind counts: ahead green (commits to push), behind red (missing
+// commits). Each part self-resets so it doesn't inherit the dim branch color. Omit a zero
+// side; '' when in sync or null.
+function formatAheadBehind(ab) {
+  if (!ab) return '';
+  let s = '';
+  if (ab.ahead) s += `${colors.green}↑${ab.ahead}${colors.reset}`;
+  if (ab.behind) s += `${colors.red}↓${ab.behind}${colors.reset}`;
+  return s;
 }
 
 function getContextBar(remaining) {
@@ -426,6 +504,7 @@ function outputStatus(data, usage) {
     const dir = data?.workspace?.current_dir || process.cwd();
     const dirname = path.basename(dir);
     const branch = getGitBranch(dir);
+    const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
     const effort = data?.effort?.level || '';
     const sessionId = data?.session_id || '';
     const remaining = data?.context_window?.remaining_percentage;
@@ -436,7 +515,9 @@ function outputStatus(data, usage) {
 
     // line1 = identity + context (always); line2 = usage/cost/task (wrap target).
     const line1 = [];
-    line1.push(branch ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}` : dirname);
+    line1.push(branch
+      ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}${sync ? ' ' + sync : ''}`
+      : dirname);
     line1.push(effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model);
     line1.push(contextBar);
 

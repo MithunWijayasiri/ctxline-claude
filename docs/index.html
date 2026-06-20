@@ -125,6 +125,8 @@
   .term .lbl{color:#a7a191}
   .term .pct{font-weight:700}
   .term .val{color:var(--green);font-weight:700}
+  .term .ahead{color:var(--green);font-weight:700}
+  .term .behind{color:#f85149;font-weight:700}
   .bar{display:inline-flex;gap:2px;vertical-align:middle;margin:0 7px 0 5px}
   .bar i{width:6px;height:12px;border-radius:1.5px;background:var(--green-dim);display:inline-block}
   .bar i.on{background:var(--green)}
@@ -308,7 +310,7 @@
 
     <div class="term" aria-label="Example statusline">
       <div class="line">
-        <span class="proj">my-project</span>&nbsp;<span class="dim">⎇ main</span>
+        <span class="proj">my-project</span>&nbsp;<span class="dim">⎇ main</span>&nbsp;<span class="ahead">↑2</span><span class="behind">↓1</span>
         <span class="sep">│</span>
         <span>Opus&nbsp;4.8&nbsp;(1M)<span class="dim">&nbsp;· high</span></span>
         <span class="sep">│</span>
@@ -408,8 +410,8 @@
        desc:'The current working directory — you always know where Claude is operating.',
        tok:'<span class="proj">my-project</span>'},
       {tag:'BRANCH',  title:'Git branch',      field:'.git/HEAD',
-       desc:'Active branch beside the dir, read straight from .git. Long names trim; the ticket ID stays.',
-       tok:'<span class="dim">⎇ main</span>'},
+       desc:'Active branch beside the dir, read straight from .git. Long names trim; the ticket ID stays. Adds ↑N↓M commits ahead/behind your upstream when it diverges.',
+       tok:'<span class="dim">⎇ main</span>&nbsp;<span class="ahead">↑2</span><span class="behind">↓1</span>'},
       {tag:'MODEL',   title:'Active model',    field:'model.display_name',
        desc:'Opus, Sonnet, or Haiku — plus the context window size at a glance.',
        tok:'Opus&nbsp;4.8&nbsp;(1M)'},

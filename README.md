@@ -107,6 +107,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 | Segment | Detail |
 |---|---|
 | **Directory** | Current working directory |
+| **Branch** | Active git branch, with `↑N↓M` commits ahead / behind your upstream when it diverges |
 | **Model** | Active Claude model (Opus / Sonnet / Haiku) |
 | **Context** | Visual bar of context-window usage |
 | **Current** | Live 5-hour session limit + reset countdown (subscription users) |
@@ -129,6 +130,20 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 - **Never breaks** — every failure path falls back silently; the statusline always prints.
 
 ## FAQ
+
+<details>
+<summary>Does it use extra tokens?</summary>
+
+No — zero tokens, ever. The statusline is part of Claude Code's UI; its output is drawn in your terminal and is **never sent to the model**. Nothing it shows (context, usage, cost, git status) enters the conversation or counts toward your context window.
+
+</details>
+
+<details>
+<summary>Does fetching data slow down Claude Code?</summary>
+
+No, it's imperceptible. Almost every render reads a small local cache (sub-millisecond) instead of fetching. The usage API only runs as a fallback (and is cached); the git ahead/behind check runs at most once every ~5s and is hard-capped so it can never hang. The statusline runs as its own background command, so it never blocks your typing or Claude's responses — and in a non-git folder the git check doesn't run at all.
+
+</details>
 
 <details>
 <summary>Does this use the same data as /usage?</summary>

@@ -13,7 +13,7 @@ const SCRIPT = path.join(__dirname, '..', 'statusline.js');
 
 // Empty fake HOME so the todos/credentials lookups find nothing -> deterministic.
 const FAKE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
-after(() => fs.rmSync(FAKE_HOME, { recursive: true, force: true }));
+after(() => fs.rmSync(FAKE_HOME, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
 // Run statusline.js with the given stdin string. Returns { code, raw, clean }.
 // opts.home  : override the fake HOME (default: empty FAKE_HOME -> no usage/todos)
@@ -95,8 +95,54 @@ function seedRepo(branch = 'feature/x') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-repo-'));
   fs.mkdirSync(path.join(dir, '.git'));
   fs.writeFileSync(path.join(dir, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`);
-  after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   return dir;
+}
+
+// --- real-git helpers for the ahead/behind segment ---
+function git(dir, args) { return spawnSync('git', args, { cwd: dir, encoding: 'utf8' }); }
+function hasGit() {
+  const r = spawnSync('git', ['--version'], { encoding: 'utf8' });
+  return r.status === 0;
+}
+function gitCommit(dir, tag) {
+  fs.writeFileSync(path.join(dir, 'f-' + tag), tag);
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-q', '-m', tag]);
+}
+
+// Real git repo whose HEAD is `ahead` commits ahead and `behind` behind a tracked
+// upstream (origin/<branch>), so `git rev-list @{u}...HEAD` reports real counts.
+function seedDivergedRepo({ ahead = 0, behind = 0 } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-gitdiv-'));
+  after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  git(dir, ['init', '-q']);
+  git(dir, ['config', 'user.email', 't@t']);
+  git(dir, ['config', 'user.name', 'test']);
+  git(dir, ['config', 'commit.gpgsign', 'false']);
+  // register origin so the merge ref maps to a remote-tracking branch (@{u} resolves)
+  git(dir, ['config', 'remote.origin.url', '.']);
+  git(dir, ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
+  gitCommit(dir, 'base');
+  const branch = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim();
+  const baseSha = git(dir, ['rev-parse', 'HEAD']).stdout.trim();
+  // build the upstream (behind) chain on top of base, park it in origin/<branch>
+  for (let i = 0; i < behind; i++) gitCommit(dir, 'up' + i);
+  const upstreamSha = git(dir, ['rev-parse', 'HEAD']).stdout.trim();
+  git(dir, ['update-ref', 'refs/remotes/origin/' + branch, upstreamSha]);
+  git(dir, ['config', 'branch.' + branch + '.remote', 'origin']);
+  git(dir, ['config', 'branch.' + branch + '.merge', 'refs/heads/' + branch]);
+  // reset HEAD back to base, then build the local (ahead) chain -> diverges from upstream
+  git(dir, ['reset', '--hard', '-q', baseSha]);
+  for (let i = 0; i < ahead; i++) gitCommit(dir, 'local' + i);
+  return dir;
+}
+
+// Throwaway HOME so each git test gets an isolated git-cache.json.
+function freshHome() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-githome-'));
+  after(() => fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  return home;
 }
 
 // ANSI color codes the script emits (kept in sync with statusline.js `colors`).
@@ -158,7 +204,7 @@ test('detached HEAD -> short 7-char SHA', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-detach-'));
   fs.mkdirSync(path.join(dir, '.git'));
   fs.writeFileSync(path.join(dir, '.git', 'HEAD'), 'abc1234567890abcdef1234567890abcdef12345\n'); // 40-char SHA
-  after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   const { clean } = run(fixture(40, dir));
   assert.match(clean.split(' │ ')[0], /⎇ abc1234$/);   // first 7 chars of the SHA
 });
@@ -169,8 +215,8 @@ test('worktree (.git is a file with gitdir:) -> branch still renders', () => {
   fs.writeFileSync(path.join(gitdir, 'HEAD'), 'ref: refs/heads/feature/wt\n');
   fs.writeFileSync(path.join(dir, '.git'), `gitdir: ${gitdir}\n`); // .git as a file pointer
   after(() => {
-    fs.rmSync(dir, { recursive: true, force: true });
-    fs.rmSync(gitdir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(gitdir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
   const { clean } = run(fixture(40, dir));
   assert.match(clean.split(' │ ')[0], /⎇ feature\/wt$/);
@@ -376,4 +422,71 @@ test('narrow wrap puts cost on line 2 alongside usage', () => {
   const [l1, l2] = clean.split('\n');
   assert.ok(!l1.includes('$1.23'), 'cost must not be on line 1');
   assert.match(l2, /\$1\.23\b/, 'cost wraps to line 2');
+});
+
+// Git ahead/behind: counts come from a guarded, cache-fronted `git rev-list`. Needs real git.
+
+test('ahead of upstream -> ↑N in the branch segment', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const dir = seedDivergedRepo({ ahead: 2 });
+  const { clean } = run(fixture(40, dir), { home: freshHome() });
+  assert.match(clean, /⎇ \S+ ↑2/, 'expected ↑2');
+  assert.ok(!clean.includes('↓'), 'no behind marker when only ahead');
+});
+
+test('behind upstream -> ↓N in the branch segment', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const dir = seedDivergedRepo({ behind: 3 });
+  const { clean } = run(fixture(40, dir), { home: freshHome() });
+  assert.match(clean, /⎇ \S+ ↓3/, 'expected ↓3');
+  assert.ok(!clean.includes('↑'), 'no ahead marker when only behind');
+});
+
+test('diverged -> ↑N↓M (ahead then behind)', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const dir = seedDivergedRepo({ ahead: 2, behind: 1 });
+  const { clean } = run(fixture(40, dir), { home: freshHome() });
+  assert.match(clean, /⎇ \S+ ↑2↓1/, 'expected ↑2↓1');
+});
+
+test('ahead is green, behind is red', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const dir = seedDivergedRepo({ ahead: 2, behind: 1 });
+  const { raw } = run(fixture(40, dir), { home: freshHome() });
+  assert.ok(raw.includes(`${GREEN}↑2`), 'ahead count should be green');
+  assert.ok(raw.includes(`${RED}↓1`), 'behind count should be red');
+});
+
+test('in sync with upstream -> no ahead/behind marker', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const dir = seedDivergedRepo({ ahead: 0, behind: 0 });
+  const { clean } = run(fixture(40, dir), { home: freshHome() });
+  assert.match(clean, /⎇ \S+/, 'branch still renders');
+  assert.ok(!clean.includes('↑') && !clean.includes('↓'), 'no marker when in sync');
+});
+
+test('no upstream -> branch renders, no ahead/behind marker', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-noup-'));
+  after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  git(dir, ['init', '-q']);
+  git(dir, ['config', 'user.email', 't@t']);
+  git(dir, ['config', 'user.name', 'test']);
+  git(dir, ['config', 'commit.gpgsign', 'false']);
+  gitCommit(dir, 'base');                                  // committed, but no upstream configured
+  const { clean } = run(fixture(40, dir), { home: freshHome() });
+  assert.match(clean, /⎇ \S+/, 'branch renders');
+  assert.ok(!clean.includes('↑') && !clean.includes('↓'), 'no marker without an upstream');
+});
+
+test('counts are cached: a commit within the TTL does not change the rendered count', (t) => {
+  if (!hasGit()) return t.skip('git not available');
+  const home = freshHome();                                // shared across both renders -> shared cache
+  const dir = seedDivergedRepo({ ahead: 1 });
+  const first = run(fixture(40, dir), { home });
+  assert.match(first.clean, /↑1/, 'first render shows ↑1 and writes cache');
+  gitCommit(dir, 'extra');                                 // now actually ↑2
+  const second = run(fixture(40, dir), { home });          // within 5s TTL -> cache hit
+  assert.match(second.clean, /↑1/, 'cached ↑1 reused; git not re-run');
+  assert.ok(!second.clean.includes('↑2'), 'fresh count must not appear within the TTL');
 });
