@@ -109,6 +109,9 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 > [!NOTE]
 > Usage bars change color automatically as you approach your limits.
 
+> [!NOTE]
+> **Responsive.** On a narrow terminal the line wraps to two — directory, model, and context on the first line; usage, cost, and task on the second. Wide terminals stay on a single line. (Auto-sizing needs Claude Code v2.1.153+.)
+
 ## How it works
 
 - **Source** — context comes from Claude Code's session data. Usage bars are read straight from the `rate_limits` field Claude Code pipes in (no network), falling back to `https://api.anthropic.com/api/oauth/usage` (the same `/usage` data — 5-hour and weekly limits) when that field isn't present yet. API-key users skip usage entirely.

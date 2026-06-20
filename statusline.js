@@ -19,6 +19,14 @@ const BAR_WIDTH = 6;
 // Tail-truncation keeps the start (ticket IDs like "TAMA5-32796" live there) visible.
 const MAX_BRANCH_LEN = 24;
 
+// Separator between segments on a rendered line.
+const SEGMENT_SEP = ' │ ';
+
+// Cells reserved at the terminal edge when deciding to wrap to a second line.
+// 0 = use the full COLUMNS; bump it if Claude Code reserves columns and the line
+// truncates a char or two before wrapping.
+const WIDTH_MARGIN = 0;
+
 // Cache configuration
 const CACHE_DIR = path.join(os.homedir(), '.claude', 'cache');
 const USAGE_CACHE_FILE = path.join(CACHE_DIR, 'usage-cache.json');
@@ -392,6 +400,25 @@ function getCurrentTask(sessionId) {
   return '';
 }
 
+// Visible (printable) width of a segment string: strip ANSI color codes, count code points.
+function visibleWidth(str) {
+  return [...str.replace(/\x1b\[[0-9;]*m/g, '')].length;
+}
+
+// Responsive layout: one line when it fits the terminal, else line1 (identity + context)
+// on top and line2 (usage/cost/task) below. Splits only when COLUMNS is known (Claude Code
+// v2.1.153+) and the single line overflows — unknown width or an empty line2 stays single,
+// so there is no regression on older clients or wide terminals.
+function layout(line1Parts, line2Parts) {
+  const single = [...line1Parts, ...line2Parts].join(SEGMENT_SEP);
+  if (line2Parts.length === 0) return single;
+  const cols = parseInt(process.env.COLUMNS, 10);
+  if (Number.isFinite(cols) && cols > 0 && visibleWidth(single) > cols - WIDTH_MARGIN) {
+    return line1Parts.join(SEGMENT_SEP) + '\n' + line2Parts.join(SEGMENT_SEP);
+  }
+  return single;
+}
+
 // Main
 function outputStatus(data, usage) {
   try {
@@ -406,17 +433,20 @@ function outputStatus(data, usage) {
     const contextBar = getContextBar(remaining);
     const cost = getCostSegment(data);
     const task = getCurrentTask(sessionId);
-    const parts = [];
-    parts.push(branch ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}` : dirname);
-    parts.push(effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model);
-    parts.push(contextBar);
 
-    if (usage?.current) parts.push(usage.current);
-    if (usage?.weekly) parts.push(usage.weekly);
+    // line1 = identity + context (always); line2 = usage/cost/task (wrap target).
+    const line1 = [];
+    line1.push(branch ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}` : dirname);
+    line1.push(effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model);
+    line1.push(contextBar);
 
-    if (cost) parts.push(cost);
-    if (task) parts.push(`${colors.dim}${task}${colors.reset}`);
-    process.stdout.write(parts.join(' \u2502 '));
+    const line2 = [];
+    if (usage?.current) line2.push(usage.current);
+    if (usage?.weekly) line2.push(usage.weekly);
+    if (cost) line2.push(cost);
+    if (task) line2.push(`${colors.dim}${task}${colors.reset}`);
+
+    process.stdout.write(layout(line1, line2));
   } catch (e) {
     process.stdout.write('Status unavailable');
   }

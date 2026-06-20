@@ -27,6 +27,13 @@ function run(input, opts = {}) {
   } else {
     env.ANTHROPIC_API_KEY = 'test';
   }
+  // Width drives the responsive wrap. Default: unset -> always single line (matches
+  // pre-responsive behavior, keeps `split(' │ ')` assertions deterministic).
+  if (opts.columns != null) {
+    env.COLUMNS = String(opts.columns);
+  } else {
+    delete env.COLUMNS;
+  }
   const res = spawnSync(process.execPath, [SCRIPT], { input, encoding: 'utf8', timeout: 5000, env });
   const raw = res.stdout || '';
   const clean = raw.replace(/\x1b\[[0-9;]*m/g, ''); // strip ANSI for readable assertions
@@ -319,4 +326,54 @@ test('stdin rate_limits takes precedence over a fresh cache', () => {
   const { clean } = run(fixtureWithRateLimits(40), { home, usage: true });
   assert.match(clean, /H24\b/);
   assert.ok(!clean.includes('H42'), 'cached 5h value must not appear when stdin rate_limits is present');
+});
+
+// Responsive layout: usage/cost/task wrap to a second line only when the rendered line
+// overflows the terminal width (process.env.COLUMNS). Width unknown or line fits -> single.
+
+test('narrow terminal wraps usage to a second line (line1 identity+context, line2 usage)', () => {
+  const { code, raw, clean } = run(fixtureWithRateLimits(40), { usage: true, columns: 30 });
+  assert.strictEqual(code, 0);
+  assert.ok(raw.includes('\n'), 'expected a line break on a narrow terminal');
+  const [l1, l2] = clean.split('\n');
+  assert.match(l1, /C\d+ /, 'context stays on line 1');
+  assert.ok(!/[HW]\d+/.test(l1), 'usage must not be on line 1 when wrapped');
+  assert.match(l2, /H\d+\b/, 'current usage moves to line 2');
+  assert.match(l2, /W\d+\b/, 'weekly usage moves to line 2');
+});
+
+test('wide terminal keeps everything on one line', () => {
+  const { raw, clean } = run(fixtureWithRateLimits(40), { usage: true, columns: 200 });
+  assert.ok(!raw.includes('\n'), 'no wrap when the line fits');
+  assert.match(clean, /C\d+ .*H\d+\b.*W\d+\b/, 'context + usage all on one line');
+});
+
+test('unknown width (COLUMNS unset) never wraps', () => {
+  const { raw } = run(fixtureWithRateLimits(40), { usage: true });   // run() deletes COLUMNS
+  assert.ok(!raw.includes('\n'), 'absent COLUMNS -> single line (no regression on old clients)');
+});
+
+test('narrow terminal with no usage/cost/task stays single line', () => {
+  // Only identity + context exist (no rate_limits, API-key path skips usage) -> nothing to wrap.
+  const { raw } = run(fixture(40, '/no/such/repo', 'Opus 4.8'), { columns: 10 });
+  assert.ok(!raw.includes('\n'), 'empty line2 -> single line regardless of width');
+});
+
+test('narrow wrap puts cost on line 2 alongside usage', () => {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const input = JSON.stringify({
+    model: { display_name: 'Opus 4.8' },
+    workspace: { current_dir: '/tmp/myproject' },
+    session_id: 'test-session',
+    context_window: { remaining_percentage: 40 },
+    cost: { total_cost_usd: 1.23 },
+    rate_limits: {
+      five_hour: { used_percentage: 23.5, resets_at: nowSec + 2 * 3600 },
+      seven_day: { used_percentage: 41.2, resets_at: nowSec + 62 * 3600 }
+    }
+  });
+  const { clean } = run(input, { usage: true, columns: 30 });
+  const [l1, l2] = clean.split('\n');
+  assert.ok(!l1.includes('$1.23'), 'cost must not be on line 1');
+  assert.match(l2, /\$1\.23\b/, 'cost wraps to line 2');
 });
