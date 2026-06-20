@@ -14,7 +14,7 @@ const SCRIPT = path.join(__dirname, '..', 'statusline.js');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-preview-'));
 process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true }));
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost }) {
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost, columns }) {
   const home = fs.mkdtempSync(path.join(TMP, 'home-'));
   const cacheDir = path.join(home, '.claude', 'cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -39,6 +39,10 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
 
   const env = { ...process.env, HOME: home, USERPROFILE: home };
   delete env.ANTHROPIC_API_KEY;                             // let the usage path run
+  // Width drives the responsive wrap. Force it per-scenario so output is deterministic
+  // regardless of the terminal running preview (and the primary line never wraps).
+  if (columns != null) env.COLUMNS = String(columns);
+  else delete env.COLUMNS;
 
   const res = spawnSync(process.execPath, [SCRIPT], {
     input: JSON.stringify({
@@ -86,6 +90,11 @@ console.log('\nThinking-effort levels:');
 for (const effort of ['xhigh', 'max', 'ultracode']) {
   console.log(`  ${effort.padEnd(9)} ${render({ ...base, effort })}`);
 }
+
+// Responsive: on a narrow terminal the usage/cost/task segments wrap to a second line
+// (width measured against COLUMNS). Wide terminals keep the single line above.
+console.log('\nResponsive (narrow terminal, COLUMNS=40):');
+console.log(render({ ...base, effort: 'high', columns: 40 }));
 
 // Usage from stdin `rate_limits` (Pro/Max post-first-response): no cache, no creds.
 // resets_at is a Unix epoch in seconds. Renders the same 5h/7d bars as the cache path.
