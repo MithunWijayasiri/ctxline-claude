@@ -67,6 +67,14 @@ chmod +x ~/.claude/hooks/statusline.js
 
 </details>
 
+## Update
+
+```bash
+npx ctxline-claude@latest
+```
+
+Re-runs the installer with the latest published version. Restart Claude Code or start a new session for the update to take effect.
+
 ## Uninstall
 
 ```bash
