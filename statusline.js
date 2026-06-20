@@ -12,6 +12,17 @@ const { execSync, execFileSync } = require('child_process');
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
+// Optional segment opt-out: CTXLINE_DISABLE is a comma list of segments to hide.
+// Recognized: branch, effort, cost, task, usage (H+W). dir/model/context always render.
+// Unknown names are ignored. Disabling a segment also skips its work (git, todo read,
+// usage fetch).
+const DISABLED = new Set(
+  (process.env.CTXLINE_DISABLE || '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 // Shared width (cells) for all progress bars: context, current, weekly.
 const BAR_WIDTH = 6;
 
@@ -503,15 +514,15 @@ function outputStatus(data, usage) {
     const model = shortenModel(data?.model?.display_name || 'Claude');
     const dir = data?.workspace?.current_dir || process.cwd();
     const dirname = path.basename(dir);
-    const branch = getGitBranch(dir);
+    const branch = DISABLED.has('branch') ? '' : getGitBranch(dir);
     const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
-    const effort = data?.effort?.level || '';
+    const effort = DISABLED.has('effort') ? '' : (data?.effort?.level || '');
     const sessionId = data?.session_id || '';
     const remaining = data?.context_window?.remaining_percentage;
 
     const contextBar = getContextBar(remaining);
-    const cost = getCostSegment(data);
-    const task = getCurrentTask(sessionId);
+    const cost = DISABLED.has('cost') ? '' : getCostSegment(data);
+    const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
 
     // line1 = identity + context (always); line2 = usage/cost/task (wrap target).
     const line1 = [];
@@ -545,7 +556,7 @@ function outputFallback(usage) {
 // Order: API-key users get none; otherwise prefer stdin `rate_limits` (no network),
 // then fall back to the cache+API flow when stdin lacks it (cold start / non-Pro/Max).
 function resolveUsage(data, callback) {
-  if (IS_API_KEY) {
+  if (IS_API_KEY || DISABLED.has('usage')) {
     return callback(null);
   }
   const fromStdin = buildUsageFromStdin(data);

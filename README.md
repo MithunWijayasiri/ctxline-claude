@@ -29,6 +29,15 @@
 
 See your **current directory**, **active model**, **context window usage**, and **Claude usage limits** at a glance — including both your **current 5-hour session** and **weekly allowance**.
 
+## Contents
+
+- [Install](#install)
+- [Uninstall](#uninstall)
+- [What it shows](#what-it-shows)
+- [Configuration](#configuration)
+- [How it works](#how-it-works)
+- [FAQ](#faq)
+
 ## Install
 
 ```bash
@@ -120,6 +129,55 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 
 > [!NOTE]
 > **Responsive.** On a narrow terminal the line wraps to two — directory, model, and context on the first line; usage, cost, and task on the second. Wide terminals stay on a single line. (Auto-sizing needs Claude Code v2.1.153+.)
+
+> [!TIP]
+> Don't want every segment? You can hide any of them — see [Configuration](#configuration).
+
+## Configuration
+
+The statusline is zero-config by default. To **hide segments you don't want**, set the `CTXLINE_DISABLE` environment variable to a comma-separated list of any of:
+
+`branch` · `effort` · `cost` · `task` · `usage` (5-hour + weekly)
+
+Directory, model, and context always show; unknown names are ignored. Example below hides cost and the current task.
+
+### Option A — `settings.json` (recommended)
+
+Works on every OS and survives restarts. Add a top-level `env` block to `~/.claude/settings.json` — Claude Code passes it to every command it spawns, including the statusline:
+
+```json
+{
+  "env": {
+    "CTXLINE_DISABLE": "cost,task"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node ~/.claude/hooks/statusline.js"
+  }
+}
+```
+
+Restart Claude Code (or start a new session) to apply.
+
+### Option B — shell environment
+
+Set the variable **before** launching `claude` (the statusline inherits Claude Code's environment):
+
+```bash
+# macOS / Linux
+export CTXLINE_DISABLE="cost,task"
+claude
+```
+
+```powershell
+# Windows (PowerShell) — this terminal only
+$env:CTXLINE_DISABLE = "cost,task"; claude
+
+# Windows — persist for future sessions (then open a NEW terminal)
+setx CTXLINE_DISABLE "cost,task"
+```
+
+To re-enable a segment, remove it from the list (or delete the variable) and restart Claude Code.
 
 ## How it works
 

@@ -46,7 +46,7 @@ function setupDivergedRepo(projectDir, branch) {
   }
 }
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost, columns, diverged }) {
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost, columns, diverged, disable }) {
   const home = fs.mkdtempSync(path.join(TMP, 'home-'));
   const cacheDir = path.join(home, '.claude', 'cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -78,6 +78,8 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
   // regardless of the terminal running preview (and the primary line never wraps).
   if (columns != null) env.COLUMNS = String(columns);
   else delete env.COLUMNS;
+  if (disable != null) env.CTXLINE_DISABLE = disable;       // segment opt-out scenario
+  else delete env.CTXLINE_DISABLE;
 
   const res = spawnSync(process.execPath, [SCRIPT], {
     input: JSON.stringify({
@@ -144,3 +146,7 @@ console.log('  ' + render({
     seven_day: { used_percentage: base.weekly, resets_at: nowSec + base.weeklyResetsInMin * 60 }
   }
 }));
+
+// Segment opt-out: CTXLINE_DISABLE hides segments (dir/model/context always render).
+console.log('\nSegment opt-out (CTXLINE_DISABLE=usage,cost):');
+console.log('  ' + render({ ...base, effort: 'high', disable: 'usage,cost' }));
