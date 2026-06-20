@@ -99,6 +99,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 | Segment | Detail |
 |---|---|
 | **Directory** | Current working directory |
+| **Branch** | Active git branch, with `↑N↓M` commits ahead / behind your upstream when it diverges |
 | **Model** | Active Claude model (Opus / Sonnet / Haiku) |
 | **Context** | Visual bar of context-window usage |
 | **Current** | Live 5-hour session limit + reset countdown (subscription users) |

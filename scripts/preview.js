@@ -12,9 +12,40 @@ const path = require('node:path');
 
 const SCRIPT = path.join(__dirname, '..', 'statusline.js');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-preview-'));
-process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true }));
+process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost, columns }) {
+// Build a real diverged git repo in `projectDir` so statusline.js renders ↑N↓M.
+// Best-effort: returns true on success, false if git is unavailable (caller falls back
+// to a fake .git/HEAD so the line — and the release body — still render).
+function setupDivergedRepo(projectDir, branch) {
+  try {
+    const g = (args) => spawnSync('git', args, { cwd: projectDir, encoding: 'utf8' });
+    fs.mkdirSync(projectDir, { recursive: true });
+    if (g(['init', '-q']).status !== 0) return false;
+    const commit = (tag) => {
+      fs.writeFileSync(path.join(projectDir, 'f-' + tag), tag);
+      g(['add', '-A']); g(['commit', '-q', '-m', tag]);
+    };
+    g(['config', 'user.email', 't@t']); g(['config', 'user.name', 'preview']);
+    g(['config', 'commit.gpgsign', 'false']);
+    g(['config', 'remote.origin.url', '.']);
+    g(['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
+    commit('base');
+    g(['branch', '-M', branch]);                              // force the displayed branch name
+    const baseSha = g(['rev-parse', 'HEAD']).stdout.trim();
+    commit('up0');                                            // upstream +1 -> behind 1
+    g(['update-ref', 'refs/remotes/origin/' + branch, g(['rev-parse', 'HEAD']).stdout.trim()]);
+    g(['config', 'branch.' + branch + '.remote', 'origin']);
+    g(['config', 'branch.' + branch + '.merge', 'refs/heads/' + branch]);
+    g(['reset', '--hard', '-q', baseSha]);
+    commit('local0'); commit('local1');                      // local +2 -> ahead 2
+    return g(['rev-parse', '--git-dir']).status === 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost, columns, diverged }) {
   const home = fs.mkdtempSync(path.join(TMP, 'home-'));
   const cacheDir = path.join(home, '.claude', 'cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -31,11 +62,14 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
     }));
   }
 
-  // Real on-disk dir with a seeded .git/HEAD so the branch segment renders (statusline.js
-  // reads .git/HEAD directly). basename(currentDir) keeps the displayed dir name.
+  // Real on-disk dir so the branch segment renders. `diverged` builds a real repo with an
+  // upstream (for ↑N↓M); otherwise (or if git is missing) seed a fake .git/HEAD — statusline.js
+  // reads it directly. basename(currentDir) keeps the displayed dir name.
   const projectDir = path.join(home, dir);
-  fs.mkdirSync(path.join(projectDir, '.git'), { recursive: true });
-  fs.writeFileSync(path.join(projectDir, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`);
+  if (!(diverged && setupDivergedRepo(projectDir, branch))) {
+    fs.mkdirSync(path.join(projectDir, '.git'), { recursive: true });
+    fs.writeFileSync(path.join(projectDir, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`);
+  }
 
   const env = { ...process.env, HOME: home, USERPROFILE: home };
   delete env.ANTHROPIC_API_KEY;                             // let the usage path run
@@ -82,7 +116,8 @@ const base = {
 
 // Primary line (default effort). NOTE: this MUST stay the first printed line —
 // the release workflow takes only line 1 (`head -n 1`) for the GitHub release body.
-console.log(render({ ...base, effort: 'high' }));
+// `diverged` shows ↑N↓M from a real upstream; falls back to no-counts if git is missing.
+console.log(render({ ...base, effort: 'high', diverged: true }));
 
 // Thinking-effort color variants: only the top two levels are highlighted.
 // (low < medium < high < xhigh < max < ultracode; xhigh stays dim, max red, ultracode purple.)
