@@ -34,7 +34,8 @@ function setupDivergedRepo(projectDir, branch) {
     g(['branch', '-M', branch]);                              // force the displayed branch name
     const baseSha = g(['rev-parse', 'HEAD']).stdout.trim();
     commit('up0');                                            // upstream +1 -> behind 1
-    g(['update-ref', 'refs/remotes/origin/' + branch, g(['rev-parse', 'HEAD']).stdout.trim()]);
+    const upstreamSha = g(['rev-parse', 'HEAD']).stdout.trim();
+    g(['update-ref', 'refs/remotes/origin/' + branch, upstreamSha]);
     g(['config', 'branch.' + branch + '.remote', 'origin']);
     g(['config', 'branch.' + branch + '.merge', 'refs/heads/' + branch]);
     g(['reset', '--hard', '-q', baseSha]);

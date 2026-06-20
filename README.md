@@ -124,6 +124,20 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 ## FAQ
 
 <details>
+<summary>Does it use extra tokens?</summary>
+
+No — zero tokens, ever. The statusline is part of Claude Code's UI; its output is drawn in your terminal and is **never sent to the model**. Nothing it shows (context, usage, cost, git status) enters the conversation or counts toward your context window.
+
+</details>
+
+<details>
+<summary>Does fetching data slow down Claude Code?</summary>
+
+No, it's imperceptible. Almost every render reads a small local cache (sub-millisecond) instead of fetching. The usage API only runs as a fallback (and is cached); the git ahead/behind check runs at most once every ~5s and is hard-capped so it can never hang. The statusline runs as its own background command, so it never blocks your typing or Claude's responses — and in a non-git folder the git check doesn't run at all.
+
+</details>
+
+<details>
 <summary>Does this use the same data as /usage?</summary>
 
 Yes — the same 5-hour and weekly limits. It reads them from the session data Claude Code provides when available, and falls back to Anthropic's usage API (the endpoint `/usage` uses) otherwise.
