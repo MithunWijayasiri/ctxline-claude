@@ -144,6 +144,7 @@
     background:linear-gradient(to right,transparent,var(--term-bg))}
 
   .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
+  .cta-stack{flex-direction:column;align-items:center}
   .btn{
     font-family:var(--mono);font-size:14px;font-weight:500;
     text-decoration:none;border-radius:11px;padding:13px 22px;
@@ -374,9 +375,23 @@
     </div>
   </section>
 
+  <!-- LEARN MORE -->
+  <section class="block">
+    <div class="sec-head">
+      <span class="kicker">Learn more</span>
+      <p>The rest lives in the docs on GitHub — one click away.</p>
+    </div>
+    <div class="cta cta-stack">
+      <a class="btn ghost" href="https://github.com/MithunWijayasiri/ctxline-claude#faq">Got a question? Read the FAQ ↗</a>
+      <a class="btn ghost" href="https://github.com/MithunWijayasiri/ctxline-claude#configuration">Want to customize? Configure it ↗</a>
+    </div>
+  </section>
+
   <footer>
     <div class="l">Built for <b>Claude Code</b> · MIT </div>
     <div class="r">
+      <a href="https://github.com/MithunWijayasiri/ctxline-claude#configuration">Config ↗</a>
+      <a href="https://github.com/MithunWijayasiri/ctxline-claude#faq">FAQ ↗</a>
       <a href="https://www.npmjs.com/package/ctxline-claude">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude/issues">Issues ↗</a>
@@ -432,7 +447,7 @@
        tok:'<span class="dim">$44.21</span>'},
       {tag:'TASK',    title:'Current task',    field:'todos/<session>-agent.json',
        desc:'The in-progress to-do surfaces inline whenever there is active work.',
-       tok:'<span class="dim">Refactoring usage cache</span>'}
+       tok:'<span class="dim">Yak shaving</span>'}
     ];
     var panel=document.getElementById('insp-panel'),
         badge=document.getElementById('insp-badge'), title=document.getElementById('insp-title'),

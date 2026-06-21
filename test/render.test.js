@@ -34,6 +34,12 @@ function run(input, opts = {}) {
   } else {
     delete env.COLUMNS;
   }
+  // Segment opt-out. Default: unset so a value in the dev env can't skew assertions.
+  if (opts.disable != null) {
+    env.CTXLINE_DISABLE = opts.disable;
+  } else {
+    delete env.CTXLINE_DISABLE;
+  }
   const res = spawnSync(process.execPath, [SCRIPT], { input, encoding: 'utf8', timeout: 5000, env });
   const raw = res.stdout || '';
   const clean = raw.replace(/\x1b\[[0-9;]*m/g, ''); // strip ANSI for readable assertions
@@ -489,4 +495,61 @@ test('counts are cached: a commit within the TTL does not change the rendered co
   const second = run(fixture(40, dir), { home });          // within 5s TTL -> cache hit
   assert.match(second.clean, /↑1/, 'cached ↑1 reused; git not re-run');
   assert.ok(!second.clean.includes('↑2'), 'fresh count must not appear within the TTL');
+});
+
+// Segment opt-out via CTXLINE_DISABLE (comma list; dir/model/context always render).
+
+// HOME seeded with an in-progress todo so the task segment renders for the session id.
+function seedTodo(activeForm) {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-todo-'));
+  after(() => fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const todosDir = path.join(home, '.claude', 'todos');
+  fs.mkdirSync(todosDir, { recursive: true });
+  fs.writeFileSync(path.join(todosDir, 'test-session-agent-1.json'),
+    JSON.stringify([{ status: 'in_progress', activeForm }]));
+  return home;
+}
+
+test('disable=cost hides cost; model + context intact', () => {
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), { disable: 'cost' });
+  assert.ok(!clean.includes('$'), 'cost hidden');
+  assert.match(clean, /Opus 4\.8/, 'model still renders');
+  assert.match(clean, /C\d+ /, 'context still renders');
+});
+
+test('disable=effort drops the · level suffix', () => {
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'high'), { disable: 'effort' });
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8', 'no "· high"');
+});
+
+test('disable=branch hides the branch (and ahead/behind) glyph', () => {
+  const repo = seedRepo('feature/x');
+  const { clean } = run(fixture(40, repo), { disable: 'branch' });
+  assert.ok(!clean.includes('⎇'), 'branch segment hidden');
+});
+
+test('disable=usage hides H/W', () => {
+  const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 });
+  const { clean } = run(fixture(40), { home, usage: true, disable: 'usage' });
+  assert.ok(!clean.includes('H42') && !clean.includes('W31'), 'usage segments hidden');
+  assert.ok(!clean.includes('↺'), 'no reset countdown');
+  assert.match(clean, /C\d+ /, 'context still renders');
+});
+
+test('disable=task hides the in-progress todo', () => {
+  const home = seedTodo('Refactoring usage cache');
+  assert.match(run(fixture(40), { home }).clean, /Refactoring usage cache/, 'task shows by default (control)');
+  const { clean } = run(fixture(40), { home, disable: 'task' });
+  assert.ok(!clean.includes('Refactoring usage cache'), 'task hidden when disabled');
+});
+
+test('disable with an unknown token changes nothing', () => {
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), { disable: 'bogus,nope' });
+  assert.match(clean, /\$0\.42/, 'cost still renders for unknown tokens');
+});
+
+test('disable accepts multiple segments', () => {
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'high', 0.42), { disable: 'cost,effort' });
+  assert.ok(!clean.includes('$'), 'cost hidden');
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8', 'effort hidden');
 });
