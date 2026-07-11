@@ -125,7 +125,9 @@ function getGitBranch(dir) {
     if (!gitDir) return '';
     const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
     const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
-    if (ref) return truncateBranch(ref[1]);
+    // Strip control chars: HEAD is read raw (not git-validated), so a hand-crafted file
+    // in an untrusted archive could inject terminal escape sequences.
+    if (ref) return truncateBranch(ref[1].replace(/[\x00-\x1f\x7f]/g, ''));
     if (/^[0-9a-f]{7,40}$/i.test(head)) return head.slice(0, 7);  // detached HEAD -> short sha
     return '';
   } catch (e) {
