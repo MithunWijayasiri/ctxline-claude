@@ -228,6 +228,13 @@ test('worktree (.git is a file with gitdir:) -> branch still renders', () => {
   assert.match(clean.split(' │ ')[0], /⎇ feature\/wt$/);
 });
 
+test('control chars in a hand-crafted HEAD are stripped from the branch', () => {
+  const repo = seedRepo('bad\x1b[31mname\x07');   // injected ANSI escape + BEL
+  const { raw, clean } = run(fixture(40, repo));
+  assert.ok(!raw.includes('\x1b[31mname'), 'injected escape sequence must not reach output');
+  assert.match(clean.split(' │ ')[0], /⎇ bad\[31mname$/);  // printable remainder kept, controls gone
+});
+
 test('thinking effort renders next to the model (· <level>)', () => {
   const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'high'));
   const parts = clean.split(' │ ');
