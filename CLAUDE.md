@@ -4,7 +4,7 @@
 
 npm package `ctxline-claude` — single-file statusline for Claude Code:
 
-```
+```text
 dir ⎇ branch ↑N↓M │ model · effort │ C<used> <bar> │ H<pct> ↺ <reset> │ W<pct> ↺ <reset> │ <model-initial><pct> ↺ <reset> │ $<cost> │ task
 ```
 
@@ -65,10 +65,18 @@ Entry point guarded by `require.main === module` so `test/render.test.js` can `r
 
 ## Keep in sync when `statusline.js` changes
 
-`statusline.js` is source of truth; two files mirror it and must change in the same edit or CI/release breaks. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
+`statusline.js` is source of truth; five files mirror the visible line and must change in the same edit or CI/release/site drifts. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
 
+Executable fixtures — stale = CI/release breaks:
 - `scripts/preview.js` — spawns the real `statusline.js` against a seeded `usage-cache.json` + stdin JSON. Cache-shape change → update the seed **and** `render()` params/labels, or usage renders wrong/disappears. New stdin field read → add it to the input object.
 - `test/render.test.js` — `seedHome()` writes the same cache file (same breakage); assertions pin visible labels/percentages/colors/order. `colors` codes change → update the constants atop the file.
+
+Docs/marketing — stale = silent drift:
+- `preview.svg` — the single statusline `<text>` element (`<tspan>` runs); shown in README + site.
+- `docs/index.html` — hero mock (`.term .line`), inspector `SIGNALS[]`, `.term` color classes.
+- `CLAUDE.md` — format diagram (top), segment-source table, visible contract below.
+
+Full edit-point map: `.claude/skills/restyle-statusline/SKILL.md`.
 
 Rule of thumb: change to **what the line looks like** → test assertions. Change to **cache shape or stdin fields** → both seeds. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
 

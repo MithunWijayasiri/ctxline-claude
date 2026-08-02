@@ -22,7 +22,7 @@ After edits: `npm test` + `npm run preview`. Both must pass + look right.
 
 ## Current format
 
-```
+```text
 dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 ↺ 4h21m │ W31 ↺ 2d14h │ F86 ↺ 2d14h │ $44.21 │ task
 ```
 
