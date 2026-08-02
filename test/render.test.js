@@ -499,6 +499,25 @@ test('scoped bars render after W, in payload order', () => {
   assert.ok(idx(/^O\d+/) < idx(/^F\d+/), 'scoped bars keep payload order');
 });
 
+test('scoped bars are orange below 90, not threshold-colored', () => {
+  // 12% would be green and 71% yellow on the usage scheme; scoped bars flatten both to
+  // orange so H/W keep sole ownership of the full color-as-severity signal.
+  const home = seedHome({ cacheAgeMs: 5000 });
+  seedScopedCache(home, [{ label: 'O', percentage: 12 }, { label: 'F', percentage: 71 }]);
+  const { raw } = run(fixtureWithRateLimits(40), { home, usage: true });
+  assert.ok(raw.includes(`${ORANGE}O12`), 'low scoped bar uses the fixed orange');
+  assert.ok(raw.includes(`${ORANGE}F71`), 'mid scoped bar uses the same orange');
+  assert.ok(!raw.includes(`${GREEN}O12`), 'scoped bar is not threshold-colored');
+});
+
+test('scoped bars turn red at 90+', () => {
+  const home = seedHome({ cacheAgeMs: 5000 });
+  seedScopedCache(home, [{ label: 'O', percentage: 89 }, { label: 'F', percentage: 90 }]);
+  const { raw } = run(fixtureWithRateLimits(40), { home, usage: true });
+  assert.ok(raw.includes(`${ORANGE}O89`), '89 stays orange');
+  assert.ok(raw.includes(`${RED}F90`), '90 is the red boundary');
+});
+
 test('CTXLINE_DISABLE=usage also hides the scoped bars', () => {
   const home = seedHome({ cacheAgeMs: 5000 });
   seedScopedCache(home, [{ label: 'F', percentage: 86 }]);

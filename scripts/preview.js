@@ -46,19 +46,29 @@ function setupDivergedRepo(projectDir, branch) {
   }
 }
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, branch, effort, rateLimits, cost, columns, diverged, disable }) {
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, models, branch, effort, rateLimits, cost, columns, diverged, disable }) {
   const home = fs.mkdtempSync(path.join(TMP, 'home-'));
   const cacheDir = path.join(home, '.claude', 'cache');
   fs.mkdirSync(cacheDir, { recursive: true });
-  // rateLimits scenario seeds neither creds nor cache, proving the stdin path bypasses
-  // the network/cache flow entirely. Otherwise seed a fresh cache (cache-first renders it).
-  if (!rateLimits) {
+  // Only H/W bypass the cache: with rateLimits and no models, seed neither creds nor cache,
+  // proving that path needs no network. Model-scoped bars never arrive via stdin, so seed a
+  // fresh cache whenever `models` is set — rateLimits or not (statusline.js reads both).
+  if (!rateLimits || models) {
     fs.writeFileSync(path.join(home, '.claude', '.credentials.json'), '{}'); // no token -> no network
     fs.writeFileSync(path.join(cacheDir, 'usage-cache.json'), JSON.stringify({
       timestamp: Date.now(),                                  // fresh -> cache-first renders it
       data: {
         fiveHour: { percentage: current, resetsAt: new Date(Date.now() + currentResetsInMin * 60000).toISOString() },
-        weekly: { percentage: weekly, resetsAt: new Date(Date.now() + weeklyResetsInMin * 60000).toISOString() }
+        weekly: { percentage: weekly, resetsAt: new Date(Date.now() + weeklyResetsInMin * 60000).toISOString() },
+        // Model-scoped weekly limits. The cache holds the already-derived label, so seed it
+        // directly; statusline.js only derives F-from-Fable when parsing a live /usage payload.
+        ...(models ? {
+          models: models.map(m => ({
+            label: m.label,
+            percentage: m.percentage,
+            resetsAt: new Date(Date.now() + m.resetsInMin * 60000).toISOString()
+          }))
+        } : {})
       }
     }));
   }
@@ -145,6 +155,29 @@ console.log('  ' + render({
     five_hour: { used_percentage: base.current, resets_at: nowSec + base.currentResetsInMin * 60 },
     seven_day: { used_percentage: base.weekly, resets_at: nowSec + base.weeklyResetsInMin * 60 }
   }
+}));
+
+// Model-scoped weekly limit: an account can be near a per-model cap while the account-wide
+// W bar is comfortable. Renders after W, labelled with the model's initial (Fable -> F).
+// Cache/API only — these never arrive via stdin rate_limits.
+console.log('\nModel-scoped weekly limit (Fable at 86%):');
+console.log('  ' + render({
+  ...base,
+  effort: 'high',
+  models: [{ label: 'F', percentage: 86, resetsInMin: base.weeklyResetsInMin }]
+}));
+
+// Combined: H/W from stdin, scoped bars still from cache — resolveUsage() calls
+// getScopedModels() even when stdin covered H/W, so all three must render together.
+console.log('\nStdin rate_limits + cached model-scoped limit:');
+console.log('  ' + render({
+  ...base,
+  effort: 'high',
+  rateLimits: {
+    five_hour: { used_percentage: base.current, resets_at: nowSec + base.currentResetsInMin * 60 },
+    seven_day: { used_percentage: base.weekly, resets_at: nowSec + base.weeklyResetsInMin * 60 }
+  },
+  models: [{ label: 'F', percentage: 86, resetsInMin: base.weeklyResetsInMin }]
 }));
 
 // Segment opt-out: CTXLINE_DISABLE hides segments (dir/model/context always render).

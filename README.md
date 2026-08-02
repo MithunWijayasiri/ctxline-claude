@@ -243,9 +243,6 @@ No. Your credentials never leave your machine. On the fast path no token is read
 
 </details>
 
-## License
-
-MIT
 
 ## Support
 
@@ -256,3 +253,7 @@ Thank you for your support! ❤️
 ## Credits
 
 Thanks to [@TahaSabir0](https://github.com/TahaSabir0) for the base config.
+
+## License
+
+MIT
