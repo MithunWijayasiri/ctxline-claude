@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Claude Code Enhanced Statusline
-// Shows: directory | model | context usage | current (5-hour) + weekly usage | current task
+// Shows: directory | model | context usage | 5-hour + weekly + model-scoped usage | current task
 // Auto-detects API key vs subscription usage
 // https://github.com/MithunWijayasiri/ctxline-claude
 
@@ -13,7 +13,7 @@ const { execSync, execFileSync } = require('child_process');
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
 // Optional segment opt-out: CTXLINE_DISABLE is a comma list of segments to hide.
-// Recognized: branch, effort, cost, task, usage (H+W). dir/model/context always render.
+// Recognized: branch, effort, cost, task, usage (H+W+model-scoped). dir/model/context always render.
 // Unknown names are ignored. Disabling a segment also skips its work (git, todo read,
 // usage fetch).
 const DISABLED = new Set(
@@ -240,12 +240,34 @@ function buildUsageBar(label, percentage, resetsAt) {
   return `${color}${label}${percentage}${colors.reset}${timePart}`;
 }
 
-// Build both usage segments from raw entries. Each entry is { percentage, resetsAt } or
-// null/absent. Returns { current, weekly } where each is a rendered segment string or null.
-function buildUsageBars(fiveHour, weekly) {
+// Model-scoped weekly limits (e.g. "Fable weekly limit at 86%"), rendered after the
+// account-wide W bar. The /usage payload reports these in a `limits` array, each entry
+// carrying the model in scope.model.display_name:
+//
+//   { kind: "weekly_scoped", percent: 86, severity: "warning",
+//     resets_at: "...", scope: { model: { display_name: "Fable" } } }
+//
+// The label is the model's first initial (Fable -> F), so a new model family needs no
+// code change. Older payloads instead exposed flat seven_day_<model> keys, kept below as
+// a fallback for accounts still reporting that shape.
+//
+// NOTE: these appear only in the API payload. Claude Code's statusline stdin carries just
+// five_hour and seven_day under rate_limits, so the scoped limits always come from the
+// cache/API path even when stdin supplies the H and W bars.
+const LEGACY_MODEL_WEEKLY_KEYS = [
+  { key: 'seven_day_opus', label: 'O' },
+  { key: 'seven_day_sonnet', label: 'S' }
+];
+
+// Build the usage segments from raw entries. fiveHour/weekly are { percentage, resetsAt }
+// or null/absent; models is an array of { label, percentage, resetsAt } (possibly empty).
+// Returns { current, weekly, models } — the first two rendered strings or null, models a
+// (possibly empty) array of rendered strings.
+function buildUsageBars(fiveHour, weekly, models) {
   return {
     current: fiveHour ? buildUsageBar('H', fiveHour.percentage, fiveHour.resetsAt) : null,
-    weekly: weekly ? buildUsageBar('W', weekly.percentage, weekly.resetsAt) : null
+    weekly: weekly ? buildUsageBar('W', weekly.percentage, weekly.resetsAt) : null,
+    models: (models || []).map(m => buildUsageBar(m.label, m.percentage, m.resetsAt))
   };
 }
 
@@ -257,11 +279,42 @@ function normalizePercentage(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+// Extract the model-scoped weekly limits from a raw /usage payload as
+// [{ label, percentage, resetsAt }], in payload order. Prefers the `limits` array;
+// falls back to the legacy flat keys only when it yields nothing, so an account
+// reporting both shapes doesn't render the same limit twice.
+function parseScopedLimits(usage) {
+  const scoped = [];
+
+  if (Array.isArray(usage?.limits)) {
+    for (const entry of usage.limits) {
+      if (!entry || entry.kind !== 'weekly_scoped') continue;
+      const name = entry.scope?.model?.display_name;
+      const pct = normalizePercentage(entry.percent);
+      if (typeof name !== 'string' || !name.trim() || pct == null) continue;
+      scoped.push({
+        label: name.trim().charAt(0).toUpperCase(),
+        percentage: pct,
+        resetsAt: entry.resets_at || null
+      });
+    }
+    if (scoped.length) return scoped;
+  }
+
+  for (const { key, label } of LEGACY_MODEL_WEEKLY_KEYS) {
+    const seg = usage?.[key];
+    const pct = seg ? normalizePercentage(seg.utilization) : null;
+    if (pct != null) scoped.push({ label, percentage: pct, resetsAt: seg.resets_at || null });
+  }
+  return scoped;
+}
+
 // Build usage bars from stdin `rate_limits` (Claude.ai Pro/Max, present only after the
 // first API response of a session). Same data as the OAuth usage API, so reading it here
 // skips the network/credentials/cache path entirely. `resets_at` is a Unix epoch in
-// SECONDS (not ISO) — ×1000 before Date. Returns { current, weekly } bars, or null when
-// rate_limits is absent or the required five_hour segment is unusable (caller falls back).
+// SECONDS (not ISO) — ×1000 before Date. Returns raw { fiveHour, weekly } entries, or null
+// when rate_limits is absent or the required five_hour segment is unusable (caller falls
+// back). Model-scoped weekly limits are never present here — see LEGACY_MODEL_WEEKLY_KEYS.
 function buildUsageFromStdin(data) {
   const rl = data?.rate_limits;
   if (!rl) return null;
@@ -284,8 +337,7 @@ function buildUsageFromStdin(data) {
 
   const fiveHour = toEntry(rl.five_hour);
   if (!fiveHour) return null;          // five_hour is the required bar
-  const weekly = toEntry(rl.seven_day);
-  return buildUsageBars(fiveHour, weekly);
+  return { fiveHour, weekly: toEntry(rl.seven_day) };
 }
 
 // Validate a single usage entry ({ percentage, resetsAt }). Returns true only for a
@@ -307,13 +359,18 @@ function readCachedUsage() {
     const cache = JSON.parse(fs.readFileSync(USAGE_CACHE_FILE, 'utf8'));
     if (!cache || !Number.isFinite(cache.timestamp) || cache.timestamp <= 0) return null;
 
-    // Validate data. fiveHour is required; weekly is optional (the API may omit it).
-    // This also rejects the legacy single-{percentage,resetsAt} format from older
-    // versions, which had no fiveHour key, so stale caches are ignored on read.
+    // Validate data. fiveHour is required; weekly and models are optional (the API may
+    // omit either). This also rejects the legacy single-{percentage,resetsAt} format from
+    // older versions, which had no fiveHour key, so stale caches are ignored on read.
+    // A cache written before model bars existed simply has no models key — still valid.
     const data = cache.data;
     if (!data || typeof data !== 'object') return null;
     if (!isValidUsageEntry(data.fiveHour)) return null;
     if (data.weekly != null && !isValidUsageEntry(data.weekly)) return null;
+    if (data.models != null) {
+      if (!Array.isArray(data.models)) return null;
+      if (!data.models.every(m => typeof m?.label === 'string' && isValidUsageEntry(m))) return null;
+    }
 
     return { age: Date.now() - cache.timestamp, data };
   } catch (e) {
@@ -412,9 +469,13 @@ function getApiUsage(callback) {
               resetsAt: usage.seven_day.resets_at || null
             } : null;
 
-            // Cache the raw data (shared across sessions); render the bars from it.
-            setCachedUsage({ fiveHour, weekly });
-            callback(buildUsageBars(fiveHour, weekly));
+            // Model-scoped weekly limits, rendered only when the account reports them.
+            const models = parseScopedLimits(usage);
+
+            // Cache the raw data (shared across sessions); callers render from it.
+            const resolved = { fiveHour, weekly, models };
+            setCachedUsage(resolved);
+            callback(resolved);
           } else {
             callback(null);
           }
@@ -436,26 +497,40 @@ function getApiUsage(callback) {
   }
 }
 
-// Get usage, cache-first.
-function getUsageWithCache(callback) {
+// Resolve raw usage data ({ fiveHour, weekly, models }), cache-first. Callers render it.
+function getRawUsage(callback) {
   const cached = readCachedUsage();
 
-  // Cache is fresh -> render it and skip the API entirely (fewer calls, faster).
+  // Cache is fresh -> use it and skip the API entirely (fewer calls, faster).
   if (cached && cached.age < FRESH_TTL_MS) {
-    return callback(buildUsageBars(cached.data.fiveHour, cached.data.weekly));
+    return callback(cached.data);
   }
 
   // Cache is stale or missing -> refresh from the API.
-  getApiUsage((freshBars) => {
-    if (freshBars) {
-      callback(freshBars);
+  getApiUsage((fresh) => {
+    if (fresh) {
+      callback(fresh);
     } else if (cached && cached.age < STALE_TTL_MS) {
       // API failed/timed out, but recent cache exists -> show it instead of nothing.
-      callback(buildUsageBars(cached.data.fiveHour, cached.data.weekly));
+      callback(cached.data);
     } else {
       callback(null);
     }
   });
+}
+
+// Get usage, cache-first, rendered.
+function getUsageWithCache(callback) {
+  getRawUsage((data) => {
+    callback(data ? buildUsageBars(data.fiveHour, data.weekly, data.models) : null);
+  });
+}
+
+// Model-scoped weekly limits only, cache-first. Used alongside the stdin H/W bars, which
+// can't carry them. Falls back to the stale cache and finally to [] so a failed or slow
+// call costs the scoped bars but never the bars stdin already gave us.
+function getScopedModels(callback) {
+  getRawUsage((data) => callback(data?.models || []));
 }
 
 // Session cost from stdin `cost.total_cost_usd` (USD float, computed client-side by
@@ -537,6 +612,7 @@ function outputStatus(data, usage) {
     const line2 = [];
     if (usage?.current) line2.push(usage.current);
     if (usage?.weekly) line2.push(usage.weekly);
+    if (usage?.models?.length) line2.push(...usage.models);
     if (cost) line2.push(cost);
     if (task) line2.push(`${colors.dim}${task}${colors.reset}`);
 
@@ -551,6 +627,7 @@ function outputFallback(usage) {
   const parts = ['~', 'Claude', contextBar];
   if (usage?.current) parts.push(usage.current);
   if (usage?.weekly) parts.push(usage.weekly);
+  if (usage?.models?.length) parts.push(...usage.models);
   process.stdout.write(parts.join(' \u2502 '));
 }
 
@@ -563,7 +640,12 @@ function resolveUsage(data, callback) {
   }
   const fromStdin = buildUsageFromStdin(data);
   if (fromStdin) {
-    return callback(fromStdin);
+    // stdin covers H and W with no network. Model-scoped weekly limits only exist in the
+    // API payload, so they come from the cache — refreshed on the same TTL as every other
+    // usage read, which keeps at most one call per FRESH_TTL_MS regardless of render rate.
+    return getScopedModels((models) => {
+      callback(buildUsageBars(fromStdin.fiveHour, fromStdin.weekly, models));
+    });
   }
   getUsageWithCache(callback);
 }
@@ -591,24 +673,31 @@ function emit(data) {
   });
 }
 
-if (process.stdin.isTTY) {
-  emit(null);
+// Entry point, guarded so tests can require this file to exercise payload parsing
+// directly (the /usage response shape is the easiest thing here to get wrong, and it
+// can't be reached through stdin). Running the script normally is unchanged.
+if (require.main === module) {
+  if (process.stdin.isTTY) {
+    emit(null);
+  } else {
+    let input = '';
+    let timeoutReached = false;
+
+    const overallTimeout = IS_API_KEY ? 500 : (fs.existsSync(USAGE_CACHE_FILE) ? 1300 : 1600);
+
+    const timeout = setTimeout(() => {
+      timeoutReached = true;
+      emit(parseInput(input));
+    }, overallTimeout);
+
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', chunk => input += chunk);
+    process.stdin.on('end', () => {
+      if (timeoutReached) return;
+      clearTimeout(timeout);
+      emit(parseInput(input));
+    });
+  }
 } else {
-  let input = '';
-  let timeoutReached = false;
-
-  const overallTimeout = IS_API_KEY ? 500 : (fs.existsSync(USAGE_CACHE_FILE) ? 1300 : 1600);
-
-  const timeout = setTimeout(() => {
-    timeoutReached = true;
-    emit(parseInput(input));
-  }, overallTimeout);
-
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', chunk => input += chunk);
-  process.stdin.on('end', () => {
-    if (timeoutReached) return;
-    clearTimeout(timeout);
-    emit(parseInput(input));
-  });
+  module.exports = { parseScopedLimits, normalizePercentage };
 }
