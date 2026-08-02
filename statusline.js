@@ -84,6 +84,13 @@ function getUsageColor(percentage) {
   return colors.red;
 }
 
+// Model-scoped bars skip the H/W thresholds: a line can carry several at once, so a flat
+// orange keeps them readable as one group. Red at >=90 is the one distinction kept — that
+// bar is about to block the model it names.
+function getScopedColor(percentage) {
+  return percentage >= 90 ? colors.red : colors.orange;
+}
+
 // Shorten verbose model names for the statusline: "Opus 4.8 (1M context)" -> "Opus 4.8 (1M)".
 function shortenModel(name) {
   return name.replace(/\s+context\)/i, ')');
@@ -222,7 +229,8 @@ function getContextBar(remaining) {
 // Render a compact usage segment from raw data: "<label><pct> ↺ <countdown>"
 // (e.g. "H81 ↺ 2h21m") — no bar. Called on every read (live or cached) so the reset
 // countdown is always recomputed from resetsAt rather than frozen at fetch time.
-function buildUsageBar(label, percentage, resetsAt) {
+// `color` overrides the threshold color — the model-scoped bars pass getScopedColor.
+function buildUsageBar(label, percentage, resetsAt, color) {
   let timeStr = '';
   if (resetsAt) {
     const diffMins = Math.max(0, Math.floor((new Date(resetsAt) - new Date()) / 60000));
@@ -234,10 +242,10 @@ function buildUsageBar(label, percentage, resetsAt) {
     else timeStr = `${mins}m`;
   }
 
-  const color = getUsageColor(percentage);
+  const barColor = color || getUsageColor(percentage);
   const timePart = timeStr ? `${colors.dim} ↺ ${timeStr}${colors.reset}` : '';
 
-  return `${color}${label}${percentage}${colors.reset}${timePart}`;
+  return `${barColor}${label}${percentage}${colors.reset}${timePart}`;
 }
 
 // Model-scoped weekly limits (e.g. "Fable weekly limit at 86%"), rendered after the
@@ -262,12 +270,13 @@ const LEGACY_MODEL_WEEKLY_KEYS = [
 // Build the usage segments from raw entries. fiveHour/weekly are { percentage, resetsAt }
 // or null/absent; models is an array of { label, percentage, resetsAt } (possibly empty).
 // Returns { current, weekly, models } — the first two rendered strings or null, models a
-// (possibly empty) array of rendered strings.
+// (possibly empty) array of rendered strings. Scoped bars use getScopedColor instead of the
+// H/W thresholds, so the full threshold palette stays exclusive to H/W.
 function buildUsageBars(fiveHour, weekly, models) {
   return {
     current: fiveHour ? buildUsageBar('H', fiveHour.percentage, fiveHour.resetsAt) : null,
     weekly: weekly ? buildUsageBar('W', weekly.percentage, weekly.resetsAt) : null,
-    models: (models || []).map(m => buildUsageBar(m.label, m.percentage, m.resetsAt))
+    models: (models || []).map(m => buildUsageBar(m.label, m.percentage, m.resetsAt, getScopedColor(m.percentage)))
   };
 }
 
