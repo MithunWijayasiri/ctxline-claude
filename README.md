@@ -121,6 +121,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 | **Context** | Visual bar of context-window usage |
 | **Current** | Live 5-hour session limit + reset countdown (subscription users) |
 | **Weekly** | Weekly usage allowance + time until the weekly reset (subscription users) |
+| **Model limit** | Weekly limit scoped to a single model, when your account has one — labelled by the model's initial (`F` = Fable) |
 | **Cost** | Running session cost in USD (e.g. `$0.42`) |
 | **Task** | The in-progress todo, when there is one |
 
@@ -137,7 +138,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 
 The statusline is zero-config by default. To **hide segments you don't want**, set the `CTXLINE_DISABLE` environment variable to a comma-separated list of any of:
 
-`branch` · `effort` · `cost` · `task` · `usage` (5-hour + weekly)
+`branch` · `effort` · `cost` · `task` · `usage` (5-hour + weekly + model-scoped)
 
 Directory, model, and context always show; unknown names are ignored. Example below hides cost and the current task.
 
@@ -181,7 +182,8 @@ To re-enable a segment, remove it from the list (or delete the variable) and res
 
 ## How it works
 
-- **Source** — context comes from Claude Code's session data. Usage bars are read straight from the `rate_limits` field Claude Code pipes in (no network), falling back to `https://api.anthropic.com/api/oauth/usage` (the same `/usage` data — 5-hour and weekly limits) when that field isn't present yet. API-key users skip usage entirely.
+- **Source** — context comes from Claude Code's session data. The 5-hour and weekly bars are read straight from the `rate_limits` field Claude Code pipes in (no network), falling back to `https://api.anthropic.com/api/oauth/usage` when that field isn't present yet. API-key users skip usage entirely.
+- **Model-scoped limits** — `rate_limits` carries only `five_hour` and `seven_day`, so a model-scoped weekly limit can only come from `/usage` (its `limits` array). It's served from the same cache as everything else, so this costs at most one call per 30s no matter how often the line renders.
 - **No network on the fast path** — when `rate_limits` is in the session data, there's no API call at all. The fetch below only runs as a fallback (e.g. the first render of a session, before the field appears).
 - **Adaptive timing** — for the fallback fetch: 1.5s timeout on the first prompt (cold start), 1.2s after (connection reused).
 - **Caching** — the fallback fetch is cached at `~/.claude/cache/usage-cache.json`, shared across sessions. Within 30s the cache renders directly (the API call is skipped); if a live call fails, the last value (up to 10 min old) is shown so the bar never vanishes. The reset countdown recomputes every render.

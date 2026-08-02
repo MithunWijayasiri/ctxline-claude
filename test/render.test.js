@@ -82,6 +82,7 @@ function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, 
 
 // stdin payload carrying `rate_limits` (Claude.ai Pro/Max, post-first-response).
 // resets_at is a Unix epoch in SECONDS. 5h ~2h out, 7d ~62h out (exercises day-aware countdown).
+// Claude Code pipes only five_hour and seven_day here — never a model-scoped limit.
 function fixtureWithRateLimits(remaining, { five = 23.5, seven = 41.2 } = {}) {
   const nowSec = Math.floor(Date.now() / 1000);
   return JSON.stringify({
@@ -94,6 +95,18 @@ function fixtureWithRateLimits(remaining, { five = 23.5, seven = 41.2 } = {}) {
       seven_day: { used_percentage: seven, resets_at: nowSec + 62 * 3600 }
     }
   });
+}
+
+// Add model-scoped limits to an already-seeded cache, so the render path can be tested
+// without a network call. Each entry is { label, percentage }; the reset is 62h out.
+function seedScopedCache(home, models) {
+  const cacheFile = path.join(home, '.claude', 'cache', 'usage-cache.json');
+  const cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  cache.data.models = models.map(m => ({
+    ...m,
+    resetsAt: new Date(Date.now() + 62 * 3600 * 1000).toISOString()
+  }));
+  fs.writeFileSync(cacheFile, JSON.stringify(cache));
 }
 
 // Make a real dir with a seeded .git/HEAD so the branch segment renders deterministically.
@@ -377,6 +390,131 @@ test('stdin rate_limits -> 5h/7d render with no cache and no creds', () => {
   assert.match(clean, /H24\b/);                                 // 23.5 -> 24 (fractional, rounded)
   assert.match(clean, /W41\b/);                                 // 41.2 -> 41
   assert.match(clean, /W41 ↺ 2d\d{1,2}h/);                      // epoch-seconds -> day-aware countdown
+});
+
+// Model-scoped weekly limits ("Fable weekly limit at 86%"). The /usage payload reports
+// these in a `limits` array; they never appear on stdin, so they always come from the
+// cache/API path. parseScopedLimits is exercised directly against the real payload shape.
+
+const { parseScopedLimits } = require('../statusline.js');
+
+// A trimmed copy of a real GET /api/oauth/usage response: the legacy seven_day_<model>
+// keys are all null, and the live scoped limit lives in `limits`.
+function usagePayload({ scopedPercent = 86, model = 'Fable' } = {}) {
+  return {
+    five_hour: { utilization: 43, resets_at: '2026-08-02T17:00:00+00:00' },
+    seven_day: { utilization: 63, resets_at: '2026-08-05T13:00:00+00:00' },
+    seven_day_opus: null,
+    seven_day_sonnet: null,
+    limits: [
+      { kind: 'session', group: 'session', percent: 43, resets_at: '2026-08-02T17:00:00+00:00', scope: null },
+      { kind: 'weekly_all', group: 'weekly', percent: 63, resets_at: '2026-08-05T13:00:00+00:00', scope: null },
+      {
+        kind: 'weekly_scoped', group: 'weekly', percent: scopedPercent, severity: 'warning',
+        resets_at: '2026-08-05T13:00:00+00:00', is_active: true,
+        scope: { model: { id: null, display_name: model } }
+      }
+    ]
+  };
+}
+
+test('parseScopedLimits picks weekly_scoped out of the limits array', () => {
+  const scoped = parseScopedLimits(usagePayload());
+  assert.deepStrictEqual(scoped, [
+    { label: 'F', percentage: 86, resetsAt: '2026-08-05T13:00:00+00:00' }
+  ]);
+});
+
+test('parseScopedLimits ignores session and weekly_all entries', () => {
+  // percent 43 (session) and 63 (weekly_all) must not leak in as scoped bars.
+  const scoped = parseScopedLimits(usagePayload());
+  assert.strictEqual(scoped.length, 1, 'only the weekly_scoped entry is a model bar');
+  assert.ok(!scoped.some(s => s.percentage === 43 || s.percentage === 63));
+});
+
+test('parseScopedLimits labels by model initial, so a new family needs no code change', () => {
+  assert.strictEqual(parseScopedLimits(usagePayload({ model: 'Opus' }))[0].label, 'O');
+  assert.strictEqual(parseScopedLimits(usagePayload({ model: 'sonnet' }))[0].label, 'S');
+  assert.strictEqual(parseScopedLimits(usagePayload({ model: 'Newmodel' }))[0].label, 'N');
+});
+
+test('parseScopedLimits skips malformed entries instead of rendering NaN', () => {
+  const payload = usagePayload();
+  payload.limits.push({ kind: 'weekly_scoped', percent: null, scope: { model: { display_name: 'Ghost' } } });
+  payload.limits.push({ kind: 'weekly_scoped', percent: 50, scope: { model: {} } });
+  payload.limits.push({ kind: 'weekly_scoped', percent: 50, scope: null });
+  const scoped = parseScopedLimits(payload);
+  assert.strictEqual(scoped.length, 1, 'only the well-formed entry survives');
+  assert.ok(!scoped.some(s => s.label === 'G'));
+});
+
+test('parseScopedLimits falls back to legacy seven_day_<model> keys when limits is absent', () => {
+  const legacy = {
+    five_hour: { utilization: 43 },
+    seven_day_opus: { utilization: 77, resets_at: '2026-08-05T13:00:00+00:00' },
+    seven_day_sonnet: null
+  };
+  assert.deepStrictEqual(parseScopedLimits(legacy), [
+    { label: 'O', percentage: 77, resetsAt: '2026-08-05T13:00:00+00:00' }
+  ]);
+});
+
+test('parseScopedLimits does not double-count when both shapes are present', () => {
+  const both = usagePayload();
+  both.seven_day_opus = { utilization: 77, resets_at: '2026-08-05T13:00:00+00:00' };
+  const scoped = parseScopedLimits(both);
+  assert.strictEqual(scoped.length, 1, 'the limits array wins outright');
+  assert.strictEqual(scoped[0].label, 'F');
+});
+
+test('no scoped limits -> nothing extra renders', () => {
+  assert.deepStrictEqual(parseScopedLimits({ five_hour: { utilization: 43 } }), []);
+  const { clean } = run(fixtureWithRateLimits(40), { usage: true });
+  assert.match(clean, /H24\b/);
+  assert.match(clean, /W41\b/);
+  assert.ok(!/\bF\d+/.test(clean), 'no F bar when the account reports no scoped limit');
+});
+
+// Rendering: scoped bars come from the cache, including on the stdin fast path.
+
+test('scoped bar renders alongside the stdin H/W bars', () => {
+  // The crux of the feature: stdin supplies H/W (no network), the scoped limit comes from
+  // the cache. Before this, a scoped limit could never reach the screen in a live session.
+  const home = seedHome({ cacheAgeMs: 5000 });
+  seedScopedCache(home, [{ label: 'F', percentage: 86 }]);
+  const { code, clean } = run(fixtureWithRateLimits(40), { home, usage: true });
+  assert.strictEqual(code, 0);
+  assert.match(clean, /H24\b/, 'H still comes from stdin, not the cache');
+  assert.match(clean, /W41\b/, 'W still comes from stdin');
+  assert.match(clean, /F86\b/, 'scoped bar comes from the cache');
+});
+
+test('scoped bars render after W, in payload order', () => {
+  const home = seedHome({ cacheAgeMs: 5000 });
+  seedScopedCache(home, [{ label: 'O', percentage: 12 }, { label: 'F', percentage: 86 }]);
+  const { clean } = run(fixtureWithRateLimits(40), { home, usage: true });
+  const parts = clean.split('│').map(s => s.trim());
+  const idx = (re) => parts.findIndex(p => re.test(p));
+  assert.ok(idx(/^W\d+/) < idx(/^O\d+/), 'W precedes the scoped bars');
+  assert.ok(idx(/^O\d+/) < idx(/^F\d+/), 'scoped bars keep payload order');
+});
+
+test('CTXLINE_DISABLE=usage also hides the scoped bars', () => {
+  const home = seedHome({ cacheAgeMs: 5000 });
+  seedScopedCache(home, [{ label: 'F', percentage: 86 }]);
+  const { clean } = run(fixtureWithRateLimits(40), { home, usage: true, disable: 'usage' });
+  assert.ok(!/\bF\d+/.test(clean), 'scoped bar is part of the usage segment');
+  assert.ok(!clean.includes('H24'), 'H bar hidden too');
+});
+
+test('a cache written before scoped bars existed stays valid', () => {
+  // No `models` key at all — must be accepted (H/W render, no scoped bars) rather than
+  // rejected as malformed, which would force a refetch for everyone on upgrade.
+  const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 });
+  const { clean } = run(fixture(40), { home, usage: true });
+  assert.match(clean, /H42\b/, 'legacy cache without models is still readable');
+  assert.match(clean, /W31\b/);
+  assert.ok(!/\bF\d+/.test(clean));
 });
 
 test('stdin rate_limits takes precedence over a fresh cache', () => {
