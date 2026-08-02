@@ -69,11 +69,18 @@
   nav .brand .pulse{width:9px;height:9px;border-radius:50%;background:var(--accent);
     box-shadow:0 0 0 0 rgba(224,115,78,.5);animation:pulse 2.6s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(224,115,78,.45)}70%{box-shadow:0 0 0 9px rgba(224,115,78,0)}100%{box-shadow:0 0 0 0 rgba(224,115,78,0)}}
-  nav .links{display:flex;gap:26px;font-family:var(--mono);font-size:12.5px;
+  nav .links{display:flex;align-items:center;gap:26px;font-family:var(--mono);font-size:12.5px;
     letter-spacing:.04em;color:var(--muted)}
   nav .links a{text-decoration:none;transition:color .15s}
   nav .links a:hover{color:var(--ink)}
   @media(max-width:640px){nav .links{display:none}}
+  nav .kofi-btn{
+    font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.04em;line-height:1;
+    background:#FF5E5B;color:#fff;border-radius:8px;padding:7px 12px;
+    display:inline-flex;align-items:center;gap:5px;transition:background .15s,transform .12s;
+  }
+  nav .kofi-btn:hover{background:#e2504d;color:#fff}
+  nav .kofi-btn:active{transform:translateY(1px)}
 
   /* hero card */
   .hero{
@@ -156,6 +163,8 @@
   .btn.primary:hover{background:#000}
   .btn.ghost{background:transparent;border-color:var(--line);color:var(--ink)}
   .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.kofi{background:#FF5E5B;color:#fff}
+  .btn.kofi:hover{background:#e2504d}
 
   /* install strip */
   .platforms{
@@ -300,6 +309,7 @@
       <a href="#how">How it works</a>
       <a href="https://www.npmjs.com/package/ctxline-claude" target="_blank" rel="noopener">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
+      <a class="kofi-btn" href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">❤ Ko-fi</a>
     </div>
   </nav>
 
@@ -387,6 +397,18 @@
     </div>
   </section>
 
+  <!-- SUPPORT -->
+  <section class="block" id="support">
+    <div class="sec-head">
+      <span class="kicker">Support</span>
+      <h2>Enjoying ctxline?</h2>
+      <p>Donations help keep it maintained, improve existing features, and fund new open source tools.</p>
+    </div>
+    <div class="cta">
+      <a class="btn kofi" href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">❤ Support on Ko-fi</a>
+    </div>
+  </section>
+
   <footer>
     <div class="l">Built for <b>Claude Code</b> · MIT </div>
     <div class="r">
@@ -395,6 +417,7 @@
       <a href="https://www.npmjs.com/package/ctxline-claude">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude/issues">Issues ↗</a>
+      <a href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">Ko-fi ↗</a>
     </div>
   </footer>
 

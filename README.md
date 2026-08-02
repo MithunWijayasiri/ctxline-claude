@@ -17,6 +17,9 @@
   <a href="https://github.com/MithunWijayasiri/ctxline-claude/stargazers">
     <img src="https://img.shields.io/github/stars/MithunWijayasiri/ctxline-claude" alt="stars">
   </a>
+  <a href="https://ko-fi.com/mithunwijayasiri">
+    <img src="https://img.shields.io/badge/Ko--fi-support-ff5e5b?logo=ko-fi&logoColor=white" alt="Support on Ko-fi">
+  </a>
 </p>
 
 <p align="center">
@@ -243,6 +246,12 @@ No. Your credentials never leave your machine. On the fast path no token is read
 ## License
 
 MIT
+
+## Support
+
+If you find this project useful, consider supporting its development on [Ko-fi](https://ko-fi.com/mithunwijayasiri). Your donations help keep the project maintained, improve existing features, and fund new open source tools.
+
+Thank you for your support! ❤️
 
 ## Credits
 
