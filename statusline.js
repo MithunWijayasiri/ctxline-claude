@@ -749,7 +749,13 @@ function emitSubagent(data) {
       .filter(t => t && t.id)
       .map(t => JSON.stringify({ id: t.id, content: renderSubagentTask(t) }))
       .join('\n');
-    if (out) process.stdout.write(out + '\n');
+    if (out) {
+      // Exit from the write callback: process.exit() would drop output still queued
+      // behind stdout backpressure. A write error (e.g. EPIPE) also lands here — the
+      // callback form reports it instead of throwing, and the answer is the same: exit 0.
+      process.stdout.write(out + '\n', () => process.exit(0));
+      return;
+    }
   } catch (e) {}
   process.exit(0);
 }
@@ -763,20 +769,24 @@ if (require.main === module) {
       emitSubagent(null);
     } else {
       let input = '';
-      let timeoutReached = false;
+      let finished = false;
 
-      const timeout = setTimeout(() => {
-        timeoutReached = true;
+      // Single guarded exit shared by all three triggers: timeout, stdin 'end', and
+      // stdin 'error' (which can fire before 'end' and would otherwise throw unhandled,
+      // breaking the never-throw contract). Whatever accumulated so far gets rendered.
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
         emitSubagent(parseInput(input));
-      }, SUBAGENT_TIMEOUT_MS);
+      };
+
+      const timeout = setTimeout(finish, SUBAGENT_TIMEOUT_MS);
 
       process.stdin.setEncoding('utf8');
       process.stdin.on('data', chunk => input += chunk);
-      process.stdin.on('end', () => {
-        if (timeoutReached) return;
-        clearTimeout(timeout);
-        emitSubagent(parseInput(input));
-      });
+      process.stdin.on('end', finish);
+      process.stdin.on('error', finish);
     }
   } else if (process.stdin.isTTY) {
     emit(null);
