@@ -77,6 +77,17 @@ chmod +x ~/.claude/hooks/statusline.js
 }
 ```
 
+**Subagent rows.** The same script also renders per-task rows in the agent panel for running subagents — wire it as a separate `subagentStatusLine` command:
+
+```json
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "node ~/.claude/hooks/statusline.js subagent"
+  }
+}
+```
+
 </details>
 
 ## Update

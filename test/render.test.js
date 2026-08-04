@@ -717,3 +717,90 @@ test('disable accepts multiple segments', () => {
   assert.ok(!clean.includes('$'), 'cost hidden');
   assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8', 'effort hidden');
 });
+
+// Subagent mode (subagentStatusLine): `node statusline.js subagent` reads stdin
+// `{ tasks: [...] }` and prints one `{id, content}` JSON line per task with an id.
+// content is JSON-encoded, so its \x1b bytes arrive as literal "" text in raw
+// stdout — parse each line first, then strip ANSI from the decoded content.
+
+function runSubagent(input, opts = {}) {
+  const home = opts.home || FAKE_HOME;
+  const env = { ...process.env, HOME: home, USERPROFILE: home };
+  const res = spawnSync(process.execPath, [SCRIPT, 'subagent'], { input, encoding: 'utf8', timeout: 5000, env });
+  const raw = res.stdout || '';
+  const lines = raw.trim() ? raw.trim().split('\n').map(l => JSON.parse(l)) : [];
+  return { code: res.status, raw, lines };
+}
+
+function cleanContent(s) {
+  return s.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+test('subagent: full task renders name │ model · effort │ context bar │ token count', () => {
+  const input = JSON.stringify({ tasks: [
+    { id: 't1', name: 'reviewer', model: 'claude-opus-5', effort: 'max', tokenCount: 45200, contextWindowSize: 200000 }
+  ] });
+  const { code, lines } = runSubagent(input);
+  assert.strictEqual(code, 0);
+  assert.strictEqual(lines.length, 1);
+  assert.strictEqual(lines[0].id, 't1');
+  const parts = cleanContent(lines[0].content).split(' │ ');
+  assert.strictEqual(parts[0], 'reviewer');
+  assert.strictEqual(parts[1], 'Opus 5 · max');
+  assert.match(parts[2], /^C23 /);                    // 45200/200000 = 22.6% -> rounds to 23
+  assert.strictEqual(parts[3], '45.2k tok');
+  assert.ok(lines[0].content.includes(RED), 'max effort is red, same as the main line');
+});
+
+test('subagent: absent model and effort -> only name and token count render', () => {
+  const input = JSON.stringify({ tasks: [{ id: 't2', name: 'explorer', tokenCount: 800 }] });
+  const { lines } = runSubagent(input);
+  assert.strictEqual(cleanContent(lines[0].content), 'explorer │ 800 tok');
+});
+
+test('subagent: absent effort (inherited) -> model renders alone, no "· effort"', () => {
+  const input = JSON.stringify({ tasks: [{ id: 't3', name: 'x', model: 'claude-sonnet-5' }] });
+  const { lines } = runSubagent(input);
+  assert.strictEqual(cleanContent(lines[0].content), 'x │ Sonnet 5');
+});
+
+test('subagent: numeric effort (token budget) renders as-is, dim', () => {
+  const input = JSON.stringify({ tasks: [
+    { id: 't4', name: 'x', model: 'claude-haiku-4-5-20251001', effort: 12000 }
+  ] });
+  const { lines } = runSubagent(input);
+  assert.strictEqual(cleanContent(lines[0].content), 'x │ Haiku 4.5 · 12000');
+  assert.ok(lines[0].content.includes(`${DIM} · 12000`), 'numeric effort uses the dim style');
+});
+
+test('subagent: bad payload -> no output lines, exit 0', () => {
+  const { code, raw } = runSubagent('not json at all');
+  assert.strictEqual(code, 0);
+  assert.strictEqual(raw, '');
+});
+
+test('subagent: missing tasks array -> no output, exit 0', () => {
+  const { code, raw } = runSubagent('{}');
+  assert.strictEqual(code, 0);
+  assert.strictEqual(raw, '');
+});
+
+test('subagent: task without an id is skipped', () => {
+  const { raw } = runSubagent(JSON.stringify({ tasks: [{ name: 'noid' }] }));
+  assert.strictEqual(raw, '');
+});
+
+test('subagent: model-ID shortening - "claude-opus-5" -> "Opus 5"', () => {
+  const { lines } = runSubagent(JSON.stringify({ tasks: [{ id: 't', model: 'claude-opus-5' }] }));
+  assert.strictEqual(cleanContent(lines[0].content), 'agent │ Opus 5');
+});
+
+test('subagent: model-ID shortening strips a trailing build date - "claude-haiku-4-5-20251001" -> "Haiku 4.5"', () => {
+  const { lines } = runSubagent(JSON.stringify({ tasks: [{ id: 't', model: 'claude-haiku-4-5-20251001' }] }));
+  assert.strictEqual(cleanContent(lines[0].content), 'agent │ Haiku 4.5');
+});
+
+test('subagent: model-ID shortening strips us./anthropic. vendor prefixes', () => {
+  const { lines } = runSubagent(JSON.stringify({ tasks: [{ id: 't', model: 'us.anthropic.claude-opus-5' }] }));
+  assert.strictEqual(cleanContent(lines[0].content), 'agent │ Opus 5');
+});

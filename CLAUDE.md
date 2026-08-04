@@ -22,6 +22,9 @@ npm pack --dry-run # preview what publishes
 
 # Ad-hoc render — feed the stdin JSON Claude Code sends:
 echo '{"model":{"display_name":"Opus 4.8"},"workspace":{"current_dir":"/tmp/x"},"session_id":"t","context_window":{"remaining_percentage":40}}' | node statusline.js
+
+# Ad-hoc subagent-row render (subagentStatusLine mode — see below):
+echo '{"tasks":[{"id":"t1","name":"reviewer","model":"claude-opus-5","effort":"max","tokenCount":45200,"contextWindowSize":200000}]}' | node statusline.js subagent
 ```
 
 Publishing + local-install detail: `docs/DEV.md`.
@@ -62,6 +65,20 @@ Entry point guarded by `require.main === module` so `test/render.test.js` can `r
 - `git-cache.json` — single entry `{ gitDir, timestamp, ahead, behind }`; different repo invalidates. Fresh `GIT_FRESH_TTL_MS` 5s (a render burst spawns `git` once) → stale re-run → on slow/failed call fall back to last counts up to `GIT_STALE_TTL_MS` 60s so they don't flicker.
 
 **Two color schemes (intentional, do not unify):** context bar (`getContextBar`) steps 50/65/80 (≥80 → blink red); usage (`getUsageColor`) steps 50/75/90. Model-scoped bars opt out of both — `getScopedColor` (orange, red ≥90) passed as `buildUsageBar`'s optional 4th arg, so several scoped bars read as one group while a nearly-spent one still stands out.
+
+## Subagent mode (`subagentStatusLine`)
+
+A second entry point in the same file, activated by `process.argv[2] === 'subagent'` — wired in `settings.json` as a separate command from `statusLine`:
+
+```json
+{ "subagentStatusLine": { "type": "command", "command": "node ~/.claude/hooks/statusline.js subagent" } }
+```
+
+Renders one row per running subagent task in the agent panel. Stdin is `{ tasks: [...], ... }` (base fields like `session_id`/`cwd`/`columns` are present but unused); each task carries `id`, `name`/`description`/`label`, `type`, `status`, `startTime`, `model` (resolved ID, absent until resolved), `effort` (level string or numeric token budget, absent when the subagent inherits the session effort), `contextWindowSize`, `tokenCount`, `tokenSamples`, `cwd`. Stdout is one `{"id","content"}` JSON line per task to override — omitting a task's id keeps its default rendering, an empty `content` hides the row.
+
+Row: `name │ Model · effort │ C<used> <bar> │ <tok> tok`, built by `renderSubagentTask()`. Reuses the main line's building blocks rather than duplicating them: `SEGMENT_SEP`, `renderContextBar()` (the used%→bar/color part factored out of `getContextBar`, shared by both), `getEffortColor()`. `shortenModelId()` shortens the resolved model *ID* ("claude-opus-5" → "Opus 5", strips `us.`/`anthropic.` prefixes and a trailing `-YYYYMMDD` date) — distinct from `shortenModel()`, which only trims `" context)"` off a display *name*. Every segment past `name` is independently conditional: no `model` → no model/effort segment (effort alone still renders if present); no `effort` → no `· effort` suffix; `tokenCount`/`contextWindowSize` not both finite (or window ≤ 0) → no context bar; `tokenCount` not finite → no token count.
+
+Skips everything main mode does besides stdin parsing — no usage API, no git, no todos, no cache — so there's no `overallTimeout` race against a fetch; `emitSubagent()` just hard-caps the stdin read at `SUBAGENT_TIMEOUT_MS`. A bad/missing payload, or a task whose shape breaks rendering, emits nothing rather than a partial line — default rendering stays for every task in the panel, and the process still exits 0.
 
 ## Keep in sync when `statusline.js` changes
 

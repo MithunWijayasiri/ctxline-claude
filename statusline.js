@@ -54,6 +54,10 @@ const GIT_FRESH_TTL_MS = 5000;          // 5s: reuse counts within a render burs
 const GIT_STALE_TTL_MS = 60000;         // 60s: fall back to last counts if git fails
 const GIT_TIMEOUT_MS = 500;             // hard cap on the rev-list subprocess (warm ~130ms)
 
+// Subagent mode reads only stdin (no usage API to race), so its stdin read gets a
+// short hard cap of its own instead of the main-mode overallTimeout.
+const SUBAGENT_TIMEOUT_MS = 500;
+
 // ANSI color codes
 const colors = {
   reset: '\x1b[0m',
@@ -94,6 +98,19 @@ function getScopedColor(percentage) {
 // Shorten verbose model names for the statusline: "Opus 4.8 (1M context)" -> "Opus 4.8 (1M)".
 function shortenModel(name) {
   return name.replace(/\s+context\)/i, ')');
+}
+
+// Shorten a resolved model ID (subagent task.model, e.g. "claude-opus-5") for the
+// subagent row: "claude-opus-5" -> "Opus 5", "claude-haiku-4-5-20251001" -> "Haiku 4.5".
+// Distinct from shortenModel, which trims a display name rather than parsing an ID.
+function shortenModelId(id) {
+  if (!id) return '';
+  const stripped = String(id).replace(/^(us\.)?(anthropic\.)?claude-/, '').replace(/-\d{8}$/, '');
+  const [family, ...rest] = stripped.split('-');
+  if (!family) return stripped;
+  const name = family[0].toUpperCase() + family.slice(1);
+  const version = rest.join('.');
+  return version ? `${name} ${version}` : name;
 }
 
 // Tail-truncate an over-long branch name, preserving the leading ticket ID.
@@ -208,10 +225,11 @@ function formatAheadBehind(ab) {
   return s;
 }
 
-function getContextBar(remaining) {
-  const effectiveRemaining = remaining ?? 100;
-  const used = Math.max(0, Math.min(100, 100 - Math.round(effectiveRemaining)));
-
+// Colored "C<used> <bar>" (e.g. "C45 ███░░░") for an already-clamped 0-100 used
+// percentage. Shared by the main context bar (derived from remaining%) and the
+// subagent row (derived from tokenCount/contextWindowSize) so both use the same
+// thresholds and bar style.
+function renderContextBar(used) {
   const filled = Math.round((used / 100) * BAR_WIDTH);
   const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(BAR_WIDTH - filled);
 
@@ -222,8 +240,13 @@ function getContextBar(remaining) {
   else if (used < 80) color = colors.orange;
   else color = colors.blink + colors.red;
 
-  // Compact label form: "C<used> <bar>" (e.g. "C45 ███░░░"), colored as a whole.
   return `${color}C${used} ${bar}${colors.reset}`;
+}
+
+function getContextBar(remaining) {
+  const effectiveRemaining = remaining ?? 100;
+  const used = Math.max(0, Math.min(100, 100 - Math.round(effectiveRemaining)));
+  return renderContextBar(used);
 }
 
 // Render a compact usage segment from raw data: "<label><pct> ↺ <countdown>"
@@ -682,11 +705,80 @@ function emit(data) {
   });
 }
 
+// "45200" -> "45.2k tok" ; "800" -> "800 tok". '' when not finite (segment omitted).
+function formatTokenCount(n) {
+  if (!Number.isFinite(n)) return '';
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+// One subagentStatusLine row: "name │ Model · effort │ C<used> <bar> │ <tok> tok".
+// Every segment past name is conditional on its source being present/finite.
+function renderSubagentTask(t) {
+  const parts = [t.label || t.name || t.description || 'agent'];
+
+  const model = shortenModelId(t.model);
+  // effort absent = subagent inherits the session effort; show model alone then.
+  const effort = t.effort != null ? String(t.effort) : '';
+  if (model) {
+    parts.push(effort
+      ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}`
+      : model);
+  } else if (effort) {
+    parts.push(`${getEffortColor(effort)}${effort}${colors.reset}`);
+  }
+
+  if (Number.isFinite(t.tokenCount) && Number.isFinite(t.contextWindowSize) && t.contextWindowSize > 0) {
+    const used = Math.max(0, Math.min(100, Math.round((t.tokenCount / t.contextWindowSize) * 100)));
+    parts.push(renderContextBar(used));
+  }
+
+  const tok = formatTokenCount(t.tokenCount);
+  if (tok) parts.push(`${colors.dim}${tok} tok${colors.reset}`);
+
+  return parts.join(SEGMENT_SEP);
+}
+
+// subagentStatusLine mode: emit one {id, content} JSON line per task with an id, then
+// exit. No usage/git/todos/cache work — the task objects carry everything needed.
+// Bad payload or a task that fails to render -> emit nothing, keeping default
+// rendering for every task, rather than a partial/broken output.
+function emitSubagent(data) {
+  try {
+    const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+    const out = tasks
+      .filter(t => t && t.id)
+      .map(t => JSON.stringify({ id: t.id, content: renderSubagentTask(t) }))
+      .join('\n');
+    if (out) process.stdout.write(out + '\n');
+  } catch (e) {}
+  process.exit(0);
+}
+
 // Entry point, guarded so tests can require this file to exercise payload parsing
 // directly (the /usage response shape is the easiest thing here to get wrong, and it
 // can't be reached through stdin). Running the script normally is unchanged.
 if (require.main === module) {
-  if (process.stdin.isTTY) {
+  if (process.argv[2] === 'subagent') {
+    if (process.stdin.isTTY) {
+      emitSubagent(null);
+    } else {
+      let input = '';
+      let timeoutReached = false;
+
+      const timeout = setTimeout(() => {
+        timeoutReached = true;
+        emitSubagent(parseInput(input));
+      }, SUBAGENT_TIMEOUT_MS);
+
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', chunk => input += chunk);
+      process.stdin.on('end', () => {
+        if (timeoutReached) return;
+        clearTimeout(timeout);
+        emitSubagent(parseInput(input));
+      });
+    }
+  } else if (process.stdin.isTTY) {
     emit(null);
   } else {
     let input = '';
