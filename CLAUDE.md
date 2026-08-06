@@ -24,7 +24,8 @@ npm pack --dry-run # preview what publishes
 echo '{"model":{"display_name":"Opus 4.8"},"workspace":{"current_dir":"/tmp/x"},"session_id":"t","context_window":{"remaining_percentage":40}}' | node statusline.js
 
 # Ad-hoc subagent-row render (subagentStatusLine mode — see below):
-echo '{"tasks":[{"id":"t1","name":"reviewer","model":"claude-opus-5","effort":"max","tokenCount":45200,"contextWindowSize":200000}]}' | node statusline.js subagent
+echo '{"tasks":[{"id":"t1","name":"reviewer","model":"claude-opus-5","effort":"max","tokenCount":45200,"contextWindowSize":200000,"startTime":'$(($(date +%s)-252))'}]}' | node statusline.js subagent
+# startTime above is "4m12s ago" in epoch seconds — see the startTime format note below.
 ```
 
 Publishing + local-install detail: `docs/DEV.md`.
@@ -76,7 +77,9 @@ A second entry point in the same file, activated by `process.argv[2] === 'subage
 
 Renders one row per running subagent task in the agent panel. Stdin is `{ tasks: [...], ... }` (base fields like `session_id`/`cwd`/`columns` are present but unused); each task carries `id`, `name`/`description`/`label`, `type`, `status`, `startTime`, `model` (resolved ID, absent until resolved), `effort` (level string or numeric token budget, absent when the subagent inherits the session effort), `contextWindowSize`, `tokenCount`, `tokenSamples`, `cwd`. Stdout is one `{"id","content"}` JSON line per task to override — omitting a task's id keeps its default rendering, an empty `content` hides the row.
 
-Row: `name │ Model · effort │ C<used> <bar> │ <tok> tok`, built by `renderSubagentTask()`. Reuses the main line's building blocks rather than duplicating them: `SEGMENT_SEP`, `renderContextBar()` (the used%→bar/color part factored out of `getContextBar`, shared by both), `getEffortColor()`. `shortenModelId()` shortens the resolved model *ID* ("claude-opus-5" → "Opus 5", strips `us.`/`anthropic.` prefixes and a trailing `-YYYYMMDD` date) — distinct from `shortenModel()`, which only trims `" context)"` off a display *name*. Every segment past `name` is independently conditional: no `model` → no model/effort segment (effort alone still renders if present); no `effort` → no `· effort` suffix; `tokenCount`/`contextWindowSize` not both finite (or window ≤ 0) → no context bar; `tokenCount` not finite → no token count.
+`startTime`'s format isn't documented upstream and isn't otherwise read in this file, so `formatElapsed()` accepts whatever shows up: a number < `1e12` is treated as epoch-seconds, a larger number as epoch-ms, anything else handed straight to `Date()` (covers an ISO string). Revisit if a real payload ever contradicts this.
+
+Row: `name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed>`, built by `renderSubagentTask()`. Reuses the main line's building blocks rather than duplicating them: `SEGMENT_SEP`, `renderContextBar()` (the used%→bar/color part factored out of `getContextBar`, shared by both), `getEffortColor()`. `shortenModelId()` shortens the resolved model *ID* ("claude-opus-5" → "Opus 5", strips `us.`/`anthropic.` prefixes and a trailing `-YYYYMMDD` date) — distinct from `shortenModel()`, which only trims `" context)"` off a display *name*. Every segment past `name` is independently conditional: no `model` → no model/effort segment (effort alone still renders if present); no `effort` → no `· effort` suffix; `tokenCount`/`contextWindowSize` not both finite (or window ≤ 0) → no context bar; `startTime` unparseable → no elapsed segment.
 
 Skips everything main mode does besides stdin parsing — no usage API, no git, no todos, no cache — so there's no `overallTimeout` race against a fetch; `emitSubagent()` just hard-caps the stdin read at `SUBAGENT_TIMEOUT_MS`. A bad/missing payload, or a task whose shape breaks rendering, emits nothing rather than a partial line — default rendering stays for every task in the panel, and the process still exits 0.
 

@@ -736,9 +736,13 @@ function cleanContent(s) {
   return s.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
-test('subagent: full task renders name │ model · effort │ context bar │ token count', () => {
+test('subagent: full task renders name │ model · effort │ context bar │ elapsed time', () => {
   const input = JSON.stringify({ tasks: [
-    { id: 't1', name: 'reviewer', model: 'claude-opus-5', effort: 'max', tokenCount: 45200, contextWindowSize: 200000 }
+    {
+      id: 't1', name: 'reviewer', model: 'claude-opus-5', effort: 'max',
+      tokenCount: 45200, contextWindowSize: 200000,
+      startTime: Math.floor(Date.now() / 1000) - 252 // epoch-seconds, 4m12s ago
+    }
   ] });
   const { code, lines } = runSubagent(input);
   assert.strictEqual(code, 0);
@@ -748,14 +752,35 @@ test('subagent: full task renders name │ model · effort │ context bar │ t
   assert.strictEqual(parts[0], 'reviewer');
   assert.strictEqual(parts[1], 'Opus 5 · max');
   assert.match(parts[2], /^C23 /);                    // 45200/200000 = 22.6% -> rounds to 23
-  assert.strictEqual(parts[3], '45.2k tok');
+  assert.match(parts[3], /^⏱ 4m\d{1,2}s$/);            // 4m12s + spawn/CI overhead, still under 5m
   assert.ok(lines[0].content.includes(RED), 'max effort is red, same as the main line');
 });
 
-test('subagent: absent model and effort -> only name and token count render', () => {
-  const input = JSON.stringify({ tasks: [{ id: 't2', name: 'explorer', tokenCount: 800 }] });
+test('subagent: absent model and effort -> only name and elapsed time render', () => {
+  const startTime = Date.now() - 18000; // epoch-ms, 18s ago
+  const input = JSON.stringify({ tasks: [{ id: 't2', name: 'explorer', startTime }] });
   const { lines } = runSubagent(input);
-  assert.strictEqual(cleanContent(lines[0].content), 'explorer │ 800 tok');
+  assert.match(cleanContent(lines[0].content), /^explorer │ ⏱ \d{1,2}s$/); // 18s + spawn/CI overhead, still under 1m
+});
+
+test('subagent: absent startTime -> no elapsed segment', () => {
+  const input = JSON.stringify({ tasks: [{ id: 't2b', name: 'explorer', tokenCount: 800, contextWindowSize: 1000 }] });
+  const { lines } = runSubagent(input);
+  const content = cleanContent(lines[0].content);
+  assert.ok(!content.includes('⏱'), 'no elapsed segment without startTime');
+});
+
+test('subagent: unparseable startTime -> no elapsed segment', () => {
+  const input = JSON.stringify({ tasks: [{ id: 't2d', name: 'explorer', startTime: 'not-a-date' }] });
+  const { lines } = runSubagent(input);
+  assert.ok(!cleanContent(lines[0].content).includes('⏱'), 'no elapsed segment for an unparseable startTime');
+});
+
+test('subagent: ISO string startTime is accepted', () => {
+  const startTime = new Date(Date.now() - 5000).toISOString(); // 5s ago
+  const input = JSON.stringify({ tasks: [{ id: 't2c', name: 'x', startTime }] });
+  const { lines } = runSubagent(input);
+  assert.match(cleanContent(lines[0].content), /^x │ ⏱ \d{1,2}s$/); // 5s + spawn/CI overhead, still under 1m
 });
 
 test('subagent: absent effort (inherited) -> model renders alone, no "· effort"', () => {
