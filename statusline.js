@@ -705,13 +705,26 @@ function emit(data) {
   });
 }
 
-// "45200" -> "45.2k tok" ; "800" -> "800 tok". '' when not finite (segment omitted).
-function formatTokenCount(n) {
-  if (!Number.isFinite(n)) return '';
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+// now - startTime as "45s" / "4m12s" / "2h5m". '' when startTime is missing/unparseable.
+// Format isn't documented by Claude Code, so accept epoch-seconds, epoch-ms, or an ISO
+// string: numbers below 1e12 are epoch-seconds (today's epoch-seconds ~1.7e9, epoch-ms
+// ~1.7e12 — far enough apart that the threshold is unambiguous for any real timestamp).
+function formatElapsed(startTime) {
+  if (startTime == null) return '';
+  const ms = typeof startTime === 'number' && startTime < 1e12 ? startTime * 1000 : startTime;
+  const start = new Date(ms).getTime();
+  if (Number.isNaN(start)) return '';
+
+  const diffSec = Math.max(0, Math.floor((Date.now() - start) / 1000));
+  const hours = Math.floor(diffSec / 3600);
+  const mins = Math.floor((diffSec % 3600) / 60);
+  const secs = diffSec % 60;
+  if (hours > 0) return `${hours}h${mins}m`;
+  if (mins > 0) return `${mins}m${secs}s`;
+  return `${secs}s`;
 }
 
-// One subagentStatusLine row: "name │ Model · effort │ C<used> <bar> │ <tok> tok".
+// One subagentStatusLine row: "name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed>".
 // Every segment past name is conditional on its source being present/finite.
 function renderSubagentTask(t) {
   const parts = [t.label || t.name || t.description || 'agent'];
@@ -732,8 +745,8 @@ function renderSubagentTask(t) {
     parts.push(renderContextBar(used));
   }
 
-  const tok = formatTokenCount(t.tokenCount);
-  if (tok) parts.push(`${colors.dim}${tok} tok${colors.reset}`);
+  const elapsed = formatElapsed(t.startTime);
+  if (elapsed) parts.push(`${colors.dim}⏱ ${elapsed}${colors.reset}`);
 
   return parts.join(SEGMENT_SEP);
 }
