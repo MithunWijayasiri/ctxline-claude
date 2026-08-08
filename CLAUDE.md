@@ -92,7 +92,7 @@ Executable fixtures — stale = CI/release breaks:
 - `test/render.test.js` — `seedHome()` writes the same cache file (same breakage); assertions pin visible labels/percentages/colors/order. `colors` codes change → update the constants atop the file.
 
 Docs/marketing — stale = silent drift:
-- `preview.svg` — the single statusline `<text>` element (`<tspan>` runs); shown in README + site.
+- `docs/assets/preview.svg` — the single statusline `<text>` element (`<tspan>` runs); shown in README + site.
 - `docs/index.html` — hero mock (`.term .line`), inspector `SIGNALS[]`, `.term` color classes.
 - `CLAUDE.md` — format diagram (top), segment-source table, visible contract below.
 
