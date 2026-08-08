@@ -14,7 +14,7 @@ description: Change the statusline's visible design — layout, segment format, 
 | `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `layout`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | assertions on labels / `NN%` / colors / order | match new label regexes (e.g. `/C\d+ /`, `/H\d+\b/`); ANSI const block near top |
 | `scripts/preview.js` | seed + render check | cache seed shape, `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
-| `preview.svg` | marketing SVG (README/site) | the single statusline `<text>` element (`<tspan>` runs) |
+| `docs/assets/preview.svg` | marketing SVG (README/site) | the single statusline `<text>` element (`<tspan>` runs) |
 | `docs/index.html` | landing page | hero mock (`.term .line`, ~line 323), inspector `SIGNALS[]` array (~line 446), `.term` color classes (~line 129) |
 | `CLAUDE.md` | spec | format diagram (top), segment-source table, "visible contract" paragraph |
 
@@ -62,7 +62,7 @@ ANSI (`colors` obj, top of `statusline.js`): green `\x1b[32m` · yellow `\x1b[33
 
 Effort: only top two highlighted — `max` red, `ultracode` purple; rest dim.
 
-SVG/HTML palette (`preview.svg`, `docs/index.html`): green `#3fb950` (svg) / `#7ec77f` (`--green` html) · orange `#f0883e` · empty cell `#2d333b` · dim `#7d8590` · separator `#30363d` · dir/accent `#d97757`.
+SVG/HTML palette (`docs/assets/preview.svg`, `docs/index.html`): green `#3fb950` (svg) / `#7ec77f` (`--green` html) · orange `#f0883e` · empty cell `#2d333b` · dim `#7d8590` · separator `#30363d` · dir/accent `#d97757`.
 
 Divergence to know: the site colors ahead/behind (`.ahead` green, `.behind` `#f85149`), while `statusline.js` renders `↑N↓M` dim.
 

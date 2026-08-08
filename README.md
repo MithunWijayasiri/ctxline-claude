@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="preview.svg" alt="Claude Code Statusline">
+  <img src="docs/assets/preview.svg" alt="Claude Code Statusline">
 </p>
 
 <p align="center">
