@@ -18,7 +18,6 @@
   <a href="https://www.npmjs.com/package/ctxline-claude"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="npm Version" src="https://www.shieldcn.dev/npm/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture></a>
   <a href="https://www.npmjs.com/package/ctxline-claude"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/dm/ctxline-claude.svg?variant=ghost&amp;size=xs&amp;mode=dark"><img alt="npm Monthly Downloads" src="https://www.shieldcn.dev/npm/dm/ctxline-claude.svg?variant=ghost&amp;size=xs&amp;mode=light"></picture></a>
   <a href="https://www.npmjs.com/package/ctxline-claude"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/dt/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="npm Total Downloads" src="https://www.shieldcn.dev/npm/dt/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture></a>
-  <a href="https://www.npmjs.com/package/ctxline-claude?activeTab=dependents"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/dependents/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="npm Dependents" src="https://www.shieldcn.dev/npm/dependents/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture></a>
 </p>
 
 <p align="center">
