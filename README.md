@@ -88,6 +88,8 @@ chmod +x ~/.claude/hooks/statusline.js
 }
 ```
 
+Note: the effort level only shows on a subagent row when that task has its own effort override — Claude Code doesn't currently report effort for a subagent that just inherits the session's setting.
+
 </details>
 
 ## Update

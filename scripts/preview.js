@@ -183,3 +183,34 @@ console.log('  ' + render({
 // Segment opt-out: CTXLINE_DISABLE hides segments (dir/model/context always render).
 console.log('\nSegment opt-out (CTXLINE_DISABLE=usage,cost):');
 console.log('  ' + render({ ...base, effort: 'high', disable: 'usage,cost' }));
+
+// Subagent panel (subagentStatusLine mode): separate entry point (`node statusline.js
+// subagent`), separate stdin shape ({ tasks: [...] }), no cache/HOME seeding needed since
+// it reads only stdin. Two tasks cover both branches: full row, and no-effort (inherited).
+function renderSubagentPanel(tasks) {
+  const res = spawnSync(process.execPath, [SCRIPT, 'subagent'], {
+    input: JSON.stringify({ tasks }),
+    encoding: 'utf8',
+    timeout: 5000
+  });
+  if (res.error) throw res.error;
+  if (res.status !== 0) {
+    throw new Error(`statusline.js subagent exited with ${res.status}\n${res.stderr || ''}`);
+  }
+  const byId = new Map(
+    (res.stdout || '').trim().split('\n').filter(Boolean).map(line => {
+      const o = JSON.parse(line);
+      return [o.id, o.content];
+    })
+  );
+  return tasks.map(t => byId.get(t.id) || `(default rendering: ${t.id})`);
+}
+
+console.log('\nSubagent panel (2 running tasks):');
+const nowSecPanel = Math.floor(Date.now() / 1000);
+for (const line of renderSubagentPanel([
+  { id: 't1', name: 'reviewer', model: 'claude-opus-5', effort: 'high', tokenCount: 45200, contextWindowSize: 200000, startTime: nowSecPanel - 252 },
+  { id: 't2', name: 'explorer', model: 'claude-sonnet-5', tokenCount: 12400, contextWindowSize: 200000, startTime: nowSecPanel - 15 }
+])) {
+  console.log('  ' + line);
+}

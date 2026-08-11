@@ -62,9 +62,17 @@ if (fs.existsSync(settingsFile)) {
   }
 }
 
+// Path is quoted — the command runs through a shell, so an unquoted home dir with spaces would split.
+const commandPath = scriptDest.replace(/\\/g, '/');
+
 settings.statusLine = {
   type: 'command',
-  command: `node ${scriptDest.replace(/\\/g, '/')}`
+  command: `node "${commandPath}"`
+};
+
+settings.subagentStatusLine = {
+  type: 'command',
+  command: `node "${commandPath}" subagent`
 };
 
 fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
@@ -86,26 +94,38 @@ function runUninstall() {
     return;
   }
 
-  // 1. Remove our statusLine entry from settings.json (preserving everything else)
+  // 1. Remove our statusLine/subagentStatusLine entries from settings.json (preserving everything else)
   if (fs.existsSync(settingsFile)) {
     try {
       const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
       const command = ((settings.statusLine && settings.statusLine.command) || '').replace(/\\/g, '/');
+      const subagentCommand = ((settings.subagentStatusLine && settings.subagentStatusLine.command) || '').replace(/\\/g, '/');
       // Match our hook path only (covers absolute + manual `~` installs), not any statusline.js.
       const isOurs = command.includes('/.claude/hooks/statusline.js');
+      const isSubagentOurs = subagentCommand.includes('/.claude/hooks/statusline.js');
+      let changed = false;
       if (settings.statusLine && isOurs) {
-        const backup = `${settingsFile}.backup.${Date.now()}`;
-        fs.copyFileSync(settingsFile, backup);
         delete settings.statusLine;
-        fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
-        console.log(`${green}✓ Removed statusLine from settings.json (backup: ${path.basename(backup)})${reset}`);
+        changed = true;
       } else if (settings.statusLine) {
         console.log(`${yellow}! settings.json has a different statusLine — leaving it untouched.${reset}`);
       } else {
         console.log(`${green}✓ No statusLine entry in settings.json${reset}`);
       }
+      if (settings.subagentStatusLine && isSubagentOurs) {
+        delete settings.subagentStatusLine;
+        changed = true;
+      } else if (settings.subagentStatusLine) {
+        console.log(`${yellow}! settings.json has a different subagentStatusLine — leaving it untouched.${reset}`);
+      }
+      if (changed) {
+        const backup = `${settingsFile}.backup.${Date.now()}`;
+        fs.copyFileSync(settingsFile, backup);
+        fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+        console.log(`${green}✓ Removed statusLine/subagentStatusLine from settings.json (backup: ${path.basename(backup)})${reset}`);
+      }
     } catch (e) {
-      console.log(`${red}✗ Could not parse settings.json — remove the "statusLine" block manually.${reset}`);
+      console.log(`${red}✗ Could not parse settings.json — remove the "statusLine"/"subagentStatusLine" blocks manually.${reset}`);
     }
   }
 
