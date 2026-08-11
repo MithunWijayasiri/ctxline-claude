@@ -62,14 +62,17 @@ if (fs.existsSync(settingsFile)) {
   }
 }
 
+// Path is quoted — the command runs through a shell, so an unquoted home dir with spaces would split.
+const commandPath = scriptDest.replace(/\\/g, '/');
+
 settings.statusLine = {
   type: 'command',
-  command: `node ${scriptDest.replace(/\\/g, '/')}`
+  command: `node "${commandPath}"`
 };
 
 settings.subagentStatusLine = {
   type: 'command',
-  command: `node ${scriptDest.replace(/\\/g, '/')} subagent`
+  command: `node "${commandPath}" subagent`
 };
 
 fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));

@@ -65,11 +65,11 @@ if [ ! -f "$SETTINGS_FILE" ]; then
 {
   "statusLine": {
     "type": "command",
-    "command": "node $HOOKS_DIR/$SCRIPT_NAME"
+    "command": "node \"$HOOKS_DIR/$SCRIPT_NAME\""
   },
   "subagentStatusLine": {
     "type": "command",
-    "command": "node $HOOKS_DIR/$SCRIPT_NAME subagent"
+    "command": "node \"$HOOKS_DIR/$SCRIPT_NAME\" subagent"
   }
 }
 EOF
@@ -91,12 +91,12 @@ try {
 
 settings.statusLine = {
     type: 'command',
-    command: 'node $HOOKS_DIR/$SCRIPT_NAME'
+    command: 'node "$HOOKS_DIR/$SCRIPT_NAME"'
 };
 
 settings.subagentStatusLine = {
     type: 'command',
-    command: 'node $HOOKS_DIR/$SCRIPT_NAME subagent'
+    command: 'node "$HOOKS_DIR/$SCRIPT_NAME" subagent'
 };
 
 fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
@@ -112,11 +112,11 @@ EOF
         echo ""
         echo '  "statusLine": {'
         echo '    "type": "command",'
-        echo "    \"command\": \"node $HOOKS_DIR/$SCRIPT_NAME\""
+        echo "    \"command\": \"node \\\"$HOOKS_DIR/$SCRIPT_NAME\\\"\""
         echo '  },'
         echo '  "subagentStatusLine": {'
         echo '    "type": "command",'
-        echo "    \"command\": \"node $HOOKS_DIR/$SCRIPT_NAME subagent\""
+        echo "    \"command\": \"node \\\"$HOOKS_DIR/$SCRIPT_NAME\\\" subagent\""
         echo '  }'
     fi
 fi

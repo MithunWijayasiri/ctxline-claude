@@ -63,11 +63,11 @@ if (Test-Path $SETTINGS_FILE) {
 $commandPath = "$HOOKS_DIR\$SCRIPT_NAME" -replace '\\', '/'
 $settings.statusLine = @{
     type = "command"
-    command = "node $commandPath"
+    command = "node `"$commandPath`""
 }
 $settings.subagentStatusLine = @{
     type = "command"
-    command = "node $commandPath subagent"
+    command = "node `"$commandPath`" subagent"
 }
 
 # Write back to file

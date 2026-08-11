@@ -109,7 +109,7 @@ Test harness: `run()` opts `columns` (unset → single line) and `disable` (→ 
 Work in `statusline.js` only. Install path is frozen (inherited working from upstream):
 - Don't change behavior of `bin/install.js`, `install.sh`, `install.ps1` except unavoidable branding (repo URL / package name) or wiring a new settings.json entry that a shipped `statusline.js` feature already depends on (e.g. `subagentStatusLine` — see below).
 - `npx ctxline-claude` → `bin/install.js` installs silently, no prompts. Keep it so.
-- All three installers write both `statusLine` and `subagentStatusLine` to `settings.json`, pointing at the same hook file (`subagentStatusLine` appends ` subagent` to the command). Adding a new entry point in `statusline.js` means wiring it into all three, not just documenting the snippet.
+- All three installers write both `statusLine` and `subagentStatusLine` to `settings.json`, pointing at the same hook file (`subagentStatusLine` appends a space + `subagent` to the command). Hook path is written quoted — the command runs through a shell, so an unquoted home dir with spaces splits into two args. Adding a new entry point in `statusline.js` means wiring it into all three, not just documenting the snippet.
 - Uninstall path exists: `npx ctxline-claude uninstall` (arg `uninstall`/`remove`) — removes only our `statusLine`/`subagentStatusLine` from `settings.json` (guarded, backed up), deletes the hook, clears the cache. Additive; must not alter the no-arg install. `install.sh`/`install.ps1` have no uninstall command — only printed manual-removal instructions, which must list both keys too.
 - Don't reintroduce a "Full vs Lite" prompt or `statusline-lite.js` (deleted upstream `846e10e`). Only as a deliberate real feature.
 
