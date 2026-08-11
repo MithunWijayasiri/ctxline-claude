@@ -59,11 +59,15 @@ if (Test-Path $SETTINGS_FILE) {
     }
 }
 
-# Update statusLine setting (use forward slashes for cross-platform compatibility)
+# Update statusLine/subagentStatusLine settings (use forward slashes for cross-platform compatibility)
 $commandPath = "$HOOKS_DIR\$SCRIPT_NAME" -replace '\\', '/'
 $settings.statusLine = @{
     type = "command"
     command = "node $commandPath"
+}
+$settings.subagentStatusLine = @{
+    type = "command"
+    command = "node $commandPath subagent"
 }
 
 # Write back to file
@@ -82,7 +86,7 @@ Write-Host "  2. Your statusline should now be active!"
 Write-Host ""
 Write-Host "To uninstall:"
 Write-Host "  - Remove ~/.claude/hooks/$SCRIPT_NAME"
-Write-Host "  - Remove the 'statusLine' section from ~/.claude/settings.json"
+Write-Host "  - Remove the 'statusLine' and 'subagentStatusLine' sections from ~/.claude/settings.json"
 Write-Host ""
 Write-Host "For help, visit: https://github.com/MithunWijayasiri/ctxline-claude"
 Write-Host ""

@@ -66,6 +66,10 @@ if [ ! -f "$SETTINGS_FILE" ]; then
   "statusLine": {
     "type": "command",
     "command": "node $HOOKS_DIR/$SCRIPT_NAME"
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "node $HOOKS_DIR/$SCRIPT_NAME subagent"
   }
 }
 EOF
@@ -90,6 +94,11 @@ settings.statusLine = {
     command: 'node $HOOKS_DIR/$SCRIPT_NAME'
 };
 
+settings.subagentStatusLine = {
+    type: 'command',
+    command: 'node $HOOKS_DIR/$SCRIPT_NAME subagent'
+};
+
 fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 console.log('Settings updated successfully');
 EOF
@@ -104,6 +113,10 @@ EOF
         echo '  "statusLine": {'
         echo '    "type": "command",'
         echo "    \"command\": \"node $HOOKS_DIR/$SCRIPT_NAME\""
+        echo '  },'
+        echo '  "subagentStatusLine": {'
+        echo '    "type": "command",'
+        echo "    \"command\": \"node $HOOKS_DIR/$SCRIPT_NAME subagent\""
         echo '  }'
     fi
 fi
@@ -120,7 +133,7 @@ echo "  2. Your statusline should now be active!"
 echo ""
 echo "To uninstall:"
 echo "  - Remove ~/.claude/hooks/$SCRIPT_NAME"
-echo "  - Remove the 'statusLine' section from ~/.claude/settings.json"
+echo "  - Remove the 'statusLine' and 'subagentStatusLine' sections from ~/.claude/settings.json"
 echo ""
 echo "For help, visit: https://github.com/MithunWijayasiri/ctxline-claude"
 echo ""
