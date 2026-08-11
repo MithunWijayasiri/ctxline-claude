@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/apple-touch-icon.png" width="64" height="64" alt="">
+</p>
+
 <h1 align="center">Claude Code Statusline</h1>
 
 <p align="center">
@@ -5,21 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/ctxline-claude">
-    <img src="https://img.shields.io/npm/v/ctxline-claude" alt="npm version">
-  </a>
-  <a href="https://www.npmjs.com/package/ctxline-claude">
-    <img src="https://img.shields.io/npm/dm/ctxline-claude" alt="npm downloads">
-  </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/MithunWijayasiri/ctxline-claude" alt="license">
-  </a>
-  <a href="https://github.com/MithunWijayasiri/ctxline-claude/stargazers">
-    <img src="https://img.shields.io/github/stars/MithunWijayasiri/ctxline-claude" alt="stars">
-  </a>
-  <a href="https://ko-fi.com/mithunwijayasiri">
-    <img src="https://img.shields.io/badge/Ko--fi-support-ff5e5b?logo=ko-fi&logoColor=white" alt="Support on Ko-fi">
-  </a>
+  <a href="https://github.com/MithunWijayasiri/ctxline-claude/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/stars/MithunWijayasiri/ctxline-claude.svg?variant=secondary&amp;size=sm&amp;mode=dark"><img alt="GitHub Stars" src="https://www.shieldcn.dev/github/stars/MithunWijayasiri/ctxline-claude.svg?variant=secondary&amp;size=sm&amp;mode=light"></picture></a>
+  <a href="https://github.com/MithunWijayasiri/ctxline-claude/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/contributors/MithunWijayasiri/ctxline-claude.svg?theme=emerald&amp;variant=ghost&amp;size=sm&amp;mode=dark"><img alt="Contributors" src="https://www.shieldcn.dev/github/contributors/MithunWijayasiri/ctxline-claude.svg?theme=emerald&amp;variant=ghost&amp;size=sm&amp;mode=light"></picture></a>
+  <a href="https://github.com/MithunWijayasiri/ctxline-claude/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/last-commit/MithunWijayasiri/ctxline-claude.svg?variant=secondary&amp;size=sm&amp;mode=dark"><img alt="Last commit" src="https://www.shieldcn.dev/github/last-commit/MithunWijayasiri/ctxline-claude.svg?variant=secondary&amp;size=sm&amp;mode=light"></picture></a>
+  <a href="https://github.com/MithunWijayasiri/ctxline-claude/actions"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/ci/MithunWijayasiri/ctxline-claude.svg?variant=secondary&amp;size=sm&amp;mode=dark"><img alt="CI" src="https://www.shieldcn.dev/github/ci/MithunWijayasiri/ctxline-claude.svg?variant=secondary&amp;size=sm&amp;mode=light"></picture></a>
+  <a href="https://ko-fi.com/mithunwijayasiri"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/badge/Ko--fi-support-FF5E5B.svg?logo=kofi&amp;variant=outline&amp;size=sm&amp;mode=dark"><img alt="Ko-fi" src="https://www.shieldcn.dev/badge/Ko--fi-support-FF5E5B.svg?logo=kofi&amp;variant=outline&amp;size=sm&amp;mode=light"></picture></a>
+  <br>
+  <a href="https://www.npmjs.com/package/ctxline-claude"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="npm Version" src="https://www.shieldcn.dev/npm/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture></a>
+  <a href="https://www.npmjs.com/package/ctxline-claude"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/dm/ctxline-claude.svg?variant=ghost&amp;size=xs&amp;mode=dark"><img alt="npm Monthly Downloads" src="https://www.shieldcn.dev/npm/dm/ctxline-claude.svg?variant=ghost&amp;size=xs&amp;mode=light"></picture></a>
+  <a href="https://www.npmjs.com/package/ctxline-claude"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/npm/dt/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="npm Total Downloads" src="https://www.shieldcn.dev/npm/dt/ctxline-claude.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture></a>
 </p>
 
 <p align="center">
