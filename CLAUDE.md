@@ -70,6 +70,8 @@ Entry point guarded by `require.main === module` so `test/render.test.js` can `r
 
 **Two color schemes (intentional, do not unify):** context bar (`getContextBar`) steps 50/65/80 (≥80 → blink red); usage (`getUsageColor`) steps 50/75/90. Model-scoped bars opt out of both — `getScopedColor` (orange, red ≥90) passed as `buildUsageBar`'s optional 4th arg → several scoped bars read as one group while a nearly-spent one still stands out.
 
+**Deliberately duplicated, do not merge:** the two caches (`git-cache.json` / `usage-cache.json` via `readGitCache`/`writeGitCache` + `getGitAheadBehind` vs `readCachedUsage`/`setCachedUsage` + `getRawUsage`) and the two duration formatters (`buildUsageBar`'s countdown vs `formatElapsed`) each have only two callers with differing validators / units / refresh policies (git 5s/60s vs usage 30s/10m; countdown vs elapsed). A shared `withCache`/`formatDuration` would move complexity into parameters, not reduce it — revisit only on a third caller.
+
 ## Subagent mode (`subagentStatusLine`)
 
 A second entry point in the same file, activated by `process.argv[2] === 'subagent'` — wired in `settings.json` as a separate command from `statusLine`:
@@ -108,7 +110,7 @@ Full edit-point map: `.claude/skills/restyle-statusline/SKILL.md`.
 
 Rule of thumb: change to **what the line looks like** → test assertions. Change to **cache shape or stdin fields** → both seeds. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
 
-Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar; `$<cost>` dim, after usage and before task; `↑N↓M` dim; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
+Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar; `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
 
 Test harness: `run()` opts `columns` (unset → single line) and `disable` (→ `CTXLINE_DISABLE`); preview's `render()` takes matching params (narrow scenario 40, opt-out scenario `usage,cost`) plus `models` (`[{ label, percentage, resetsInMin }]`) for the scoped-limit scenario. Both clear `COLUMNS`/`CTXLINE_DISABLE` when unset so a dev-env value can't skew output. Git ahead/behind tests need real `git` (skipped if absent) and a fresh HOME per test (isolated `git-cache.json`).
 
