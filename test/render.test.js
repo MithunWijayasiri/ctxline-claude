@@ -5,6 +5,7 @@
 const { test, after } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
+const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -396,7 +397,7 @@ test('stdin rate_limits -> 5h/7d render with no cache and no creds', () => {
 // these in a `limits` array; they never appear on stdin, so they always come from the
 // cache/API path. parseScopedLimits is exercised directly against the real payload shape.
 
-const { parseScopedLimits } = require('../statusline.js');
+const { parseScopedLimits, readStdinThen } = require('../statusline.js');
 
 // A trimmed copy of a real GET /api/oauth/usage response: the legacy seven_day_<model>
 // keys are all null, and the live scoped limit lives in `limits`.
@@ -473,6 +474,48 @@ test('no scoped limits -> nothing extra renders', () => {
   assert.match(clean, /H24\b/);
   assert.match(clean, /W41\b/);
   assert.ok(!/\bF\d+/.test(clean), 'no F bar when the account reports no scoped limit');
+});
+
+// readStdinThen is the single guarded reader shared by both entry points (main and
+// subagent). A stdin error used to throw unhandled on the main path only — this
+// exercises that exact reader against a fake stdin, since a real stdin error can't
+// be forced reliably through a spawned child's pipe.
+test('readStdinThen finishes exactly once on a stdin error, never throws', () => {
+  const original = Object.getOwnPropertyDescriptor(process, 'stdin');
+  const fake = new EventEmitter();
+  fake.setEncoding = () => {};
+  Object.defineProperty(process, 'stdin', { value: fake, configurable: true });
+  try {
+    let calls = 0;
+    let result;
+    assert.doesNotThrow(() => {
+      readStdinThen(1000, (input) => { calls++; result = input; });
+      fake.emit('data', '{"partial":true');
+      fake.emit('error', new Error('EPIPE'));
+      fake.emit('end'); // must not double-fire after 'error' already finished
+    });
+    assert.strictEqual(calls, 1);
+    assert.strictEqual(result, '{"partial":true');
+  } finally {
+    Object.defineProperty(process, 'stdin', original);
+  }
+});
+
+test('readStdinThen finishes on timeout with whatever was read so far', () => {
+  const original = Object.getOwnPropertyDescriptor(process, 'stdin');
+  const fake = new EventEmitter();
+  fake.setEncoding = () => {};
+  Object.defineProperty(process, 'stdin', { value: fake, configurable: true });
+  try {
+    return new Promise((resolve) => {
+      readStdinThen(10, (input) => {
+        assert.strictEqual(input, '');
+        resolve();
+      });
+    });
+  } finally {
+    Object.defineProperty(process, 'stdin', original);
+  }
 });
 
 // Rendering: scoped bars come from the cache, including on the stdin fast path.

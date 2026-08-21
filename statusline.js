@@ -249,6 +249,11 @@ function getContextBar(remaining) {
   return renderContextBar(used);
 }
 
+// "model" or "model · effort" (colored). Shared by the main line and subagent rows.
+function renderModelEffort(model, effort) {
+  return effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model;
+}
+
 // Render a compact usage segment from raw data: "<label><pct> ↺ <countdown>"
 // (e.g. "H81 ↺ 2h21m") — no bar. Called on every read (live or cached) so the reset
 // countdown is always recomputed from resetsAt rather than frozen at fetch time.
@@ -638,7 +643,7 @@ function outputStatus(data, usage) {
     line1.push(branch
       ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}${sync ? ' ' + sync : ''}`
       : dirname);
-    line1.push(effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model);
+    line1.push(renderModelEffort(model, effort));
     line1.push(contextBar);
 
     const line2 = [];
@@ -682,7 +687,6 @@ function resolveUsage(data, callback) {
   getUsageWithCache(callback);
 }
 
-// Process with timeout
 // Parse the accumulated stdin into a payload object, or null if empty/unparseable.
 function parseInput(input) {
   if (!input || input.length === 0) return null;
@@ -691,6 +695,29 @@ function parseInput(input) {
   } catch (e) {
     return null;
   }
+}
+
+// Accumulate stdin then call fn(input) exactly once, on whichever fires first:
+// timeout, 'end', or 'error' (an unhandled stdin error would otherwise throw,
+// breaking the never-throw contract). Shared by both entry points below, which
+// differ only in timeoutMs.
+function readStdinThen(timeoutMs, fn) {
+  let input = '';
+  let finished = false;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timeout);
+    fn(input);
+  };
+
+  const timeout = setTimeout(finish, timeoutMs);
+
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', chunk => input += chunk);
+  process.stdin.on('end', finish);
+  process.stdin.on('error', finish);
 }
 
 // Resolve usage for `data` (preferring stdin rate_limits), then render and exit.
@@ -733,9 +760,7 @@ function renderSubagentTask(t) {
   // effort absent = subagent inherits the session effort; show model alone then.
   const effort = t.effort != null ? String(t.effort) : '';
   if (model) {
-    parts.push(effort
-      ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}`
-      : model);
+    parts.push(renderModelEffort(model, effort));
   } else if (effort) {
     parts.push(`${getEffortColor(effort)}${effort}${colors.reset}`);
   }
@@ -777,51 +802,17 @@ function emitSubagent(data) {
 // directly (the /usage response shape is the easiest thing here to get wrong, and it
 // can't be reached through stdin). Running the script normally is unchanged.
 if (require.main === module) {
-  if (process.argv[2] === 'subagent') {
-    if (process.stdin.isTTY) {
-      emitSubagent(null);
-    } else {
-      let input = '';
-      let finished = false;
+  const isSubagent = process.argv[2] === 'subagent';
+  const finish = isSubagent ? emitSubagent : emit;
 
-      // Single guarded exit shared by all three triggers: timeout, stdin 'end', and
-      // stdin 'error' (which can fire before 'end' and would otherwise throw unhandled,
-      // breaking the never-throw contract). Whatever accumulated so far gets rendered.
-      const finish = () => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(timeout);
-        emitSubagent(parseInput(input));
-      };
-
-      const timeout = setTimeout(finish, SUBAGENT_TIMEOUT_MS);
-
-      process.stdin.setEncoding('utf8');
-      process.stdin.on('data', chunk => input += chunk);
-      process.stdin.on('end', finish);
-      process.stdin.on('error', finish);
-    }
-  } else if (process.stdin.isTTY) {
-    emit(null);
+  if (process.stdin.isTTY) {
+    finish(null);
   } else {
-    let input = '';
-    let timeoutReached = false;
-
-    const overallTimeout = IS_API_KEY ? 500 : (fs.existsSync(USAGE_CACHE_FILE) ? 1300 : 1600);
-
-    const timeout = setTimeout(() => {
-      timeoutReached = true;
-      emit(parseInput(input));
-    }, overallTimeout);
-
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => input += chunk);
-    process.stdin.on('end', () => {
-      if (timeoutReached) return;
-      clearTimeout(timeout);
-      emit(parseInput(input));
-    });
+    const timeoutMs = isSubagent
+      ? SUBAGENT_TIMEOUT_MS
+      : (IS_API_KEY ? 500 : (fs.existsSync(USAGE_CACHE_FILE) ? 1300 : 1600));
+    readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, normalizePercentage };
+  module.exports = { parseScopedLimits, normalizePercentage, readStdinThen };
 }
