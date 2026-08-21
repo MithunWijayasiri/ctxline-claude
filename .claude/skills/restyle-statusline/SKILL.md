@@ -11,7 +11,7 @@ description: Change the statusline's visible design — layout, segment format, 
 
 | File | What to change | Where |
 |---|---|---|
-| `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `layout`, `outputStatus`, `outputFallback` |
+| `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | assertions on labels / `NN%` / colors / order | match new label regexes (e.g. `/C\d+ /`, `/H\d+\b/`); ANSI const block near top |
 | `scripts/preview.js` | seed + render check | cache seed shape, `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
 | `docs/assets/preview.svg` | marketing SVG (README/site) | 12 `<text>` elements (main statusline + subagent rows) with `<tspan>` runs |
@@ -28,19 +28,19 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 
 - Labels fused with percent: `C`=context, `H`=5h, `W`=7d, `<initial>`=model-scoped weekly limit (Fable → `F`, label derived from `scope.model.display_name` in `parseScopedLimits` — never hardcode a model list).
 - Context keeps a bar; `H`/`W`/scoped are label + `↺ countdown`, no bar.
-- Labels live INSIDE the builder functions (`getContextBar`/`buildUsageBar`), not as prefixes in `outputStatus`. `outputStatus`/`outputFallback` push segments verbatim.
+- Labels live INSIDE the builder functions (`getContextBar`/`buildUsageBar`), not as prefixes in `renderStatusLine`. `renderStatusLine` pushes segments verbatim; `outputStatus`/`outputFallback` are thin writers that call it.
 - `↑N↓M` is appended to the branch string (↑ green / ↓ red), not a separate segment. Zero side omitted.
 - `$<cost>` is dim, sits after usage and before task.
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
 
 ## Responsive wrap — reassign segments when order changes
 
-`layout(line1Parts, line2Parts)` in `outputStatus` splits the line when visible width > `COLUMNS - WIDTH_MARGIN`:
+`layout(line1Parts, line2Parts, cols)` in `renderStatusLine` splits the line when visible width > `cols - WIDTH_MARGIN` (`cols` comes from `collectFacts`' read of `COLUMNS`; `layout` itself has no env access):
 
 - line 1 = dir/branch + model/effort + `C`
 - line 2 = `H`/`W`/scoped + `$` + task
 
-Adding or moving a segment means picking its line in `outputStatus`, not just its position. Wrap fires only when `COLUMNS` is a known positive int **and** line 2 is non-empty. `outputFallback()` stays single-line.
+Adding or moving a segment means picking its line in `renderStatusLine`, not just its position. Wrap fires only when `cols` is a known positive int **and** line 2 is non-empty. `outputFallback()` stays single-line — it calls `renderStatusLine` with a static `facts.cols: undefined`, which `layout` treats as unknown width.
 
 `visibleWidth()` strips ANSI before measuring — a new escape sequence not covered by its regex breaks wrap math.
 

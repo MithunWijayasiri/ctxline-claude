@@ -609,63 +609,80 @@ function visibleWidth(str) {
 }
 
 // Responsive layout: one line when it fits the terminal, else line1 (identity + context)
-// on top and line2 (usage/cost/task) below. Splits only when COLUMNS is known (Claude Code
-// v2.1.153+) and the single line overflows — unknown width or an empty line2 stays single,
-// so there is no regression on older clients or wide terminals.
-function layout(line1Parts, line2Parts) {
+// on top and line2 (usage/cost/task) below. Splits only when cols is known (Claude Code
+// v2.1.153+ sets COLUMNS, read by collectFacts) and the single line overflows — unknown
+// width or an empty line2 stays single, so there is no regression on older clients or wide
+// terminals.
+function layout(line1Parts, line2Parts, cols) {
   const single = [...line1Parts, ...line2Parts].join(SEGMENT_SEP);
   if (line2Parts.length === 0) return single;
-  const cols = parseInt(process.env.COLUMNS, 10);
   if (Number.isFinite(cols) && cols > 0 && visibleWidth(single) > cols - WIDTH_MARGIN) {
     return line1Parts.join(SEGMENT_SEP) + '\n' + line2Parts.join(SEGMENT_SEP);
   }
   return single;
 }
 
-// Main
-function outputStatus(data, usage) {
+// Gathers everything outputStatus needs that touches fs/child_process/env: git branch +
+// ahead/behind (.git/HEAD, `git rev-list`), the in-progress task (~/.claude/todos), and the
+// terminal width (COLUMNS). Kept separate from renderStatusLine so the render step is pure.
+// Wrapped in its own try/catch (unlike renderStatusLine, it's called outside outputStatus's
+// try/catch in emit()) — a malformed workspace.current_dir (e.g. non-string) can throw from
+// path.basename or resolveGitDir, and this must still degrade to a renderable fallback.
+function collectFacts(data) {
   try {
-    const model = shortenModel(data?.model?.display_name || 'Claude');
     const dir = data?.workspace?.current_dir || process.cwd();
     const dirname = path.basename(dir);
     const branch = DISABLED.has('branch') ? '' : getGitBranch(dir);
     const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
-    const effort = DISABLED.has('effort') ? '' : (data?.effort?.level || '');
     const sessionId = data?.session_id || '';
-    const remaining = data?.context_window?.remaining_percentage;
-
-    const contextBar = getContextBar(remaining);
-    const cost = DISABLED.has('cost') ? '' : getCostSegment(data);
     const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
+    const cols = parseInt(process.env.COLUMNS, 10);
+    return { dirname, branch, sync, task, cols };
+  } catch (e) {
+    return { dirname: '~', branch: '', sync: '', task: '', cols: undefined };
+  }
+}
 
-    // line1 = identity + context (always); line2 = usage/cost/task (wrap target).
-    const line1 = [];
-    line1.push(branch
-      ? `${dirname} ${colors.dim}⎇ ${branch}${colors.reset}${sync ? ' ' + sync : ''}`
-      : dirname);
-    line1.push(renderModelEffort(model, effort));
-    line1.push(contextBar);
+// Pure: data + facts (see collectFacts) + resolved usage bars -> the rendered line(s).
+// No fs/child_process/network access, so it's callable directly in tests.
+function renderStatusLine(data, facts, usage) {
+  const model = shortenModel(data?.model?.display_name || 'Claude');
+  const effort = DISABLED.has('effort') ? '' : (data?.effort?.level || '');
+  const remaining = data?.context_window?.remaining_percentage;
 
-    const line2 = [];
-    if (usage?.current) line2.push(usage.current);
-    if (usage?.weekly) line2.push(usage.weekly);
-    if (usage?.models?.length) line2.push(...usage.models);
-    if (cost) line2.push(cost);
-    if (task) line2.push(`${colors.dim}${task}${colors.reset}`);
+  const contextBar = getContextBar(remaining);
+  const cost = DISABLED.has('cost') ? '' : getCostSegment(data);
 
-    process.stdout.write(layout(line1, line2));
+  // line1 = identity + context (always); line2 = usage/cost/task (wrap target).
+  const line1 = [];
+  line1.push(facts.branch
+    ? `${facts.dirname} ${colors.dim}⎇ ${facts.branch}${colors.reset}${facts.sync ? ' ' + facts.sync : ''}`
+    : facts.dirname);
+  line1.push(renderModelEffort(model, effort));
+  line1.push(contextBar);
+
+  const line2 = [];
+  if (usage?.current) line2.push(usage.current);
+  if (usage?.weekly) line2.push(usage.weekly);
+  if (usage?.models?.length) line2.push(...usage.models);
+  if (cost) line2.push(cost);
+  if (facts.task) line2.push(`${colors.dim}${facts.task}${colors.reset}`);
+
+  return layout(line1, line2, facts.cols);
+}
+
+// Main
+function outputStatus(data, facts, usage) {
+  try {
+    process.stdout.write(renderStatusLine(data, facts, usage));
   } catch (e) {
     process.stdout.write('Status unavailable');
   }
 }
 
 function outputFallback(usage) {
-  const contextBar = getContextBar(undefined);
-  const parts = ['~', 'Claude', contextBar];
-  if (usage?.current) parts.push(usage.current);
-  if (usage?.weekly) parts.push(usage.weekly);
-  if (usage?.models?.length) parts.push(...usage.models);
-  process.stdout.write(parts.join(' \u2502 '));
+  const facts = { dirname: '~', branch: '', sync: '', task: '', cols: undefined };
+  process.stdout.write(renderStatusLine(null, facts, usage));
 }
 
 // Resolve usage bars for a (possibly null) parsed stdin payload.
@@ -724,7 +741,7 @@ function readStdinThen(timeoutMs, fn) {
 function emit(data) {
   resolveUsage(data, (usage) => {
     if (data) {
-      outputStatus(data, usage);
+      outputStatus(data, collectFacts(data), usage);
     } else {
       outputFallback(usage);
     }
@@ -814,5 +831,5 @@ if (require.main === module) {
     readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, normalizePercentage, readStdinThen };
+  module.exports = { parseScopedLimits, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask };
 }

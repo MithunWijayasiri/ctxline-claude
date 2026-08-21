@@ -1,5 +1,8 @@
 // Render tests for statusline.js
-// Spawns the real script and asserts on its stdin -> stdout contract.
+// Format/colour-band/segment-order/wrap assertions call the exported pure functions
+// (renderStatusLine, renderSubagentTask) directly. What's left spawns the real script and
+// asserts on its stdin -> stdout contract: fs/git-dependent gathering, the usage cache/API
+// pipeline, CTXLINE_DISABLE env-parsing, and the execution contract (always prints, exit 0).
 // Fully self-contained: no network, no credentials, no API key required.
 
 const { test, after } = require('node:test');
@@ -174,9 +177,32 @@ const PURPLE = '\x1b[38;5;135m';
 const DIM = '\x1b[2m';
 const BLINK = '\x1b[5m';
 
+// renderStatusLine/renderSubagentTask are pure (no fs/child_process/network), so format,
+// colour-band, segment-order and wrap assertions call them directly instead of spawning a
+// child process. What's left spawned: git-branch/ahead-behind detection (real .git dir +
+// subprocess), the usage cache/API pipeline, CTXLINE_DISABLE env-parsing (module-load-time
+// state, needs a fresh process per value), and the execution-contract tests below.
+const { parseScopedLimits, readStdinThen, renderStatusLine, renderSubagentTask } = require('../statusline.js');
+
+// Same shape as fixture()'s stdin JSON, but as a plain object (no JSON round-trip needed
+// for a direct call).
+function dataObj(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, cost) {
+  return JSON.parse(fixture(remaining, dir, model, effort, cost));
+}
+
+// facts a git-free, task-free directory produces (what collectFacts returns absent any
+// repo/task/COLUMNS); override individual fields per test.
+function plainFacts(overrides = {}) {
+  return { dirname: 'myproject', branch: '', sync: '', task: '', cols: undefined, ...overrides };
+}
+
+function render(data, facts, usage) {
+  const raw = renderStatusLine(data, facts, usage);
+  return { raw, clean: raw.replace(/\x1b\[[0-9;]*m/g, '') };
+}
+
 test('line assembly: dir basename | model | context, separated by │', () => {
-  const { code, clean } = run(fixture(40, '/home/me/cool-project', 'Sonnet 4.6'));
-  assert.strictEqual(code, 0);
+  const { clean } = render(dataObj(40, '/home/me/cool-project', 'Sonnet 4.6'), plainFacts({ dirname: 'cool-project' }));
   const parts = clean.split(' │ ');
   assert.strictEqual(parts[0], 'cool-project');        // basename only
   assert.strictEqual(parts[1], 'Sonnet 4.6');          // model passes through
@@ -184,7 +210,7 @@ test('line assembly: dir basename | model | context, separated by │', () => {
 });
 
 test('model name is shortened: "(1M context)" -> "(1M)"', () => {
-  const { clean } = run(fixture(40, '/home/me/p', 'Opus 4.8 (1M context)'));
+  const { clean } = render(dataObj(40, '/home/me/p', 'Opus 4.8 (1M context)'), plainFacts());
   const parts = clean.split(' │ ');
   assert.strictEqual(parts[1], 'Opus 4.8 (1M)');
 });
@@ -250,84 +276,84 @@ test('control chars in a hand-crafted HEAD are stripped from the branch', () => 
 });
 
 test('thinking effort renders next to the model (· <level>)', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'high'));
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'high'), plainFacts());
   const parts = clean.split(' │ ');
   assert.match(parts[1], /Opus 4\.8 · high$/);
 });
 
 test('no effort field -> model segment unchanged', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8'));
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8'), plainFacts());
   const parts = clean.split(' │ ');
   assert.strictEqual(parts[1], 'Opus 4.8');
 });
 
 test('effort = max is red', () => {
-  const { raw, clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'max'));
+  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'max'), plainFacts());
   assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · max');
   assert.ok(raw.includes(RED), 'expected red for max effort');
 });
 
 test('effort = ultracode is purple', () => {
-  const { raw, clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'ultracode'));
+  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'ultracode'), plainFacts());
   assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · ultracode');
   assert.ok(raw.includes(PURPLE), 'expected purple for ultracode effort');
 });
 
 test('effort = xhigh is dim (not highlighted red/purple)', () => {
-  const { raw, clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'xhigh'));
+  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'xhigh'), plainFacts());
   assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · xhigh');
   assert.ok(raw.includes(DIM), 'xhigh effort uses the dim style');
   assert.ok(!raw.includes(PURPLE) && !raw.includes(RED), 'xhigh must not be highlighted');
 });
 
 test('session cost renders as $X.XX (two decimals)', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.4));
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', undefined, 0.4), plainFacts());
   assert.match(clean, /\$0\.40\b/);                    // 0.4 -> "$0.40"
 });
 
 test('session cost is dim', () => {
-  const { raw } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 1.5));
+  const { raw } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', undefined, 1.5), plainFacts());
   assert.ok(raw.includes(`${DIM}$1.50`), 'expected dim-rendered cost');
 });
 
 test('no cost field -> segment omitted (finite-guarded, no $)', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8'));
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8'), plainFacts());
   assert.ok(!clean.includes('$'), 'cost segment should be absent without cost.total_cost_usd');
 });
 
 test('cost renders after usage and before task', () => {
-  // Fresh-cache usage + cost present; no in_progress todo in FAKE_HOME -> cost is last.
-  const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 });
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), { home, usage: true });
+  // No task active (facts.task='') -> cost is the last segment.
+  const usage = { current: 'H42', weekly: 'W31' };
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), plainFacts(), usage);
   const parts = clean.split(' │ ');
   const costIdx = parts.findIndex(p => p.includes('$0.42'));
-  const weeklyIdx = parts.findIndex(p => /^W\d+/.test(p));
+  const weeklyIdx = parts.findIndex(p => p === 'W31');
   assert.ok(costIdx > weeklyIdx, 'cost should come after the weekly usage segment');
   assert.strictEqual(costIdx, parts.length - 1, 'cost is the last segment when no task is active');
 });
 
 test('context bar shows used% = 100 - remaining', () => {
-  const { clean } = run(fixture(65));
+  const { clean } = render(dataObj(65), plainFacts());
   assert.match(clean, /C35 /);                    // remaining 65 -> used 35 -> "C35 <bar>"
 });
 
 test('threshold: used < 50 is green', () => {
-  const { raw } = run(fixture(60));                    // used 40
+  const { raw } = render(dataObj(60), plainFacts());                    // used 40
   assert.ok(raw.includes(GREEN), 'expected green color code');
 });
 
 test('threshold: 50 <= used < 65 is yellow', () => {
-  const { raw } = run(fixture(40));                    // used 60
+  const { raw } = render(dataObj(40), plainFacts());                    // used 60
   assert.ok(raw.includes(YELLOW), 'expected yellow color code');
 });
 
 test('threshold: 65 <= used < 80 is orange', () => {
-  const { raw } = run(fixture(25));                    // used 75
+  const { raw } = render(dataObj(25), plainFacts());                    // used 75
   assert.ok(raw.includes(ORANGE), 'expected orange color code');
 });
 
 test('threshold: used >= 80 is blinking red, no emoji', () => {
-  const { raw, clean } = run(fixture(10));             // used 90
+  const { raw, clean } = render(dataObj(10), plainFacts());             // used 90
   assert.ok(raw.includes(BLINK) && raw.includes(RED), 'expected blink + red');
   assert.ok(!clean.includes('\u{1F480}'), 'skull emoji should not be present');
   assert.match(clean, /C90 /);
@@ -351,6 +377,19 @@ test('missing fields -> no crash, exit 0', () => {
   const { code, clean } = run('{}');
   assert.strictEqual(code, 0);
   assert.ok(clean.includes('Claude'));                 // default model name
+  assert.match(clean, /C\d+ /);
+});
+
+test('malformed workspace.current_dir (non-string) -> no crash, exit 0', () => {
+  // A non-string current_dir throws from path.basename/resolveGitDir inside collectFacts,
+  // which runs outside outputStatus's try/catch (in emit()) -- collectFacts must swallow it.
+  const { code, clean } = run(JSON.stringify({
+    model: { display_name: 'Opus 4.8' },
+    workspace: { current_dir: 12345 },
+    session_id: 'test-session',
+    context_window: { remaining_percentage: 40 }
+  }));
+  assert.strictEqual(code, 0);
   assert.match(clean, /C\d+ /);
 });
 
@@ -396,8 +435,6 @@ test('stdin rate_limits -> 5h/7d render with no cache and no creds', () => {
 // Model-scoped weekly limits ("Fable weekly limit at 86%"). The /usage payload reports
 // these in a `limits` array; they never appear on stdin, so they always come from the
 // cache/API path. parseScopedLimits is exercised directly against the real payload shape.
-
-const { parseScopedLimits, readStdinThen } = require('../statusline.js');
 
 // A trimmed copy of a real GET /api/oauth/usage response: the legacy seven_day_<model>
 // keys are all null, and the live scoped limit lives in `limits`.
@@ -589,11 +626,12 @@ test('stdin rate_limits takes precedence over a fresh cache', () => {
 });
 
 // Responsive layout: usage/cost/task wrap to a second line only when the rendered line
-// overflows the terminal width (process.env.COLUMNS). Width unknown or line fits -> single.
+// overflows facts.cols. Width unknown or line fits -> single. layout() reads facts.cols
+// directly (no env access), so these are direct renderStatusLine calls.
 
 test('narrow terminal wraps usage to a second line (line1 identity+context, line2 usage)', () => {
-  const { code, raw, clean } = run(fixtureWithRateLimits(40), { usage: true, columns: 30 });
-  assert.strictEqual(code, 0);
+  const usage = { current: 'H24 ↺ 2h', weekly: 'W41 ↺ 2d14h' };
+  const { raw, clean } = render(dataObj(40), plainFacts({ cols: 30 }), usage);
   assert.ok(raw.includes('\n'), 'expected a line break on a narrow terminal');
   const [l1, l2] = clean.split('\n');
   assert.match(l1, /C\d+ /, 'context stays on line 1');
@@ -603,36 +641,27 @@ test('narrow terminal wraps usage to a second line (line1 identity+context, line
 });
 
 test('wide terminal keeps everything on one line', () => {
-  const { raw, clean } = run(fixtureWithRateLimits(40), { usage: true, columns: 200 });
+  const usage = { current: 'H24 ↺ 2h', weekly: 'W41 ↺ 2d14h' };
+  const { raw, clean } = render(dataObj(40), plainFacts({ cols: 200 }), usage);
   assert.ok(!raw.includes('\n'), 'no wrap when the line fits');
   assert.match(clean, /C\d+ .*H\d+\b.*W\d+\b/, 'context + usage all on one line');
 });
 
-test('unknown width (COLUMNS unset) never wraps', () => {
-  const { raw } = run(fixtureWithRateLimits(40), { usage: true });   // run() deletes COLUMNS
-  assert.ok(!raw.includes('\n'), 'absent COLUMNS -> single line (no regression on old clients)');
+test('unknown width (cols undefined) never wraps', () => {
+  const usage = { current: 'H24 ↺ 2h', weekly: 'W41 ↺ 2d14h' };
+  const { raw } = render(dataObj(40), plainFacts({ cols: undefined }), usage);
+  assert.ok(!raw.includes('\n'), 'absent cols -> single line (no regression on old clients)');
 });
 
 test('narrow terminal with no usage/cost/task stays single line', () => {
-  // Only identity + context exist (no rate_limits, API-key path skips usage) -> nothing to wrap.
-  const { raw } = run(fixture(40, '/no/such/repo', 'Opus 4.8'), { columns: 10 });
+  // Only identity + context exist (no usage passed) -> nothing to wrap.
+  const { raw } = render(dataObj(40, '/no/such/repo', 'Opus 4.8'), plainFacts({ cols: 10 }));
   assert.ok(!raw.includes('\n'), 'empty line2 -> single line regardless of width');
 });
 
 test('narrow wrap puts cost on line 2 alongside usage', () => {
-  const nowSec = Math.floor(Date.now() / 1000);
-  const input = JSON.stringify({
-    model: { display_name: 'Opus 4.8' },
-    workspace: { current_dir: '/tmp/myproject' },
-    session_id: 'test-session',
-    context_window: { remaining_percentage: 40 },
-    cost: { total_cost_usd: 1.23 },
-    rate_limits: {
-      five_hour: { used_percentage: 23.5, resets_at: nowSec + 2 * 3600 },
-      seven_day: { used_percentage: 41.2, resets_at: nowSec + 62 * 3600 }
-    }
-  });
-  const { clean } = run(input, { usage: true, columns: 30 });
+  const usage = { current: 'H24 ↺ 2h', weekly: 'W41 ↺ 2d14h' };
+  const { clean } = render(dataObj(40, '/tmp/myproject', 'Opus 4.8', undefined, 1.23), plainFacts({ cols: 30 }), usage);
   const [l1, l2] = clean.split('\n');
   assert.ok(!l1.includes('$1.23'), 'cost must not be on line 1');
   assert.match(l2, /\$1\.23\b/, 'cost wraps to line 2');
@@ -780,66 +809,55 @@ function cleanContent(s) {
   return s.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
+// renderSubagentTask is pure (task -> string), so format/order assertions call it directly.
+// Only the emitSubagent wrapper's payload-filtering contract (bad JSON, no tasks array, a
+// task without an id) still needs a spawn — see below.
+
 test('subagent: full task renders name │ model · effort │ context bar │ elapsed time', () => {
-  const input = JSON.stringify({ tasks: [
-    {
-      id: 't1', name: 'reviewer', model: 'claude-opus-5', effort: 'max',
-      tokenCount: 45200, contextWindowSize: 200000,
-      startTime: Math.floor(Date.now() / 1000) - 252 // epoch-seconds, 4m12s ago
-    }
-  ] });
-  const { code, lines } = runSubagent(input);
-  assert.strictEqual(code, 0);
-  assert.strictEqual(lines.length, 1);
-  assert.strictEqual(lines[0].id, 't1');
-  const parts = cleanContent(lines[0].content).split(' │ ');
+  const content = renderSubagentTask({
+    id: 't1', name: 'reviewer', model: 'claude-opus-5', effort: 'max',
+    tokenCount: 45200, contextWindowSize: 200000,
+    startTime: Math.floor(Date.now() / 1000) - 252 // epoch-seconds, 4m12s ago
+  });
+  const parts = cleanContent(content).split(' │ ');
   assert.strictEqual(parts[0], 'reviewer');
   assert.strictEqual(parts[1], 'Opus 5 · max');
   assert.match(parts[2], /^C23 /);                    // 45200/200000 = 22.6% -> rounds to 23
-  assert.match(parts[3], /^⏱ 4m\d{1,2}s$/);            // 4m12s + spawn/CI overhead, still under 5m
-  assert.ok(lines[0].content.includes(RED), 'max effort is red, same as the main line');
+  assert.match(parts[3], /^⏱ 4m\d{1,2}s$/);            // 4m12s ago, still under 5m
+  assert.ok(content.includes(RED), 'max effort is red, same as the main line');
 });
 
 test('subagent: absent model and effort -> only name and elapsed time render', () => {
   const startTime = Date.now() - 18000; // epoch-ms, 18s ago
-  const input = JSON.stringify({ tasks: [{ id: 't2', name: 'explorer', startTime }] });
-  const { lines } = runSubagent(input);
-  assert.match(cleanContent(lines[0].content), /^explorer │ ⏱ \d{1,2}s$/); // 18s + spawn/CI overhead, still under 1m
+  const content = renderSubagentTask({ id: 't2', name: 'explorer', startTime });
+  assert.match(cleanContent(content), /^explorer │ ⏱ \d{1,2}s$/); // 18s ago, still under 1m
 });
 
 test('subagent: absent startTime -> no elapsed segment', () => {
-  const input = JSON.stringify({ tasks: [{ id: 't2b', name: 'explorer', tokenCount: 800, contextWindowSize: 1000 }] });
-  const { lines } = runSubagent(input);
-  const content = cleanContent(lines[0].content);
-  assert.ok(!content.includes('⏱'), 'no elapsed segment without startTime');
+  const content = renderSubagentTask({ id: 't2b', name: 'explorer', tokenCount: 800, contextWindowSize: 1000 });
+  assert.ok(!cleanContent(content).includes('⏱'), 'no elapsed segment without startTime');
 });
 
 test('subagent: unparseable startTime -> no elapsed segment', () => {
-  const input = JSON.stringify({ tasks: [{ id: 't2d', name: 'explorer', startTime: 'not-a-date' }] });
-  const { lines } = runSubagent(input);
-  assert.ok(!cleanContent(lines[0].content).includes('⏱'), 'no elapsed segment for an unparseable startTime');
+  const content = renderSubagentTask({ id: 't2d', name: 'explorer', startTime: 'not-a-date' });
+  assert.ok(!cleanContent(content).includes('⏱'), 'no elapsed segment for an unparseable startTime');
 });
 
 test('subagent: ISO string startTime is accepted', () => {
   const startTime = new Date(Date.now() - 5000).toISOString(); // 5s ago
-  const input = JSON.stringify({ tasks: [{ id: 't2c', name: 'x', startTime }] });
-  const { lines } = runSubagent(input);
-  assert.match(cleanContent(lines[0].content), /^x │ ⏱ \d{1,2}s$/); // 5s + spawn/CI overhead, still under 1m
+  const content = renderSubagentTask({ id: 't2c', name: 'x', startTime });
+  assert.match(cleanContent(content), /^x │ ⏱ \d{1,2}s$/); // 5s ago, still under 1m
 });
 
 test('subagent: absent effort (inherited) -> model renders alone, no "· effort"', () => {
-  const input = JSON.stringify({ tasks: [{ id: 't3', name: 'x', model: 'claude-sonnet-5' }] });
-  const { lines } = runSubagent(input);
-  assert.strictEqual(cleanContent(lines[0].content), 'x │ Sonnet 5');
+  const content = renderSubagentTask({ id: 't3', name: 'x', model: 'claude-sonnet-5' });
+  assert.strictEqual(cleanContent(content), 'x │ Sonnet 5');
 });
 
 test('subagent: numeric effort (token budget) renders as-is, dim', () => {
-  const input = JSON.stringify({ tasks: [
-    { id: 't4', name: 'x', model: 'claude-haiku-4-5-20251001', effort: 12000 }
-  ] });
-  const { lines } = runSubagent(input);
-  assert.strictEqual(cleanContent(lines[0].content), 'x │ Haiku 4.5 · 12000');
-  assert.ok(lines[0].content.includes(`${DIM} · 12000`), 'numeric effort uses the dim style');
+  const content = renderSubagentTask({ id: 't4', name: 'x', model: 'claude-haiku-4-5-20251001', effort: 12000 });
+  assert.strictEqual(cleanContent(content), 'x │ Haiku 4.5 · 12000');
+  assert.ok(content.includes(`${DIM} · 12000`), 'numeric effort uses the dim style');
 });
 
 test('subagent: bad payload -> no output lines, exit 0', () => {
@@ -860,16 +878,16 @@ test('subagent: task without an id is skipped', () => {
 });
 
 test('subagent: model-ID shortening - "claude-opus-5" -> "Opus 5"', () => {
-  const { lines } = runSubagent(JSON.stringify({ tasks: [{ id: 't', model: 'claude-opus-5' }] }));
-  assert.strictEqual(cleanContent(lines[0].content), 'agent │ Opus 5');
+  const content = renderSubagentTask({ id: 't', model: 'claude-opus-5' });
+  assert.strictEqual(cleanContent(content), 'agent │ Opus 5');
 });
 
 test('subagent: model-ID shortening strips a trailing build date - "claude-haiku-4-5-20251001" -> "Haiku 4.5"', () => {
-  const { lines } = runSubagent(JSON.stringify({ tasks: [{ id: 't', model: 'claude-haiku-4-5-20251001' }] }));
-  assert.strictEqual(cleanContent(lines[0].content), 'agent │ Haiku 4.5');
+  const content = renderSubagentTask({ id: 't', model: 'claude-haiku-4-5-20251001' });
+  assert.strictEqual(cleanContent(content), 'agent │ Haiku 4.5');
 });
 
 test('subagent: model-ID shortening strips us./anthropic. vendor prefixes', () => {
-  const { lines } = runSubagent(JSON.stringify({ tasks: [{ id: 't', model: 'us.anthropic.claude-opus-5' }] }));
-  assert.strictEqual(cleanContent(lines[0].content), 'agent │ Opus 5');
+  const content = renderSubagentTask({ id: 't', model: 'us.anthropic.claude-opus-5' });
+  assert.strictEqual(cleanContent(content), 'agent │ Opus 5');
 });
