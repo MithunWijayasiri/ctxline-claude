@@ -625,15 +625,22 @@ function layout(line1Parts, line2Parts, cols) {
 // Gathers everything outputStatus needs that touches fs/child_process/env: git branch +
 // ahead/behind (.git/HEAD, `git rev-list`), the in-progress task (~/.claude/todos), and the
 // terminal width (COLUMNS). Kept separate from renderStatusLine so the render step is pure.
+// Wrapped in its own try/catch (unlike renderStatusLine, it's called outside outputStatus's
+// try/catch in emit()) — a malformed workspace.current_dir (e.g. non-string) can throw from
+// path.basename or resolveGitDir, and this must still degrade to a renderable fallback.
 function collectFacts(data) {
-  const dir = data?.workspace?.current_dir || process.cwd();
-  const dirname = path.basename(dir);
-  const branch = DISABLED.has('branch') ? '' : getGitBranch(dir);
-  const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
-  const sessionId = data?.session_id || '';
-  const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
-  const cols = parseInt(process.env.COLUMNS, 10);
-  return { dirname, branch, sync, task, cols };
+  try {
+    const dir = data?.workspace?.current_dir || process.cwd();
+    const dirname = path.basename(dir);
+    const branch = DISABLED.has('branch') ? '' : getGitBranch(dir);
+    const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
+    const sessionId = data?.session_id || '';
+    const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
+    const cols = parseInt(process.env.COLUMNS, 10);
+    return { dirname, branch, sync, task, cols };
+  } catch (e) {
+    return { dirname: '~', branch: '', sync: '', task: '', cols: undefined };
+  }
 }
 
 // Pure: data + facts (see collectFacts) + resolved usage bars -> the rendered line(s).

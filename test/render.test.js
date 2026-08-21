@@ -380,6 +380,19 @@ test('missing fields -> no crash, exit 0', () => {
   assert.match(clean, /C\d+ /);
 });
 
+test('malformed workspace.current_dir (non-string) -> no crash, exit 0', () => {
+  // A non-string current_dir throws from path.basename/resolveGitDir inside collectFacts,
+  // which runs outside outputStatus's try/catch (in emit()) -- collectFacts must swallow it.
+  const { code, clean } = run(JSON.stringify({
+    model: { display_name: 'Opus 4.8' },
+    workspace: { current_dir: 12345 },
+    session_id: 'test-session',
+    context_window: { remaining_percentage: 40 }
+  }));
+  assert.strictEqual(code, 0);
+  assert.match(clean, /C\d+ /);
+});
+
 // Usage bar: cache-first behavior and the stale fallback that fixes the
 // "usage section disappears mid-session" bug.
 
