@@ -509,9 +509,10 @@ test('readStdinThen finishes on timeout with whatever was read so far', () => {
   try {
     return new Promise((resolve) => {
       readStdinThen(10, (input) => {
-        assert.strictEqual(input, '');
+        assert.strictEqual(input, '{"partial":true');
         resolve();
       });
+      fake.emit('data', '{"partial":true');
     });
   } finally {
     Object.defineProperty(process, 'stdin', original);
