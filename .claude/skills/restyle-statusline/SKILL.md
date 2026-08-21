@@ -23,7 +23,7 @@ After edits: `npm test` + `npm run preview`. Both must pass + look right.
 ## Current format
 
 ```text
-dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 ↺ 4h21m │ W31 ↺ 2d14h │ F86 ↺ 2d14h │ $44.21 │ task
+dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 ↺ 4h20m │ W31 ↺ 2d13h │ F86 ↺ 2d13h │ $44.21 │ task
 ```
 
 - Labels fused with percent: `C`=context, `H`=5h, `W`=7d, `<initial>`=model-scoped weekly limit (Fable → `F`, label derived from `scope.model.display_name` in `parseScopedLimits` — never hardcode a model list).
