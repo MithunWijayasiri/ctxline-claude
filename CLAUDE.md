@@ -68,7 +68,7 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 **Render seam.** `collectFacts(data)` gathers everything touching fs/child_process/env (git branch + ahead/behind, in-progress task, `COLUMNS`); pure `renderStatusLine(data, facts, usage)` formats; `outputStatus` is a ~3-line writer, try/catch → `Status unavailable`. `outputFallback` calls the same renderer with a static git/task-free `facts` (`cols: undefined` → single line, matching the fallback contract). Entry guarded by `require.main === module` so `test/render.test.js` can `require()` and call exports directly instead of spawning: `renderStatusLine`, `renderSubagentTask`, `parseScopedLimits`, `parseUsagePayload`, `normalizePercentage`, `readStdinThen`, `serializeUsageCache`.
 
 **Caches** (both in `~/.claude/cache/`):
-- `usage-cache.json` — `{ timestamp, data: { fiveHour, weekly, models }, lastAttempt }`, not formatted strings → old string-format caches ignored on read. Shared across sessions; `models` optional (pre-scoped-bars caches still validate). Fresh `FRESH_TTL_MS` 30s → render cache, skip API; stale → refresh, on API failure fall back to cache up to `STALE_TTL_MS` 10min. `lastAttempt` — stamped by `recordUsageAttempt()` before the request fires, success or failure — is the retry cooldown, independent of `timestamp`. Bars re-rendered every time via `buildUsageBar()` so countdowns recompute from `resetsAt`. Fronts the API path only — stdin `rate_limits` never reads or writes it.
+- `usage-cache.json` — `{ timestamp, data: { fiveHour, weekly, models }, lastAttempt }`, not formatted strings → old string-format caches ignored on read. Shared across sessions; `models` optional (pre-scoped-bars caches still validate). Fresh `FRESH_TTL_MS` 30s → render cache, skip API; stale → refresh, on API failure fall back to cache up to `STALE_TTL_MS` 10m. `lastAttempt` — stamped by `recordUsageAttempt()` before the request fires, success or failure — is the retry cooldown, independent of `timestamp`. Bars re-rendered every time via `buildUsageBar()` so countdowns recompute from `resetsAt`. Fronts the API path only — stdin `rate_limits` never reads or writes it.
 - `git-cache.json` — single entry `{ gitDir, timestamp, ahead, behind }`; different repo invalidates. Fresh `GIT_FRESH_TTL_MS` 5s (render burst spawns `git` once) → stale re-run → on slow/failed call fall back to last counts up to `GIT_STALE_TTL_MS` 60s so they don't flicker.
 
 **Two color schemes (intentional, do not unify):** context bar (`getContextBar`) steps 50/65/80 (≥80 → blink red); usage (`getUsageColor`) steps 50/75/90. Model-scoped bars opt out of both — `getScopedColor` (orange, red ≥90) passed as `buildUsageBar`'s optional 4th arg → several scoped bars read as one group while a nearly-spent one still stands out.
@@ -102,7 +102,7 @@ Skips everything main mode does besides stdin parsing — no usage API, git, tod
 
 `statusline.js` is source of truth; five files mirror the visible line and must change in the same edit or CI/release/site drifts. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
 
-`test/fixture.js` — shared by test + preview: fake-HOME construction, `usage-cache.json` seeding (via the exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
+Shared harness, not one of the five — `test/fixture.js`, used by test + preview: fake-HOME construction, `usage-cache.json` seeding (via the exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
 
 - `scripts/preview.js` — spawns the real `statusline.js` via the fixture against a seeded cache + stdin JSON. Cache-shape change → update the seed data passed to `seedUsageCache` **and** `render()` params/labels, or usage renders wrong/disappears. New stdin field read → add to the input object. The release body shows `head -n 1` of its output → keep the primary-line `console.log` **first**.
 - `test/render.test.js` — same fixture, same breakage; assertions pin visible labels/percentages/colors/order. `colors` codes change → update the constants atop the file.
@@ -112,7 +112,7 @@ Skips everything main mode does besides stdin parsing — no usage API, git, tod
 
 Full edit-point map: `.claude/skills/restyle-statusline/SKILL.md`.
 
-Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar; `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
+Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar glyph (`buildUsageBar` builds text-only `H`/`W`/scoped segments despite the name); `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
 
 Rule of thumb: change to **what the line looks like** → test assertions. Change to **cache shape or stdin fields** → both seeds. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
 
