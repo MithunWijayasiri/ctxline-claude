@@ -40,7 +40,15 @@ function seedFakeRepo(dir, branch) {
   fs.writeFileSync(path.join(dir, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`);
 }
 
-function git(dir, args) { return spawnSync('git', args, { cwd: dir, encoding: 'utf8' }); }
+// Throws on failure -- a swallowed error here would let seedDivergedRepo return a resolved
+// branch/counts that don't reflect what git actually did.
+function git(dir, args) {
+  const res = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+  if (res.error || res.status !== 0) {
+    throw res.error || new Error(`git ${args.join(' ')} failed (exit ${res.status}): ${res.stderr || ''}`);
+  }
+  return res;
+}
 function hasGit() { return spawnSync('git', ['--version'], { encoding: 'utf8' }).status === 0; }
 function gitCommit(dir, tag) {
   fs.writeFileSync(path.join(dir, 'f-' + tag), tag);
