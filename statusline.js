@@ -441,12 +441,13 @@ function readCachedUsage() {
   }
 }
 
-// Serialize usage data into the on-disk cache shape ({ timestamp, data }). Pure -- no fs --
-// so setCachedUsage and the test/preview cache seeds all produce exactly the same bytes the
-// real writer would; a reader/writer format mismatch becomes structurally impossible instead
-// of merely untested. `timestamp` defaults to now; tests override it to seed a stale cache.
+// Serialize usage data into the on-disk cache shape ({ timestamp, data, lastAttempt }). Pure
+// -- no fs -- so setCachedUsage and the test/preview cache seeds all produce exactly the same
+// bytes the real writer would; a reader/writer format mismatch becomes structurally impossible
+// instead of merely untested. `timestamp` defaults to now; tests override it to seed a stale
+// cache. A successful write is itself an attempt, so `lastAttempt` starts equal to `timestamp`.
 function serializeUsageCache(data, timestamp = Date.now()) {
-  return JSON.stringify({ timestamp, data });
+  return JSON.stringify({ timestamp, data, lastAttempt: timestamp });
 }
 
 // Write usage data to cache (shared across all sessions)
@@ -457,6 +458,40 @@ function setCachedUsage(data) {
     }
 
     fs.writeFileSync(USAGE_CACHE_FILE, serializeUsageCache(data), 'utf8');
+  } catch (e) {
+    // Silently fail
+  }
+}
+
+// Age in ms since the last API attempt (success or failure), or null if none recorded yet.
+// Read directly from the raw file rather than via readCachedUsage so the cooldown still
+// applies when no valid data has ever been cached (every attempt so far has failed).
+function getLastAttemptAge() {
+  try {
+    if (!fs.existsSync(USAGE_CACHE_FILE)) return null;
+    const cache = JSON.parse(fs.readFileSync(USAGE_CACHE_FILE, 'utf8'));
+    if (!cache || !Number.isFinite(cache.lastAttempt) || cache.lastAttempt <= 0) return null;
+    return Date.now() - cache.lastAttempt;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Record that an API attempt is starting, preserving any existing cached data/timestamp so a
+// failed refresh doesn't erase the last successful one. Written before the request so a hang
+// or a process exit mid-request still counts as an attempt for cooldown purposes.
+function recordUsageAttempt() {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) {
+      fs.mkdirSync(CACHE_DIR, { recursive: true });
+    }
+    let existing = null;
+    try {
+      existing = JSON.parse(fs.readFileSync(USAGE_CACHE_FILE, 'utf8'));
+    } catch (e) {}
+    const merged = existing && typeof existing === 'object' ? { ...existing } : {};
+    merged.lastAttempt = Date.now();
+    fs.writeFileSync(USAGE_CACHE_FILE, JSON.stringify(merged), 'utf8');
   } catch (e) {
     // Silently fail
   }
@@ -545,7 +580,17 @@ function getRawUsage(callback) {
     return callback(cached.data);
   }
 
-  // Cache is stale or missing -> refresh from the API.
+  // A refresh (successful or not) was attempted within FRESH_TTL_MS -> still in cooldown,
+  // don't hit the API again. Serve stale cached data if it's still within STALE_TTL_MS, else
+  // nothing. Without this, a repeatedly failing/timing-out refresh would re-hit the API on
+  // every render instead of backing off (issue #41).
+  const attemptAge = getLastAttemptAge();
+  if (attemptAge != null && attemptAge < FRESH_TTL_MS) {
+    return callback(cached && cached.age < STALE_TTL_MS ? cached.data : null);
+  }
+
+  // Cache is stale or missing and no attempt is in cooldown -> refresh from the API.
+  recordUsageAttempt();
   getApiUsage((fresh) => {
     if (fresh) {
       callback(fresh);

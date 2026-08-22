@@ -384,6 +384,39 @@ test('expired cache + failing API -> usage omitted', () => {
   assert.ok(!clean.includes('H57'), 'current usage should be omitted once cache is too old');
 });
 
+// #41: a failed/timed-out refresh must still respect FRESH_TTL_MS before retrying, the same
+// as a successful one -- otherwise every render re-hits a failing API instead of backing off.
+
+test('#41: cold cache + failing API -> repeated renders make at most one attempt per cooldown', () => {
+  const home = seedHome({}); // credentials with no accessToken, no cache file at all
+  const cacheFile = path.join(home, '.claude', 'cache', 'usage-cache.json');
+
+  run(fixture(40), { home, usage: true });
+  assert.ok(fs.existsSync(cacheFile), 'a failed attempt should still record lastAttempt');
+  const first = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  assert.ok(Number.isFinite(first.lastAttempt));
+
+  run(fixture(40), { home, usage: true }); // immediately after -> still in cooldown
+  const second = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  assert.strictEqual(second.lastAttempt, first.lastAttempt, 'render within FRESH_TTL_MS should not re-attempt');
+});
+
+test('#41: stale cache + failing API -> repeated renders make at most one attempt per cooldown', () => {
+  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH, < STALE
+  const cacheFile = path.join(home, '.claude', 'cache', 'usage-cache.json');
+
+  const first = run(fixture(40), { home, usage: true });
+  assert.match(first.clean, /H57\b/, 'stale cache still served while the refresh fails');
+  const afterFirst = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  assert.ok(Date.now() - afterFirst.lastAttempt < 5000, 'the failed refresh should stamp lastAttempt to now');
+  assert.strictEqual(afterFirst.data.fiveHour.percentage, 57, 'recording the attempt must not clobber the cached data');
+
+  const second = run(fixture(40), { home, usage: true }); // immediately after -> still in cooldown
+  assert.match(second.clean, /H57\b/, 'still served from stale cache, no crash');
+  const afterSecond = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  assert.strictEqual(afterSecond.lastAttempt, afterFirst.lastAttempt, 'render within FRESH_TTL_MS should not re-attempt');
+});
+
 // Usage from stdin `rate_limits`: the network/cache path is bypassed entirely.
 
 test('stdin rate_limits -> 5h/7d render with no cache and no creds', () => {
@@ -610,6 +643,23 @@ test('CTXLINE_DISABLE=usage also hides the scoped bars', () => {
   const { clean } = run(fixtureWithRateLimits(40), { home, usage: true, disable: 'usage' });
   assert.ok(!/\bF\d+/.test(clean), 'scoped bar is part of the usage segment');
   assert.ok(!clean.includes('H24'), 'H bar hidden too');
+});
+
+test('#41: stdin path respects the same cooldown for the scoped-models refresh', () => {
+  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH, < STALE
+  seedScopedCache(home, [{ label: 'F', percentage: 86 }]);
+  const cacheFile = path.join(home, '.claude', 'cache', 'usage-cache.json');
+
+  const first = run(fixtureWithRateLimits(40), { home, usage: true });
+  assert.match(first.clean, /H24\b/, 'H/W come from stdin regardless of cooldown');
+  assert.match(first.clean, /F86\b/, 'scoped bar still comes from the stale cache while the refresh fails');
+  const afterFirst = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  assert.ok(Date.now() - afterFirst.lastAttempt < 5000, 'the failed refresh should stamp lastAttempt to now');
+
+  const second = run(fixtureWithRateLimits(40), { home, usage: true }); // immediately after -> still in cooldown
+  assert.match(second.clean, /F86\b/, 'still served from the stale cache on the next render');
+  const afterSecond = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+  assert.strictEqual(afterSecond.lastAttempt, afterFirst.lastAttempt, 'render within FRESH_TTL_MS should not re-attempt');
 });
 
 test('a cache written before scoped bars existed stays valid', () => {
