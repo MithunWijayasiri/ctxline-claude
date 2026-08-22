@@ -1,6 +1,6 @@
 ---
 name: restyle-statusline
-description: Change the statusline's visible design — layout, segment format, labels, colors, bars, or countdowns. Use when the user wants to redesign, compact, expand, recolor, or relabel the rendered line. Captures every file that mirrors the format so a restyle needs no re-discovery.
+description: Change the statusline's visible design — layout, segment format, labels, colors, bars, countdowns — or its cache shape / stdin fields. Use when the user wants to redesign, compact, expand, recolor, or relabel the rendered line, or when a `statusline.js` change has to be mirrored in the tests, preview, SVG, or site. Captures every edit point and the test-harness options so a sync pass needs no re-discovery.
 ---
 
 # Restyle statusline
@@ -73,6 +73,15 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 - Don't touch installers (`bin/install.js`, `install.sh`, `install.ps1`) — frozen. No Full/Lite prompt or second file (deleted upstream).
 - README has no sample line — leave it.
 - New ANSI color in `colors` (top of `statusline.js`) → add it to `scripts/preview-svg.js`'s `ANSI_HEX` table too, or `npm run preview:svg` silently falls back to the default text color for it.
+
+## Test harness options
+
+`test/fixture.js` backs both `test/render.test.js` and `scripts/preview.js`: fake-HOME construction, `usage-cache.json` seeding (through `statusline.js`'s exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside `package.json`'s `files` whitelist.
+
+- `run()` opts: `columns` (unset → single line), `disable` (→ `CTXLINE_DISABLE`).
+- Preview's `render()` takes the matching params — narrow scenario passes 40, opt-out scenario passes `usage,cost` — plus `models` (`[{ label, percentage, resetsInMin }]`) for the scoped-limit scenario.
+- Both clear `COLUMNS`/`CTXLINE_DISABLE` when unset, so a dev-env value can't skew output.
+- Git ahead/behind tests need real `git` (skipped if absent) and a fresh HOME per test, to isolate `git-cache.json`.
 
 ## Render to verify (ANSI in terminal)
 
