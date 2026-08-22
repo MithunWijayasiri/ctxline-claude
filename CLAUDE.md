@@ -74,7 +74,7 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 
 **Deliberate non-goals — do not re-propose:**
 - **Merging the two caches, or the two duration formatters** (`buildUsageBar`'s countdown vs `formatElapsed`). Two callers each, differing validators / units / refresh policies (git 5s/60s vs usage 30s/10m; countdown vs elapsed) — a shared `withCache`/`formatDuration` moves complexity into parameters. Revisit only on a third caller.
-- **Making the `lastAttempt` cooldown atomic.** The check (`getLastAttemptAge()`) and the claim (`recordUsageAttempt()`) aren't atomic across processes — concurrent hook invocations can both call `getApiUsage()`. Worst case is one extra API call, never a crash or bad render; a filesystem lock plus a multi-process test contradicts the single-file, zero-dependency constraint. Revisit only if concurrent hook processes prove common.
+- **Making the `lastAttempt` cooldown atomic.** The check (`getLastAttemptAge()`) and the claim (`recordUsageAttempt()`) aren't atomic across processes — every render that reads a stale `lastAttempt` before any of them writes one calls `getApiUsage()`, so the extra calls scale with how many hook processes render at once (the cache is shared across sessions), not a fixed one. Still never a crash or bad render; a filesystem lock plus a multi-process test contradicts the single-file, zero-dependency constraint. Revisit only if concurrent hook processes prove common.
 
 ## Subagent mode (`subagentStatusLine`)
 
