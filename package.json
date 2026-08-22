@@ -7,7 +7,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "preview": "node scripts/preview.js"
+    "preview": "node scripts/preview.js",
+    "preview:svg": "node scripts/preview-svg.js"
   },
   "engines": {
     "node": ">=18"

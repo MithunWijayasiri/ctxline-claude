@@ -441,6 +441,14 @@ function readCachedUsage() {
   }
 }
 
+// Serialize usage data into the on-disk cache shape ({ timestamp, data }). Pure -- no fs --
+// so setCachedUsage and the test/preview cache seeds all produce exactly the same bytes the
+// real writer would; a reader/writer format mismatch becomes structurally impossible instead
+// of merely untested. `timestamp` defaults to now; tests override it to seed a stale cache.
+function serializeUsageCache(data, timestamp = Date.now()) {
+  return JSON.stringify({ timestamp, data });
+}
+
 // Write usage data to cache (shared across all sessions)
 function setCachedUsage(data) {
   try {
@@ -448,12 +456,7 @@ function setCachedUsage(data) {
       fs.mkdirSync(CACHE_DIR, { recursive: true });
     }
 
-    const cache = {
-      timestamp: Date.now(),
-      data: data
-    };
-
-    fs.writeFileSync(USAGE_CACHE_FILE, JSON.stringify(cache), 'utf8');
+    fs.writeFileSync(USAGE_CACHE_FILE, serializeUsageCache(data), 'utf8');
   } catch (e) {
     // Silently fail
   }
@@ -818,5 +821,5 @@ if (require.main === module) {
     readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, parseUsagePayload, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask };
+  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask };
 }
