@@ -13,12 +13,12 @@ description: Change the statusline's visible design — layout, segment format, 
 |---|---|---|
 | `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | assertions on labels / `NN%` / colors / order | match new label regexes (e.g. `/C\d+ /`, `/H\d+\b/`); ANSI const block near top |
-| `scripts/preview.js` | seed + render check | cache seed shape, `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
-| `docs/assets/preview.svg` | marketing SVG (README/site) | 12 `<text>` elements (main statusline + subagent rows) with `<tspan>` runs |
-| `docs/index.html` | landing page | hero mock (`.term .line`, ~line 323), inspector `SIGNALS[]` array (~line 446), `.term` color classes (~line 129) |
+| `scripts/preview.js` | seed + render check | cache seed data (via `test/fixture.js`'s `seedUsageCache`), `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
+| `docs/assets/preview.svg` | marketing SVG (README/site) | 2 of its 12 `<text>` elements (main statusline + subagent row) are **generated**, not hand-edited — run `npm run preview:svg` after any output-shape change; the other 10 (window chrome, prompt lines, bullets) stay hand-authored |
+| `docs/index.html` | landing page | hero mock (`.term .line`) and subagent rows are checked by `test/docs-drift.test.js` (fails `npm test` on drift) — update its synthetic scenario if you change what they depict; inspector `SIGNALS[]` array and `.term` color classes are NOT checked, hand-verify |
 | `CLAUDE.md` | spec | format diagram (top), segment-source table, "visible contract" paragraph |
 
-After edits: `npm test` + `npm run preview`. Both must pass + look right.
+After edits: `npm test` + `npm run preview` + `npm run preview:svg`. All must pass + look right.
 
 ## Current format
 
@@ -72,6 +72,7 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 - Scoped bars come only from the `/usage` API payload, never stdin — preview/tests exercise them through the seeded cache, so a scoped-bar restyle needs the cache seed updated too.
 - Don't touch installers (`bin/install.js`, `install.sh`, `install.ps1`) — frozen. No Full/Lite prompt or second file (deleted upstream).
 - README has no sample line — leave it.
+- New ANSI color in `colors` (top of `statusline.js`) → add it to `scripts/preview-svg.js`'s `ANSI_HEX` table too, or `npm run preview:svg` silently falls back to the default text color for it.
 
 ## Render to verify (ANSI in terminal)
 

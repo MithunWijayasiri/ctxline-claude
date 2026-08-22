@@ -17,6 +17,7 @@ No build, no lint. Edit `statusline.js` directly.
 ```bash
 npm test           # render tests (Node built-in runner, zero deps)
 npm run preview    # sample lines for every color band + fallback
+npm run preview:svg # regenerate docs/assets/preview.svg's statusline tspans from a real render
 npm pack --dry-run # preview what publishes
 # Don't publish by hand — see Releasing.
 
@@ -101,13 +102,15 @@ Skips everything main mode does besides stdin parsing — no usage API, git, tod
 
 `statusline.js` is source of truth; five files mirror the visible line and must change in the same edit or CI/release/site drifts. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
 
-Executable fixtures — stale = CI/release breaks:
-- `scripts/preview.js` — spawns the real `statusline.js` against a seeded `usage-cache.json` + stdin JSON. Cache-shape change → update the seed **and** `render()` params/labels, or usage renders wrong/disappears. New stdin field read → add to the input object. The release body shows `head -n 1` of its output → keep the primary-line `console.log` **first**.
-- `test/render.test.js` — `seedHome()` writes the same cache file (same breakage); assertions pin visible labels/percentages/colors/order. `colors` codes change → update the constants atop the file.
+`test/fixture.js` — shared by both: fake-HOME construction, `usage-cache.json` seeding (via `statusline.js`'s own exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, and spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
 
-Docs/marketing — stale = silent drift:
-- `docs/assets/preview.svg` — the single statusline `<text>` element (`<tspan>` runs); shown in README + site.
-- `docs/index.html` — hero mock (`.term .line`), inspector `SIGNALS[]`, `.term` color classes.
+Executable fixtures — stale = CI/release breaks:
+- `scripts/preview.js` — spawns the real `statusline.js` via `test/fixture.js` against a seeded cache + stdin JSON. Cache-shape change → update the seed data passed to `seedUsageCache` **and** `render()` params/labels, or usage renders wrong/disappears. New stdin field read → add to the input object. The release body shows `head -n 1` of its output → keep the primary-line `console.log` **first**.
+- `test/render.test.js` — same fixture, same breakage; assertions pin visible labels/percentages/colors/order. `colors` codes change → update the constants atop the file.
+
+Docs/marketing — no longer silent, both auto-checked:
+- `docs/assets/preview.svg` — the statusline `<text>` elements' `<tspan>` runs; shown in README + site. Generated, not hand-edited: `npm run preview:svg` (`scripts/preview-svg.js`) renders the real ANSI output for the same fixed scenario and rewrites just those tspans (ANSI SGR → hex, via its own `ANSI_HEX` table); window chrome, prompt lines, and the "○ " running-task bullet stay hand-authored. Run it after any change that would shift this scenario's output (colors, thresholds, format).
+- `docs/index.html` — hero mock (`.term .line`) and the subagent-panel rows are asserted against a real `renderStatusLine()`/`renderSubagentTask()` call by `test/docs-drift.test.js` (reconstructs the mock's visible text from its markup, byte-compares). A mismatch fails `npm test`, not just a future changelog. Inspector `SIGNALS[]` and `.term` color classes are still unchecked — hand-verify those.
 - `CLAUDE.md` — format diagram (top), segment-source table, visible contract below.
 
 Full edit-point map: `.claude/skills/restyle-statusline/SKILL.md`.

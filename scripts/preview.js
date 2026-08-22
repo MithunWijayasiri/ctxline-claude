@@ -5,72 +5,55 @@
 // (+ a tokenless credentials file) in a throwaway HOME, so the real statusline.js
 // renders the usage segment from cache without any network call.
 
-const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
+const {
+  makeHome, seedCredentials, seedUsageCache, seedFakeRepo, seedDivergedRepo, spawnMain, spawnSubagent
+} = require('../test/fixture.js');
 
-const SCRIPT = path.join(__dirname, '..', 'statusline.js');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-preview-'));
-process.on('exit', () => fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+// makeHome() creates each scenario's home independently (os.tmpdir()-rooted, not nested
+// under a shared parent) -- track them here for one cleanup pass on exit.
+const HOMES = [];
+process.on('exit', () => {
+  for (const home of HOMES) {
+    fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});
 
-// Build a real diverged git repo in `projectDir` so statusline.js renders ↑N↓M.
-// Best-effort: returns true on success, false if git is unavailable (caller falls back
-// to a fake .git/HEAD so the line — and the release body — still render).
+// Build a real diverged git repo (ahead 2, behind 1) in `projectDir` so statusline.js
+// renders ↑2↓1. Best-effort: returns true on success, false if git is unavailable (caller
+// falls back to a fake .git/HEAD so the line — and the release body — still render).
 function setupDivergedRepo(projectDir, branch) {
   try {
-    const g = (args) => spawnSync('git', args, { cwd: projectDir, encoding: 'utf8' });
     fs.mkdirSync(projectDir, { recursive: true });
-    if (g(['init', '-q']).status !== 0) return false;
-    const commit = (tag) => {
-      fs.writeFileSync(path.join(projectDir, 'f-' + tag), tag);
-      g(['add', '-A']); g(['commit', '-q', '-m', tag]);
-    };
-    g(['config', 'user.email', 't@t']); g(['config', 'user.name', 'preview']);
-    g(['config', 'commit.gpgsign', 'false']);
-    g(['config', 'remote.origin.url', '.']);
-    g(['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
-    commit('base');
-    g(['branch', '-M', branch]);                              // force the displayed branch name
-    const baseSha = g(['rev-parse', 'HEAD']).stdout.trim();
-    commit('up0');                                            // upstream +1 -> behind 1
-    const upstreamSha = g(['rev-parse', 'HEAD']).stdout.trim();
-    g(['update-ref', 'refs/remotes/origin/' + branch, upstreamSha]);
-    g(['config', 'branch.' + branch + '.remote', 'origin']);
-    g(['config', 'branch.' + branch + '.merge', 'refs/heads/' + branch]);
-    g(['reset', '--hard', '-q', baseSha]);
-    commit('local0'); commit('local1');                      // local +2 -> ahead 2
-    return g(['rev-parse', '--git-dir']).status === 0;
+    seedDivergedRepo(projectDir, { ahead: 2, behind: 1, branch });
+    return true;
   } catch (e) {
     return false;
   }
 }
 
 function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, models, branch, effort, rateLimits, cost, columns, diverged, disable }) {
-  const home = fs.mkdtempSync(path.join(TMP, 'home-'));
-  const cacheDir = path.join(home, '.claude', 'cache');
-  fs.mkdirSync(cacheDir, { recursive: true });
+  const home = makeHome();
+  HOMES.push(home);
   // Only H/W bypass the cache: with rateLimits and no models, seed neither creds nor cache,
   // proving that path needs no network. Model-scoped bars never arrive via stdin, so seed a
   // fresh cache whenever `models` is set — rateLimits or not (statusline.js reads both).
   if (!rateLimits || models) {
-    fs.writeFileSync(path.join(home, '.claude', '.credentials.json'), '{}'); // no token -> no network
-    fs.writeFileSync(path.join(cacheDir, 'usage-cache.json'), JSON.stringify({
-      timestamp: Date.now(),                                  // fresh -> cache-first renders it
-      data: {
-        fiveHour: { percentage: current, resetsAt: new Date(Date.now() + currentResetsInMin * 60000).toISOString() },
-        weekly: { percentage: weekly, resetsAt: new Date(Date.now() + weeklyResetsInMin * 60000).toISOString() },
-        // Model-scoped weekly limits. The cache holds the already-derived label, so seed it
-        // directly; statusline.js only derives F-from-Fable when parsing a live /usage payload.
-        ...(models ? {
-          models: models.map(m => ({
-            label: m.label,
-            percentage: m.percentage,
-            resetsAt: new Date(Date.now() + m.resetsInMin * 60000).toISOString()
-          }))
-        } : {})
-      }
-    }));
+    seedCredentials(home); // no token -> no network
+    seedUsageCache(home, {
+      fiveHour: { percentage: current, resetsAt: new Date(Date.now() + currentResetsInMin * 60000).toISOString() },
+      weekly: { percentage: weekly, resetsAt: new Date(Date.now() + weeklyResetsInMin * 60000).toISOString() },
+      // Model-scoped weekly limits. The cache holds the already-derived label, so seed it
+      // directly; statusline.js only derives F-from-Fable when parsing a live /usage payload.
+      ...(models ? {
+        models: models.map(m => ({
+          label: m.label,
+          percentage: m.percentage,
+          resetsAt: new Date(Date.now() + m.resetsInMin * 60000).toISOString()
+        }))
+      } : {})
+    }); // fresh timestamp (default) -> cache-first renders it
   }
 
   // Real on-disk dir so the branch segment renders. `diverged` builds a real repo with an
@@ -78,8 +61,7 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
   // reads it directly. basename(currentDir) keeps the displayed dir name.
   const projectDir = path.join(home, dir);
   if (!(diverged && setupDivergedRepo(projectDir, branch))) {
-    fs.mkdirSync(path.join(projectDir, '.git'), { recursive: true });
-    fs.writeFileSync(path.join(projectDir, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`);
+    seedFakeRepo(projectDir, branch);
   }
 
   const env = { ...process.env, HOME: home, USERPROFILE: home };
@@ -91,20 +73,15 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
   if (disable != null) env.CTXLINE_DISABLE = disable;       // segment opt-out scenario
   else delete env.CTXLINE_DISABLE;
 
-  const res = spawnSync(process.execPath, [SCRIPT], {
-    input: JSON.stringify({
-      model: { display_name: model },
-      workspace: { current_dir: projectDir },
-      session_id: 'preview',
-      context_window: { remaining_percentage: remaining },
-      effort: { level: effort },
-      ...(cost != null ? { cost: { total_cost_usd: cost } } : {}),
-      ...(rateLimits ? { rate_limits: rateLimits } : {})
-    }),
-    encoding: 'utf8',
-    timeout: 5000,
-    env
-  });
+  const res = spawnMain(JSON.stringify({
+    model: { display_name: model },
+    workspace: { current_dir: projectDir },
+    session_id: 'preview',
+    context_window: { remaining_percentage: remaining },
+    effort: { level: effort },
+    ...(cost != null ? { cost: { total_cost_usd: cost } } : {}),
+    ...(rateLimits ? { rate_limits: rateLimits } : {})
+  }), env);
 
   if (res.error) throw res.error;
   if (res.status !== 0) {
@@ -189,11 +166,7 @@ console.log('  ' + render({ ...base, effort: 'high', disable: 'usage,cost' }));
 // subagent`), separate stdin shape ({ tasks: [...] }), no cache/HOME seeding needed since
 // it reads only stdin. Two tasks cover both branches: full row, and no-effort (inherited).
 function renderSubagentPanel(tasks) {
-  const res = spawnSync(process.execPath, [SCRIPT, 'subagent'], {
-    input: JSON.stringify({ tasks }),
-    encoding: 'utf8',
-    timeout: 5000
-  });
+  const res = spawnSubagent(JSON.stringify({ tasks }));
   if (res.error) throw res.error;
   if (res.status !== 0) {
     throw new Error(`statusline.js subagent exited with ${res.status}\n${res.stderr || ''}`);

@@ -36,13 +36,13 @@
     <line x1="0" y1="326" x2="1280" y2="326" stroke="#20262e" stroke-width="1"></line>
 
 
-    <text x="28" y="354" font-size="14"><tspan fill="#d97757" font-weight="700">my-project</tspan><tspan fill="#7d8590"> ⎇ main </tspan><tspan fill="#3fb950">↑2</tspan><tspan fill="#f85149">↓1</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#c9d1d9">Opus 4.8 (1M)</tspan><tspan fill="#7d8590"> · high</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#3fb950">C45 ███</tspan><tspan fill="#2d333b">░░░</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#f0883e">H81</tspan><tspan fill="#7d8590"> ↺ 2h21m</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#3fb950">W31</tspan><tspan fill="#7d8590"> ↺ 2d14h</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">$44.21</tspan></text>
+    <text x="28" y="354" font-size="14"><tspan fill="#d97757" font-weight="700">my-project </tspan><tspan fill="#7d8590">⎇ main</tspan><tspan fill="#c9d1d9"> </tspan><tspan fill="#3fb950">↑2</tspan><tspan fill="#f85149">↓1</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#c9d1d9">Opus 4.8 (1M)</tspan><tspan fill="#7d8590"> · high</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#3fb950">C45 ███</tspan><tspan fill="#2d333b">░░░</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#f0883e">H81</tspan><tspan fill="#7d8590"> ↺ 2h20m</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#3fb950">W31</tspan><tspan fill="#7d8590"> ↺ 2d13h</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">$44.21</tspan></text>
 
     <text x="28" y="379" font-size="13"><tspan fill="#f4bf4f">⏵⏵ auto mode on</tspan><tspan fill="#7d8590"> (shift+tab to cycle) · </tspan><tspan fill="#58a6ff">←</tspan><tspan fill="#7d8590"> for agents</tspan></text>
 
 
     <text x="28" y="411" font-size="13"><tspan fill="#c9d1d9">● main</tspan></text>
-    <text x="28" y="435" font-size="13"><tspan fill="#7d8590">○ </tspan><tspan fill="#c9d1d9">Task 1: code-review</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#c9d1d9">Fable 5</tspan><tspan fill="#7d8590"> · high</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#f0883e">C68 ████</tspan><tspan fill="#2d333b">░░</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">⏱ 6m48s</tspan></text>
+    <text x="28" y="435" font-size="13"><tspan fill="#7d8590">○ </tspan><tspan fill="#c9d1d9">Task 1: code-review</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#c9d1d9">Fable 5</tspan><tspan fill="#7d8590"> · high</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#f0883e">C68 ████</tspan><tspan fill="#2d333b">░░</tspan><tspan fill="#30363d"> │ </tspan><tspan fill="#7d8590">⏱ 6m49s</tspan></text>
   </g>
 
 

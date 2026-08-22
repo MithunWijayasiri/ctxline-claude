@@ -7,16 +7,17 @@
 
 const { test, after } = require('node:test');
 const assert = require('node:assert');
-const { spawnSync } = require('node:child_process');
 const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-
-const SCRIPT = path.join(__dirname, '..', 'statusline.js');
+const {
+  makeHome, seedCredentials, seedUsageCache, seedFakeRepo,
+  git, hasGit, gitCommit, seedDivergedRepo: buildDivergedRepo, spawnMain, spawnSubagent
+} = require('./fixture.js');
 
 // Empty fake HOME so the todos/credentials lookups find nothing -> deterministic.
-const FAKE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-test-'));
+const FAKE_HOME = makeHome();
 after(() => fs.rmSync(FAKE_HOME, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
 // Run statusline.js with the given stdin string. Returns { code, raw, clean }.
@@ -44,7 +45,7 @@ function run(input, opts = {}) {
   } else {
     delete env.CTXLINE_DISABLE;
   }
-  const res = spawnSync(process.execPath, [SCRIPT], { input, encoding: 'utf8', timeout: 5000, env });
+  const res = spawnMain(input, env);
   const raw = res.stdout || '';
   const clean = raw.replace(/\x1b\[[0-9;]*m/g, ''); // strip ANSI for readable assertions
   return { code: res.status, raw, clean };
@@ -54,20 +55,14 @@ function run(input, opts = {}) {
 // bails out before any network/keychain call) and optionally a seeded usage cache
 // of a given age. Lets us exercise the cache-first / stale-fallback logic offline.
 function seedHome({ cacheAgeMs, percentage = 42, weeklyPercentage = 31 } = {}) {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-cache-'));
-  const claudeDir = path.join(home, '.claude');
-  fs.mkdirSync(path.join(claudeDir, 'cache'), { recursive: true });
-  fs.writeFileSync(path.join(claudeDir, '.credentials.json'), '{}'); // no accessToken -> API skipped
+  const home = makeHome();
+  seedCredentials(home); // no accessToken -> API skipped
   if (cacheAgeMs != null) {
-    const cache = {
-      timestamp: Date.now() - cacheAgeMs,
-      data: {
-        fiveHour: { percentage, resetsAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
-        // 62h out -> exercises the day-aware countdown (2d14h)
-        weekly: { percentage: weeklyPercentage, resetsAt: new Date(Date.now() + 62 * 3600 * 1000).toISOString() }
-      }
-    };
-    fs.writeFileSync(path.join(claudeDir, 'cache', 'usage-cache.json'), JSON.stringify(cache));
+    seedUsageCache(home, {
+      fiveHour: { percentage, resetsAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
+      // 62h out -> exercises the day-aware countdown (2d14h)
+      weekly: { percentage: weeklyPercentage, resetsAt: new Date(Date.now() + 62 * 3600 * 1000).toISOString() }
+    }, Date.now() - cacheAgeMs);
   }
   return home;
 }
@@ -110,28 +105,15 @@ function seedScopedCache(home, models) {
     ...m,
     resetsAt: new Date(Date.now() + 62 * 3600 * 1000).toISOString()
   }));
-  fs.writeFileSync(cacheFile, JSON.stringify(cache));
+  seedUsageCache(home, cache.data, cache.timestamp);
 }
 
 // Make a real dir with a seeded .git/HEAD so the branch segment renders deterministically.
 function seedRepo(branch = 'feature/x') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-repo-'));
-  fs.mkdirSync(path.join(dir, '.git'));
-  fs.writeFileSync(path.join(dir, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`);
+  seedFakeRepo(dir, branch);
   after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   return dir;
-}
-
-// --- real-git helpers for the ahead/behind segment ---
-function git(dir, args) { return spawnSync('git', args, { cwd: dir, encoding: 'utf8' }); }
-function hasGit() {
-  const r = spawnSync('git', ['--version'], { encoding: 'utf8' });
-  return r.status === 0;
-}
-function gitCommit(dir, tag) {
-  fs.writeFileSync(path.join(dir, 'f-' + tag), tag);
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', tag]);
 }
 
 // Real git repo whose HEAD is `ahead` commits ahead and `behind` behind a tracked
@@ -139,31 +121,13 @@ function gitCommit(dir, tag) {
 function seedDivergedRepo({ ahead = 0, behind = 0 } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-gitdiv-'));
   after(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
-  git(dir, ['init', '-q']);
-  git(dir, ['config', 'user.email', 't@t']);
-  git(dir, ['config', 'user.name', 'test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
-  // register origin so the merge ref maps to a remote-tracking branch (@{u} resolves)
-  git(dir, ['config', 'remote.origin.url', '.']);
-  git(dir, ['config', 'remote.origin.fetch', '+refs/heads/*:refs/remotes/origin/*']);
-  gitCommit(dir, 'base');
-  const branch = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim();
-  const baseSha = git(dir, ['rev-parse', 'HEAD']).stdout.trim();
-  // build the upstream (behind) chain on top of base, park it in origin/<branch>
-  for (let i = 0; i < behind; i++) gitCommit(dir, 'up' + i);
-  const upstreamSha = git(dir, ['rev-parse', 'HEAD']).stdout.trim();
-  git(dir, ['update-ref', 'refs/remotes/origin/' + branch, upstreamSha]);
-  git(dir, ['config', 'branch.' + branch + '.remote', 'origin']);
-  git(dir, ['config', 'branch.' + branch + '.merge', 'refs/heads/' + branch]);
-  // reset HEAD back to base, then build the local (ahead) chain -> diverges from upstream
-  git(dir, ['reset', '--hard', '-q', baseSha]);
-  for (let i = 0; i < ahead; i++) gitCommit(dir, 'local' + i);
+  buildDivergedRepo(dir, { ahead, behind });
   return dir;
 }
 
 // Throwaway HOME so each git test gets an isolated git-cache.json.
 function freshHome() {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-githome-'));
+  const home = makeHome();
   after(() => fs.rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   return home;
 }
@@ -840,7 +804,7 @@ test('disable accepts multiple segments', () => {
 function runSubagent(input, opts = {}) {
   const home = opts.home || FAKE_HOME;
   const env = { ...process.env, HOME: home, USERPROFILE: home };
-  const res = spawnSync(process.execPath, [SCRIPT, 'subagent'], { input, encoding: 'utf8', timeout: 5000, env });
+  const res = spawnSubagent(input, env);
   const raw = res.stdout || '';
   const lines = raw.trim() ? raw.trim().split('\n').map(l => JSON.parse(l)) : [];
   return { code: res.status, raw, lines };
