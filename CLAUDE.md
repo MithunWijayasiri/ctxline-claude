@@ -43,7 +43,7 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 
 **Segment opt-out.** `CTXLINE_DISABLE` comma list parsed once into `DISABLED` (trimmed, lowercased). Recognized: `branch`, `effort`, `cost`, `task`, `usage` (H+W). `dir`/`model`/`context` always render; unknown names ignored. Disabling skips the work, not just the output — `usage` means no network/cache/credentials at all.
 
-**Responsive layout (`layout()`).** Visible width (ANSI stripped) > `COLUMNS - WIDTH_MARGIN` → two lines: line 1 dir/branch + model/effort + `C`; line 2 `H`/`W` + `$` + task. Wraps only when `COLUMNS` is a known positive int and line 2 is non-empty — unknown width, wide terminals, nothing to wrap all stay single-line. `outputFallback()` stays single-line.
+**Responsive layout (`layout()`).** Visible width (ANSI stripped) > `COLUMNS - WIDTH_MARGIN` → two lines: line 1 dir/branch + model/effort + `C`; line 2 `H`/`W` + `$` + task. Wraps only when `COLUMNS` is a known positive int and line 2 is non-empty — unknown width, wide terminals, nothing to wrap all stay single-line. `outputFallback()` stays single-line. `cols` is a parameter, never an env read, so `layout()`/`renderStatusLine()` have no side effects.
 
 **Segment sources + gotchas** (each best-effort):
 
@@ -59,27 +59,27 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 | task | newest `~/.claude/todos/<sessionId>*-agent-*.json` | `activeForm` of the `in_progress` todo |
 
 **Usage API.** `GET api.anthropic.com/api/oauth/usage`, bearer token + `anthropic-beta: oauth-2025-04-20`. Token from `getCredentials()`: `~/.claude/.credentials.json`, then macOS keychain. API-key users get no usage.
-- `parseUsagePayload(body)` — pure, no fs/network — turns a raw `/usage` response body into `{ fiveHour, weekly, models }`; `null` on unparseable JSON or a missing/non-finite `five_hour` utilization. `getApiUsage()` calls it, then owns only credentials/socket/timeout/cache-write.
-- `buildUsageFromStdin()` returns the same `{ fiveHour, weekly, models }` shape (`models` always `[]` — stdin never carries scoped limits), so both adapters feed `buildUsageBars(raw)` directly — one positional object, not three.
-- `getRawUsage()` → `{ fiveHour, weekly, models }`, cache-first; `buildUsageBars()` renders all three (`models` possibly empty). Checks a `lastAttempt` cooldown (`getLastAttemptAge()`, `FRESH_TTL_MS`) before calling `getApiUsage()` at all, so a failing/timed-out refresh backs off the same as a successful one instead of re-hitting the API on every render.
+- Both adapters return `{ fiveHour, weekly, models }` and feed `buildUsageBars(raw)` — one positional object. `buildUsageFromStdin()`'s `models` is always `[]` (stdin never carries scoped limits).
+- `parseUsagePayload(body)` — pure, no fs/network; `null` on unparseable JSON or a missing/non-finite `five_hour` utilization. `getApiUsage()` calls it and owns only credentials/socket/timeout/cache-write.
+- `getRawUsage()` is cache-first, and checks the `lastAttempt` cooldown (`getLastAttemptAge()`, `FRESH_TTL_MS`) before calling `getApiUsage()` at all → a failed/timed-out refresh backs off the same as a successful one.
 - `parseScopedLimits(usage)` reads `limits[]` for `kind: 'weekly_scoped'`; label = first initial of `scope.model.display_name` (new model family needs no code change). Legacy flat `seven_day_opus`/`seven_day_sonnet` only when `limits` yields nothing → neither shape double-counts.
-- Scoped limits never arrive via stdin → `resolveUsage()` calls `getRawUsage()` for the model-scoped bars even when `H`/`W` came from stdin. Capped at one call per `FRESH_TTL_MS`; slow/failed call costs only the scoped bars.
+- Scoped limits never arrive via stdin → `resolveUsage()` calls `getRawUsage()` for those bars even when `H`/`W` came from stdin. Capped at one call per `FRESH_TTL_MS`; slow/failed call costs only the scoped bars.
 
-Entry point guarded by `require.main === module` so `test/render.test.js` can `require()` it and call the exported pure functions directly instead of spawning: `renderStatusLine`/`renderSubagentTask` (format/colour-band/segment-order/wrap assertions) and `parseScopedLimits`/`parseUsagePayload`/`normalizePercentage` (the `/usage` payload shape is the one part stdin can't reach) — plus `readStdinThen` for the stdin-error test.
-
-`outputStatus` is a ~3-line writer: `collectFacts(data)` gathers everything that touches fs/child_process/env (git branch + ahead/behind, the in-progress task, `COLUMNS`), then the pure `renderStatusLine(data, facts, usage)` formats, wrapped in a try/catch that falls back to `Status unavailable`. `outputFallback` calls the same `renderStatusLine` with a static, git/task-free `facts` object (`cols: undefined` keeps it single-line, matching the always-single-line fallback contract). `layout()` takes `cols` as a parameter rather than reading `COLUMNS` itself, so it and `renderStatusLine` have no side effects.
+**Render seam.** `collectFacts(data)` gathers everything touching fs/child_process/env (git branch + ahead/behind, in-progress task, `COLUMNS`); pure `renderStatusLine(data, facts, usage)` formats; `outputStatus` is a ~3-line writer, try/catch → `Status unavailable`. `outputFallback` calls the same renderer with a static git/task-free `facts` (`cols: undefined` → single line, matching the fallback contract). Entry guarded by `require.main === module` so `test/render.test.js` can `require()` and call exports directly instead of spawning: `renderStatusLine`, `renderSubagentTask`, `parseScopedLimits`, `parseUsagePayload`, `normalizePercentage`, `readStdinThen`, `serializeUsageCache`.
 
 **Caches** (both in `~/.claude/cache/`):
-- `usage-cache.json` — `{ timestamp, data: { fiveHour, weekly, models }, lastAttempt }`, not formatted strings → old string-format caches ignored on read. Shared across sessions; `models` optional (pre-scoped-bars caches still validate). Fresh `FRESH_TTL_MS` 30s → render cache, skip API; stale → refresh, on API failure fall back to cache up to `STALE_TTL_MS` 10min. `lastAttempt` (success or failure, stamped by `recordUsageAttempt()` before the request fires) gives `getRawUsage()` a retry cooldown independent of `timestamp` — a failing/timing-out refresh backs off for `FRESH_TTL_MS` too, instead of re-hitting the API on every render. Bars re-rendered every time via `buildUsageBar()` so countdowns recompute from `resetsAt`. Fronts the API path only — stdin `rate_limits` never reads or writes it.
+- `usage-cache.json` — `{ timestamp, data: { fiveHour, weekly, models }, lastAttempt }`, not formatted strings → old string-format caches ignored on read. Shared across sessions; `models` optional (pre-scoped-bars caches still validate). Fresh `FRESH_TTL_MS` 30s → render cache, skip API; stale → refresh, on API failure fall back to cache up to `STALE_TTL_MS` 10min. `lastAttempt` — stamped by `recordUsageAttempt()` before the request fires, success or failure — is the retry cooldown, independent of `timestamp`. Bars re-rendered every time via `buildUsageBar()` so countdowns recompute from `resetsAt`. Fronts the API path only — stdin `rate_limits` never reads or writes it.
 - `git-cache.json` — single entry `{ gitDir, timestamp, ahead, behind }`; different repo invalidates. Fresh `GIT_FRESH_TTL_MS` 5s (render burst spawns `git` once) → stale re-run → on slow/failed call fall back to last counts up to `GIT_STALE_TTL_MS` 60s so they don't flicker.
 
 **Two color schemes (intentional, do not unify):** context bar (`getContextBar`) steps 50/65/80 (≥80 → blink red); usage (`getUsageColor`) steps 50/75/90. Model-scoped bars opt out of both — `getScopedColor` (orange, red ≥90) passed as `buildUsageBar`'s optional 4th arg → several scoped bars read as one group while a nearly-spent one still stands out.
 
-**Deliberately duplicated, do not merge:** the two caches (`git-cache.json` / `usage-cache.json` via `readGitCache`/`writeGitCache` + `getGitAheadBehind` vs `readCachedUsage`/`setCachedUsage` + `getRawUsage`) and the two duration formatters (`buildUsageBar`'s countdown vs `formatElapsed`) each have only two callers with differing validators / units / refresh policies (git 5s/60s vs usage 30s/10m; countdown vs elapsed). A shared `withCache`/`formatDuration` would move complexity into parameters, not reduce it — revisit only on a third caller.
+**Deliberately duplicated, do not merge:** the two caches, and the two duration formatters (`buildUsageBar`'s countdown vs `formatElapsed`). Two callers each, differing validators / units / refresh policies (git 5s/60s vs usage 30s/10m; countdown vs elapsed) — a shared `withCache`/`formatDuration` moves complexity into parameters. Revisit only on a third caller.
+
+**Not actioned, deliberately:** the `lastAttempt` cooldown check (`getLastAttemptAge()`) and claim (`recordUsageAttempt()`) aren't atomic across processes — concurrent hook invocations can both call `getApiUsage()`. Worst case is one extra API call, never a crash or bad render; a filesystem lock plus a multi-process test contradicts the single-file, zero-dependency constraint. Revisit only if concurrent hook processes prove common.
 
 ## Subagent mode (`subagentStatusLine`)
 
-A second entry point in the same file, activated by `process.argv[2] === 'subagent'` — wired in `settings.json` as a separate command from `statusLine`:
+Second entry point in the same file, activated by `process.argv[2] === 'subagent'` — wired in `settings.json` as a separate command from `statusLine`:
 
 ```json
 { "subagentStatusLine": { "type": "command", "command": "node ~/.claude/hooks/statusline.js subagent" } }
@@ -90,11 +90,11 @@ One row per running subagent task in the agent panel.
 - Stdin: `{ tasks: [...], ... }` (base fields `session_id`/`cwd`/`columns` present but unused). Each task: `id`, `name`/`description`/`label`, `type`, `status`, `startTime`, `model` (resolved ID, absent until resolved), `effort` (level string or numeric token budget, absent when the subagent inherits session effort), `contextWindowSize`, `tokenCount`, `tokenSamples`, `cwd`.
 - Stdout: one `{"id","content"}` JSON line per task to override. Omitted id → default rendering; empty `content` → row hidden.
 
-`startTime`'s format isn't documented upstream and isn't otherwise read in this file, so `formatElapsed()` accepts whatever shows up: number < `1e12` → epoch-seconds, larger → epoch-ms, anything else handed straight to `Date()` (covers an ISO string). Revisit if a real payload contradicts this.
-
 Row: `name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed>`, built by `renderSubagentTask()`. Reuses main-line blocks rather than duplicating: `SEGMENT_SEP`, `renderContextBar()` (used%→bar/color, factored out of `getContextBar`, shared by both), `getEffortColor()`. `shortenModelId()` shortens the resolved model *ID* ("claude-opus-5" → "Opus 5"; strips `us.`/`anthropic.` prefixes and a trailing `-YYYYMMDD` date) — distinct from `shortenModel()`, which only trims `" context)"` off a display *name*.
 
 Every segment past `name` is independently conditional: no `model` → no model/effort segment (effort alone still renders); no `effort` → no `· effort` suffix; `tokenCount`/`contextWindowSize` not both finite (or window ≤ 0) → no context bar; unparseable `startTime` → no elapsed segment.
+
+`startTime`'s format isn't documented upstream and isn't otherwise read in this file, so `formatElapsed()` accepts whatever shows up: number < `1e12` → epoch-seconds, larger → epoch-ms, anything else handed straight to `Date()` (covers an ISO string). Revisit if a real payload contradicts this.
 
 Skips everything main mode does besides stdin parsing — no usage API, git, todos, cache — so no `overallTimeout` race against a fetch; `emitSubagent()` hard-caps the stdin read at `SUBAGENT_TIMEOUT_MS`. Bad/missing payload, or a task whose shape breaks rendering → emit nothing rather than a partial line: default rendering stays for every task in the panel, process still exits 0.
 
@@ -102,22 +102,19 @@ Skips everything main mode does besides stdin parsing — no usage API, git, tod
 
 `statusline.js` is source of truth; five files mirror the visible line and must change in the same edit or CI/release/site drifts. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
 
-`test/fixture.js` — shared by both: fake-HOME construction, `usage-cache.json` seeding (via `statusline.js`'s own exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, and spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
+`test/fixture.js` — shared by test + preview: fake-HOME construction, `usage-cache.json` seeding (via the exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
 
-Executable fixtures — stale = CI/release breaks:
-- `scripts/preview.js` — spawns the real `statusline.js` via `test/fixture.js` against a seeded cache + stdin JSON. Cache-shape change → update the seed data passed to `seedUsageCache` **and** `render()` params/labels, or usage renders wrong/disappears. New stdin field read → add to the input object. The release body shows `head -n 1` of its output → keep the primary-line `console.log` **first**.
+- `scripts/preview.js` — spawns the real `statusline.js` via the fixture against a seeded cache + stdin JSON. Cache-shape change → update the seed data passed to `seedUsageCache` **and** `render()` params/labels, or usage renders wrong/disappears. New stdin field read → add to the input object. The release body shows `head -n 1` of its output → keep the primary-line `console.log` **first**.
 - `test/render.test.js` — same fixture, same breakage; assertions pin visible labels/percentages/colors/order. `colors` codes change → update the constants atop the file.
-
-Docs/marketing — no longer silent, both auto-checked:
 - `docs/assets/preview.svg` — the statusline `<text>` elements' `<tspan>` runs; shown in README + site. Generated, not hand-edited: `npm run preview:svg` (`scripts/preview-svg.js`) renders the real ANSI output for the same fixed scenario and rewrites just those tspans (ANSI SGR → hex, via its own `ANSI_HEX` table); window chrome, prompt lines, and the "○ " running-task bullet stay hand-authored. Run it after any change that would shift this scenario's output (colors, thresholds, format).
-- `docs/index.html` — hero mock (`.term .line`) and the subagent-panel rows are asserted against a real `renderStatusLine()`/`renderSubagentTask()` call by `test/docs-drift.test.js` (reconstructs the mock's visible text from its markup, byte-compares). A mismatch fails `npm test`, not just a future changelog. Inspector `SIGNALS[]` and `.term` color classes are still unchecked — hand-verify those.
+- `docs/index.html` — hero mock (`.term .line`) and the subagent-panel rows are byte-compared against a real `renderStatusLine()`/`renderSubagentTask()` call by `test/docs-drift.test.js`, so site drift fails `npm test`. Inspector `SIGNALS[]` and `.term` color classes are still unchecked — hand-verify those.
 - `CLAUDE.md` — format diagram (top), segment-source table, visible contract below.
 
 Full edit-point map: `.claude/skills/restyle-statusline/SKILL.md`.
 
-Rule of thumb: change to **what the line looks like** → test assertions. Change to **cache shape or stdin fields** → both seeds. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
-
 Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar; `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
+
+Rule of thumb: change to **what the line looks like** → test assertions. Change to **cache shape or stdin fields** → both seeds. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
 
 Test harness: `run()` opts `columns` (unset → single line) and `disable` (→ `CTXLINE_DISABLE`); preview's `render()` takes matching params (narrow scenario 40, opt-out scenario `usage,cost`) plus `models` (`[{ label, percentage, resetsInMin }]`) for the scoped-limit scenario. Both clear `COLUMNS`/`CTXLINE_DISABLE` when unset so a dev-env value can't skew output. Git ahead/behind tests need real `git` (skipped if absent) and a fresh HOME per test (isolated `git-cache.json`).
 
@@ -130,10 +127,8 @@ Work in `statusline.js` only. Install path is frozen (inherited working from ups
 - Uninstall: `npx ctxline-claude uninstall` (arg `uninstall`/`remove`) — removes only our `statusLine`/`subagentStatusLine` (guarded, backed up), deletes the hook, clears the cache. Additive; must not alter the no-arg install. `install.sh`/`install.ps1` have no uninstall command — only printed manual-removal instructions, which must list both keys too.
 - Don't reintroduce a "Full vs Lite" prompt or `statusline-lite.js` (deleted upstream `846e10e`). Only as a deliberate real feature.
 
-## Distribution
+## Distribution + releasing
 
 `statusline.js` is fetched verbatim from GitHub `main` by `install.sh`/`install.ps1` (via `REPO_URL`) and copied by `bin/install.js`. A change on `main` ships to anyone re-running the installers — keep `main` releasable. `package.json` `files` whitelists what publishes.
 
-## Releasing
-
-Owner-triggered, manual: bump `version` in `package.json` on `main`, then run the **Release** workflow (`.github/workflows/release.yml`), which publishes from that version. Never `npm publish` by hand; never bump the version unasked.
+Releases are owner-triggered, manual: bump `version` in `package.json` on `main`, then run the **Release** workflow (`.github/workflows/release.yml`), which publishes from that version. Never `npm publish` by hand; never bump the version unasked.
