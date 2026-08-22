@@ -168,7 +168,8 @@ console.log('  ' + render({
 }));
 
 // Combined: H/W from stdin, scoped bars still from cache — resolveUsage() calls
-// getScopedModels() even when stdin covered H/W, so all three must render together.
+// getRawUsage() for the scoped bars even when stdin covered H/W, so all three must
+// render together.
 console.log('\nStdin rate_limits + cached model-scoped limit:');
 console.log('  ' + render({
   ...base,

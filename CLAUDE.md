@@ -53,16 +53,18 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 | model · effort | stdin | `(1M context)` → `(1M)`; effort ranks low<medium<high<xhigh<max<ultracode, only `max` (red) + `ultracode` (purple) highlighted, rest dim |
 | `C` | stdin `remaining_percentage` | always available |
 | `$` | stdin `cost.total_cost_usd`, no network/cache | `Number.isFinite`-guarded; client-side estimate at API pricing — for subscription users not actual billing |
-| `H` / `W` | stdin `rate_limits` via `buildUsageFromStdin()`, else `getUsageWithCache()` → OAuth API | `rate_limits` exists only for Claude.ai Pro/Max **after the first API response** — absent at cold start and for API-key users, hence the fallback |
+| `H` / `W` | stdin `rate_limits` via `buildUsageFromStdin()`, else `getRawUsage()` → OAuth API | `rate_limits` exists only for Claude.ai Pro/Max **after the first API response** — absent at cold start and for API-key users, hence the fallback |
 | scoped weekly | OAuth API only | never arrives via stdin; `getScopedColor` (orange, red ≥90), not the H/W thresholds |
 | task | newest `~/.claude/todos/<sessionId>*-agent-*.json` | `activeForm` of the `in_progress` todo |
 
 **Usage API.** `GET api.anthropic.com/api/oauth/usage`, bearer token + `anthropic-beta: oauth-2025-04-20`. Token from `getCredentials()`: `~/.claude/.credentials.json`, then macOS keychain. API-key users get no usage.
+- `parseUsagePayload(body)` — pure, no fs/network — turns a raw `/usage` response body into `{ fiveHour, weekly, models }`; `null` on unparseable JSON or a missing/non-finite `five_hour` utilization. `getApiUsage()` calls it, then owns only credentials/socket/timeout/cache-write.
+- `buildUsageFromStdin()` returns the same `{ fiveHour, weekly, models }` shape (`models` always `[]` — stdin never carries scoped limits), so both adapters feed `buildUsageBars(raw)` directly — one positional object, not three.
 - `getRawUsage()` → `{ fiveHour, weekly, models }`, cache-first; `buildUsageBars()` renders all three (`models` possibly empty).
 - `parseScopedLimits(usage)` reads `limits[]` for `kind: 'weekly_scoped'`; label = first initial of `scope.model.display_name` (new model family needs no code change). Legacy flat `seven_day_opus`/`seven_day_sonnet` only when `limits` yields nothing → neither shape double-counts.
-- Scoped limits never arrive via stdin → `resolveUsage()` calls `getScopedModels()` even when `H`/`W` came from stdin. Capped at one call per `FRESH_TTL_MS`; slow/failed call costs only the scoped bars.
+- Scoped limits never arrive via stdin → `resolveUsage()` calls `getRawUsage()` for the model-scoped bars even when `H`/`W` came from stdin. Capped at one call per `FRESH_TTL_MS`; slow/failed call costs only the scoped bars.
 
-Entry point guarded by `require.main === module` so `test/render.test.js` can `require()` it and call the exported pure functions directly instead of spawning: `renderStatusLine`/`renderSubagentTask` (format/colour-band/segment-order/wrap assertions) and `parseScopedLimits`/`normalizePercentage` (the `/usage` payload shape is the one part stdin can't reach) — plus `readStdinThen` for the stdin-error test.
+Entry point guarded by `require.main === module` so `test/render.test.js` can `require()` it and call the exported pure functions directly instead of spawning: `renderStatusLine`/`renderSubagentTask` (format/colour-band/segment-order/wrap assertions) and `parseScopedLimits`/`parseUsagePayload`/`normalizePercentage` (the `/usage` payload shape is the one part stdin can't reach) — plus `readStdinThen` for the stdin-error test.
 
 `outputStatus` is a ~3-line writer: `collectFacts(data)` gathers everything that touches fs/child_process/env (git branch + ahead/behind, the in-progress task, `COLUMNS`), then the pure `renderStatusLine(data, facts, usage)` formats, wrapped in a try/catch that falls back to `Status unavailable`. `outputFallback` calls the same `renderStatusLine` with a static, git/task-free `facts` object (`cols: undefined` keeps it single-line, matching the always-single-line fallback contract). `layout()` takes `cols` as a parameter rather than reading `COLUMNS` itself, so it and `renderStatusLine` have no side effects.
 
