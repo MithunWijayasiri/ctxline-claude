@@ -295,12 +295,15 @@ const LEGACY_MODEL_WEEKLY_KEYS = [
   { key: 'seven_day_sonnet', label: 'S' }
 ];
 
-// Build the usage segments from raw entries. fiveHour/weekly are { percentage, resetsAt }
-// or null/absent; models is an array of { label, percentage, resetsAt } (possibly empty).
-// Returns { current, weekly, models } — the first two rendered strings or null, models a
-// (possibly empty) array of rendered strings. Scoped bars use getScopedColor instead of the
-// H/W thresholds, so the full threshold palette stays exclusive to H/W.
-function buildUsageBars(fiveHour, weekly, models) {
+// Build the usage segments from a raw { fiveHour, weekly, models } object — the shared
+// shape both buildUsageFromStdin and parseUsagePayload return. fiveHour/weekly are
+// { percentage, resetsAt } or null/absent; models is an array of { label, percentage,
+// resetsAt } (possibly empty). Returns { current, weekly, models } — the first two
+// rendered strings or null, models a (possibly empty) array of rendered strings. Scoped
+// bars use getScopedColor instead of the H/W thresholds, so the full threshold palette
+// stays exclusive to H/W.
+function buildUsageBars(raw) {
+  const { fiveHour, weekly, models } = raw || {};
   return {
     current: fiveHour ? buildUsageBar('H', fiveHour.percentage, fiveHour.resetsAt) : null,
     weekly: weekly ? buildUsageBar('W', weekly.percentage, weekly.resetsAt) : null,
@@ -349,9 +352,10 @@ function parseScopedLimits(usage) {
 // Build usage bars from stdin `rate_limits` (Claude.ai Pro/Max, present only after the
 // first API response of a session). Same data as the OAuth usage API, so reading it here
 // skips the network/credentials/cache path entirely. `resets_at` is a Unix epoch in
-// SECONDS (not ISO) — ×1000 before Date. Returns raw { fiveHour, weekly } entries, or null
-// when rate_limits is absent or the required five_hour segment is unusable (caller falls
-// back). Model-scoped weekly limits are never present here — see LEGACY_MODEL_WEEKLY_KEYS.
+// SECONDS (not ISO) — ×1000 before Date. Returns raw { fiveHour, weekly, models } — same
+// shape as parseUsagePayload — or null when rate_limits is absent or the required
+// five_hour segment is unusable (caller falls back). models is always [] here: model-scoped
+// weekly limits are never present in stdin — see LEGACY_MODEL_WEEKLY_KEYS.
 function buildUsageFromStdin(data) {
   const rl = data?.rate_limits;
   if (!rl) return null;
@@ -374,7 +378,29 @@ function buildUsageFromStdin(data) {
 
   const fiveHour = toEntry(rl.five_hour);
   if (!fiveHour) return null;          // five_hour is the required bar
-  return { fiveHour, weekly: toEntry(rl.seven_day) };
+  return { fiveHour, weekly: toEntry(rl.seven_day), models: [] };
+}
+
+// Parse a raw /usage API response body into { fiveHour, weekly, models } — same shape as
+// buildUsageFromStdin — or null on unparseable JSON or a missing/non-finite five_hour
+// utilization (that bar is required). Normalizes utilization first so a missing/non-finite
+// value omits a bar instead of rendering "NaN%". Pure — no fs/network — so it's unit
+// testable directly, unlike getApiUsage which needs a live socket.
+function parseUsagePayload(body) {
+  try {
+    const usage = JSON.parse(body);
+    const fivePct = usage?.five_hour ? normalizePercentage(usage.five_hour.utilization) : null;
+    if (fivePct == null) return null;
+
+    const fiveHour = { percentage: fivePct, resetsAt: usage.five_hour.resets_at || null };
+    const weeklyPct = usage.seven_day ? normalizePercentage(usage.seven_day.utilization) : null;
+    const weekly = weeklyPct != null ? { percentage: weeklyPct, resetsAt: usage.seven_day.resets_at || null } : null;
+    const models = parseScopedLimits(usage);
+
+    return { fiveHour, weekly, models };
+  } catch (e) {
+    return null;
+  }
 }
 
 // Validate a single usage entry ({ percentage, resetsAt }). Returns true only for a
@@ -488,37 +514,10 @@ function getApiUsage(callback) {
 
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        try {
-          const usage = JSON.parse(data);
-
-          // 5-hour session usage is required; weekly (seven_day) is rendered when present.
-          // Normalize utilization first so a missing/non-finite value omits the bar
-          // instead of rendering "NaN%" or an out-of-range percentage.
-          const fivePct = usage.five_hour ? normalizePercentage(usage.five_hour.utilization) : null;
-          if (fivePct != null) {
-            const fiveHour = {
-              percentage: fivePct,
-              resetsAt: usage.five_hour.resets_at || null
-            };
-            const weeklyPct = usage.seven_day ? normalizePercentage(usage.seven_day.utilization) : null;
-            const weekly = weeklyPct != null ? {
-              percentage: weeklyPct,
-              resetsAt: usage.seven_day.resets_at || null
-            } : null;
-
-            // Model-scoped weekly limits, rendered only when the account reports them.
-            const models = parseScopedLimits(usage);
-
-            // Cache the raw data (shared across sessions); callers render from it.
-            const resolved = { fiveHour, weekly, models };
-            setCachedUsage(resolved);
-            callback(resolved);
-          } else {
-            callback(null);
-          }
-        } catch (e) {
-          callback(null);
-        }
+        const resolved = parseUsagePayload(data);
+        // Cache the raw data (shared across sessions); callers render from it.
+        if (resolved) setCachedUsage(resolved);
+        callback(resolved);
       });
     });
 
@@ -554,20 +553,6 @@ function getRawUsage(callback) {
       callback(null);
     }
   });
-}
-
-// Get usage, cache-first, rendered.
-function getUsageWithCache(callback) {
-  getRawUsage((data) => {
-    callback(data ? buildUsageBars(data.fiveHour, data.weekly, data.models) : null);
-  });
-}
-
-// Model-scoped weekly limits only, cache-first. Used alongside the stdin H/W bars, which
-// can't carry them. Falls back to the stale cache and finally to [] so a failed or slow
-// call costs the scoped bars but never the bars stdin already gave us.
-function getScopedModels(callback) {
-  getRawUsage((data) => callback(data?.models || []));
 }
 
 // Session cost from stdin `cost.total_cost_usd` (USD float, computed client-side by
@@ -697,11 +682,13 @@ function resolveUsage(data, callback) {
     // stdin covers H and W with no network. Model-scoped weekly limits only exist in the
     // API payload, so they come from the cache — refreshed on the same TTL as every other
     // usage read, which keeps at most one call per FRESH_TTL_MS regardless of render rate.
-    return getScopedModels((models) => {
-      callback(buildUsageBars(fromStdin.fiveHour, fromStdin.weekly, models));
+    // Falls back to the stale cache and finally to [] so a failed or slow call costs only
+    // the scoped bars, never the H/W bars stdin already gave us.
+    return getRawUsage((cached) => {
+      callback(buildUsageBars({ ...fromStdin, models: cached?.models || [] }));
     });
   }
-  getUsageWithCache(callback);
+  getRawUsage((raw) => callback(raw ? buildUsageBars(raw) : null));
 }
 
 // Parse the accumulated stdin into a payload object, or null if empty/unparseable.
@@ -831,5 +818,5 @@ if (require.main === module) {
     readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask };
+  module.exports = { parseScopedLimits, parseUsagePayload, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask };
 }

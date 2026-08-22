@@ -182,7 +182,7 @@ const BLINK = '\x1b[5m';
 // child process. What's left spawned: git-branch/ahead-behind detection (real .git dir +
 // subprocess), the usage cache/API pipeline, CTXLINE_DISABLE env-parsing (module-load-time
 // state, needs a fresh process per value), and the execution-contract tests below.
-const { parseScopedLimits, readStdinThen, renderStatusLine, renderSubagentTask } = require('../statusline.js');
+const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask } = require('../statusline.js');
 
 // Same shape as fixture()'s stdin JSON, but as a plain object (no JSON round-trip needed
 // for a direct call).
@@ -511,6 +511,47 @@ test('no scoped limits -> nothing extra renders', () => {
   assert.match(clean, /H24\b/);
   assert.match(clean, /W41\b/);
   assert.ok(!/\bF\d+/.test(clean), 'no F bar when the account reports no scoped limit');
+});
+
+// parseUsagePayload is the pure adapter lifted out of getApiUsage's response closure —
+// getApiUsage itself runs in zero tests (needs a live socket), so this is the only unit
+// coverage for the half of the pipeline that breaks first on a payload change. Returns the
+// same { fiveHour, weekly, models } shape as buildUsageFromStdin.
+
+test('parseUsagePayload parses a real /usage response body into { fiveHour, weekly, models }', () => {
+  const parsed = parseUsagePayload(JSON.stringify(usagePayload()));
+  assert.deepStrictEqual(parsed, {
+    fiveHour: { percentage: 43, resetsAt: '2026-08-02T17:00:00+00:00' },
+    weekly: { percentage: 63, resetsAt: '2026-08-05T13:00:00+00:00' },
+    models: [{ label: 'F', percentage: 86, resetsAt: '2026-08-05T13:00:00+00:00' }]
+  });
+});
+
+test('parseUsagePayload returns null when five_hour is missing', () => {
+  assert.strictEqual(parseUsagePayload(JSON.stringify({ seven_day: { utilization: 50 } })), null);
+});
+
+test('parseUsagePayload returns null when five_hour.utilization is non-finite', () => {
+  assert.strictEqual(parseUsagePayload(JSON.stringify({ five_hour: { utilization: 'NaN' } })), null);
+});
+
+test('parseUsagePayload omits weekly when seven_day is absent', () => {
+  const parsed = parseUsagePayload(JSON.stringify({ five_hour: { utilization: 43 } }));
+  assert.deepStrictEqual(parsed, { fiveHour: { percentage: 43, resetsAt: null }, weekly: null, models: [] });
+});
+
+test('parseUsagePayload falls back to legacy seven_day_<model> keys for models', () => {
+  const legacy = {
+    five_hour: { utilization: 43 },
+    seven_day_opus: { utilization: 77, resets_at: '2026-08-05T13:00:00+00:00' },
+    seven_day_sonnet: null
+  };
+  const parsed = parseUsagePayload(JSON.stringify(legacy));
+  assert.deepStrictEqual(parsed.models, [{ label: 'O', percentage: 77, resetsAt: '2026-08-05T13:00:00+00:00' }]);
+});
+
+test('parseUsagePayload returns null on unparseable JSON instead of throwing', () => {
+  assert.strictEqual(parseUsagePayload('not json'), null);
 });
 
 // readStdinThen is the single guarded reader shared by both entry points (main and
