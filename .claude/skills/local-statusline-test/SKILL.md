@@ -9,11 +9,13 @@ Test working-tree `statusline.js` live in Claude Code — no npm, no install. On
 
 ## 1. Point Claude Code at the working tree
 
+Claude Code will execute the checked-out branch's `statusline.js` on every render, with session JSON on its stdin — only point it at a branch you trust.
+
 Config file: `~/.claude/settings.json` (Windows: `$env:USERPROFILE\.claude\settings.json`).
 
-Before editing, read the current `statusLine`/`subagentStatusLine` commands and note them — needed to revert in step 4 (normally the installed hook, e.g. `node "~/.claude/hooks/statusline.js"`).
+Before editing, save both `statusLine`/`subagentStatusLine` values whole — every field, plus whether the key exists at all — needed to revert in step 4 (normally the installed hook, e.g. `node "~/.claude/hooks/statusline.js"`).
 
-Set both to this repo's absolute path, quoted (unquoted breaks on a home dir with spaces), keeping the `subagent` arg on the second:
+Change only `command`, to this repo's absolute path, quoted (unquoted breaks on a home dir with spaces), keeping the `subagent` arg on the second and any other fields (`padding` etc.) untouched. Forward slashes on Windows — `C:/Github/ctxline-claude`, not `C:\Github\...`, whose `\G` is an invalid JSON escape:
 
 ```json
 "statusLine": { "type": "command", "command": "node \"<repo-abs-path>/statusline.js\"" },
@@ -36,7 +38,7 @@ Tell the contributor to restart Claude Code — `settings.json` is read at start
 
 ## 4. Revert
 
-Restore the original `statusLine`/`subagentStatusLine` commands from step 1. Restart Claude Code to pick it up.
+Put back step 1's saved values exactly — all fields, and delete any key that wasn't there before. Restart Claude Code to pick it up.
 
 ## Notes
 
