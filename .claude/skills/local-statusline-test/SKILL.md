@@ -13,7 +13,7 @@ Claude Code will execute the checked-out branch's `statusline.js` on every rende
 
 Config file: `~/.claude/settings.json` (Windows: `$env:USERPROFILE\.claude\settings.json`).
 
-Before editing, save both `statusLine`/`subagentStatusLine` values whole — every field, plus whether the key exists at all — needed to revert in step 4 (normally the installed hook, e.g. `node "~/.claude/hooks/statusline.js"`).
+Before editing, save whether the file exists at all, and both `statusLine`/`subagentStatusLine` values whole — every field, plus whether each key exists — needed to revert in step 4 (normally the installed hook, e.g. `node "~/.claude/hooks/statusline.js"`).
 
 Change only `command`, to this repo's absolute path, quoted (unquoted breaks on a home dir with spaces), keeping the `subagent` arg on the second and any other fields (`padding` etc.) untouched. Forward slashes on Windows — `C:/Github/ctxline-claude`, not `C:\Github\...`, whose `\G` is an invalid JSON escape:
 
@@ -38,7 +38,7 @@ Tell the contributor to restart Claude Code — `settings.json` is read at start
 
 ## 4. Revert
 
-Put back step 1's saved values exactly — all fields, and delete any key that wasn't there before. Restart Claude Code to pick it up.
+Put back step 1's saved values exactly — all fields, and delete any key that wasn't there before. If step 1 had to create `settings.json`, delete the file once the two keys are gone. Restart Claude Code to pick it up.
 
 ## Notes
 
