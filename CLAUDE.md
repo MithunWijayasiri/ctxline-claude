@@ -6,7 +6,7 @@ npm package `ctxline-claude` — single-file statusline for Claude Code:
 
 ```text
 dir ⎇ branch ↑N↓M │ model · effort │ C<used> <bar> │ H<pct> ↺ <reset> │ W<pct> ↺ <reset> │ <model-initial><pct> ↺ <reset> │ $<cost> │ task
-⬆ update <latest> · run: npx ctxline-claude@latest
+⬆ <latest> available · npx ctxline-claude@latest
 ```
 
 `C` context (only segment with a bar), `H` 5-hour usage, `W` 7-day usage, `<model-initial>` model-scoped weekly limit (Fable → `F`), `$` session cost. Everything after `dir`/`model`/`C` is conditional — renders only when its source resolves. The `⬆` row is **not a segment** — it's appended below whatever the layout produced, only when a newer release is cached.
@@ -128,7 +128,7 @@ Triggers: change to **what the line looks like** → test assertions (+ `npm run
 
 Full edit-point map, test-harness options, and the ANSI/SVG color tables: `.claude/skills/restyle-statusline/SKILL.md`.
 
-Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar glyph (`buildUsageBar` builds text-only `H`/`W`/scoped segments despite the name); `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; the `⬆` row appended below the layout (green `⬆` + new version, dim connective, bold command), never inside it; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
+Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar glyph (`buildUsageBar` builds text-only `H`/`W`/scoped segments despite the name); `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; the `⬆` row appended below the layout (green `⬆ <version>`, dim `available ·`, bold command), never inside it; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
 
 ## Do not touch the installers
 

@@ -24,7 +24,7 @@ After edits: `npm test` + `npm run preview` + `npm run preview:svg`. All must pa
 
 ```text
 dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 ↺ 4h20m │ W31 ↺ 2d13h │ F86 ↺ 2d13h │ $44.21 │ task
-⬆ update 1.7.0 · run: npx ctxline-claude@latest
+⬆ 1.7.0 available · npx ctxline-claude@latest
 ```
 
 - Labels fused with percent: `C`=context, `H`=5h, `W`=7d, `<initial>`=model-scoped weekly limit (Fable → `F`, label derived from `scope.model.display_name` in `parseScopedLimits` — never hardcode a model list).
@@ -32,7 +32,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 - Labels live INSIDE the builder functions (`getContextBar`/`buildUsageBar`), not as prefixes in `renderStatusLine`. `renderStatusLine` pushes segments verbatim; `outputStatus`/`outputFallback` are thin writers that call it.
 - `↑N↓M` is appended to the branch string (↑ green / ↓ red), not a separate segment. Zero side omitted.
 - `$<cost>` is dim, sits after usage and before task.
-- The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆` + new version, dim connective, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
+- The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆ <version>`, dim `available ·`, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
 
 ## Responsive wrap — reassign segments when order changes

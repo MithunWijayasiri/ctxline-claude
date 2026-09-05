@@ -977,9 +977,8 @@ test('update nudge: own row below the statusline, main line untouched', () => {
   assert.strictEqual(rows.length, 2, 'exactly one extra row');
   // The nudge is appended, never mixed into the statusline's own segments.
   assert.deepStrictEqual(rows[0].split(' │ ').slice(-2), ['$0.42', 'Refactoring']);
-  assert.strictEqual(rows[1], '⬆ update 1.9.0 · run: npx ctxline-claude@latest');
-  assert.ok(raw.includes(`${GREEN}⬆`), 'arrow is green');
-  assert.ok(raw.includes(`${GREEN}1.9.0`), 'new version is green');
+  assert.strictEqual(rows[1], '⬆ 1.9.0 available · npx ctxline-claude@latest');
+  assert.ok(raw.includes(`${GREEN}⬆ 1.9.0`), 'arrow and version are green');
   assert.ok(raw.includes(`${BOLD}npx ctxline-claude@latest`), 'command is bold — the copy-paste target');
 });
 
@@ -1000,7 +999,7 @@ test('update nudge: rides along with the responsive wrap as a third row', () => 
 test('update nudge: a newer cached version renders; an older one does not', () => {
   const newer = freshHome();
   seedUpdateCache(newer, { latest: '99.0.0' });
-  assert.match(run(fixture(40), { home: newer }).clean, /⬆ update 99\.0\.0 · run: npx ctxline-claude@latest/);
+  assert.match(run(fixture(40), { home: newer }).clean, /⬆ 99\.0\.0 available · npx ctxline-claude@latest/);
 
   const older = freshHome();
   seedUpdateCache(older, { latest: '0.0.1' });

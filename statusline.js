@@ -805,10 +805,8 @@ function collectFacts(data) {
 // `npx <pkg>@latest` is the right command for script-installed users too — it recopies the
 // hook. Only the target version is shown — the running one is what you're looking at.
 function renderUpdateLine(latest) {
-  return `${colors.green}⬆${colors.reset} `
-    + `${colors.dim}update${colors.reset} `
-    + `${colors.green}${latest}${colors.reset} `
-    + `${colors.dim}· run:${colors.reset} `
+  return `${colors.green}⬆ ${latest}${colors.reset} `
+    + `${colors.dim}available ·${colors.reset} `
     + `${colors.bold}npx ${PACKAGE_NAME}@latest${colors.reset}`;
 }
 
