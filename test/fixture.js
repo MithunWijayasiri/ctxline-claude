@@ -13,10 +13,23 @@ const { serializeUsageCache } = require('../statusline.js');
 const SCRIPT = path.join(__dirname, '..', 'statusline.js');
 
 // Fresh throwaway HOME with .claude/cache pre-created. Caller owns cleanup.
+// Seeds a latest-less update cache stamped now: `checkedAt` inside UPDATE_TTL_MS stops
+// refreshUpdateCheck spawning its registry child (tests stay offline), and no `latest`
+// means no update segment, so every other assertion is unaffected.
 function makeHome() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-home-'));
   fs.mkdirSync(path.join(home, '.claude', 'cache'), { recursive: true });
+  seedUpdateCache(home, {});
   return home;
+}
+
+// Seed update-cache.json. `checkedAt` defaults to now (no registry child); pass a
+// `latest` to exercise the nudge, or an old `checkedAt`/`lastAttempt` for the TTL paths.
+function seedUpdateCache(home, { latest, checkedAt = Date.now(), lastAttempt } = {}) {
+  const entry = { checkedAt };
+  if (latest != null) entry.latest = latest;
+  if (lastAttempt != null) entry.lastAttempt = lastAttempt;
+  fs.writeFileSync(path.join(home, '.claude', 'cache', 'update-cache.json'), JSON.stringify(entry));
 }
 
 // Tokenless credentials file -- getApiUsage bails before any network/keychain call.
@@ -93,6 +106,6 @@ function spawnSubagent(input, env) {
 }
 
 module.exports = {
-  SCRIPT, makeHome, seedCredentials, seedUsageCache, seedFakeRepo,
+  SCRIPT, makeHome, seedCredentials, seedUsageCache, seedUpdateCache, seedFakeRepo,
   git, hasGit, gitCommit, seedDivergedRepo, spawnMain, spawnSubagent
 };

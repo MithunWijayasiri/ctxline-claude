@@ -8,7 +8,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  makeHome, seedCredentials, seedUsageCache, seedFakeRepo, seedDivergedRepo, spawnMain, spawnSubagent
+  makeHome, seedCredentials, seedUsageCache, seedUpdateCache, seedFakeRepo, seedDivergedRepo, spawnMain, spawnSubagent
 } = require('../test/fixture.js');
 
 // makeHome() creates each scenario's home independently (os.tmpdir()-rooted, not nested
@@ -33,9 +33,12 @@ function setupDivergedRepo(projectDir, branch) {
   }
 }
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, models, branch, effort, rateLimits, cost, columns, diverged, disable }) {
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, models, branch, effort, rateLimits, cost, columns, diverged, disable, update }) {
   const home = makeHome();
   HOMES.push(home);
+  // makeHome() already seeds a latest-less, freshly-stamped update cache (no registry
+  // child, no nudge); `update` overwrites it with a newer version to show the segment.
+  if (update) seedUpdateCache(home, { latest: update });
   // Only H/W bypass the cache: with rateLimits and no models, seed neither creds nor cache,
   // proving that path needs no network. Model-scoped bars never arrive via stdin, so seed a
   // fresh cache whenever `models` is set — rateLimits or not (statusline.js reads both).
@@ -161,6 +164,12 @@ console.log('  ' + render({
 // Segment opt-out: CTXLINE_DISABLE hides segments (dir/model/context always render).
 console.log('\nSegment opt-out (CTXLINE_DISABLE=usage,cost):');
 console.log('  ' + render({ ...base, effort: 'high', disable: 'usage,cost' }));
+
+// Update nudge: a weekly background check caches npm's latest version; when that is newer
+// than the running one, an extra row carrying the upgrade command is appended below the
+// statusline. Cache-only on the render path — the fetch runs in a detached child.
+console.log('\nUpdate available (cached newer npm version):');
+console.log('  ' + render({ ...base, effort: 'high', update: '9.9.9' }));
 
 // Subagent panel (subagentStatusLine mode): separate entry point (`node statusline.js
 // subagent`), separate stdin shape ({ tasks: [...] }), no cache/HOME seeding needed since
