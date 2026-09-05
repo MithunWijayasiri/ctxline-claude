@@ -66,7 +66,7 @@ const GIT_TIMEOUT_MS = 500;             // hard cap on the rev-list subprocess (
 const UPDATE_CACHE_FILE = path.join(CACHE_DIR, 'update-cache.json');
 const UPDATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days between successful checks
 const UPDATE_RETRY_MS = 60 * 60 * 1000;         // 1h backoff after a failed/killed check
-const UPDATE_TIMEOUT_MS = 2000;                 // child only, never on the render path
+const UPDATE_TIMEOUT_MS = 2000;                 // socket idle AND whole-request deadline
 const REGISTRY_HOST = 'registry.npmjs.org';
 const PACKAGE_NAME = 'ctxline-claude';
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;       // releases only: a prerelease never nudges
@@ -589,7 +589,13 @@ function refreshUpdateCheck() {
 // mode, and its stdio is discarded by the parent anyway. A failed fetch leaves checkedAt
 // untouched, so the UPDATE_RETRY_MS backoff (not the weekly TTL) governs the next try.
 function runUpdateCheck() {
+  let settled = false;
+  let deadline;
+
   const done = (latest) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(deadline);
     if (latest) writeUpdateCache({ ...(readUpdateCache() || {}), latest, checkedAt: Date.now() });
     process.exit(0);
   };
@@ -612,6 +618,14 @@ function runUpdateCheck() {
       req.destroy();
       done(null);
     });
+
+    // The `timeout` option above is socket inactivity, not total duration -- a response
+    // that trickles bytes would keep this detached child alive indefinitely, and the
+    // parent's UPDATE_RETRY_MS only delays the next spawn, it can't reap this one.
+    deadline = setTimeout(() => {
+      req.destroy();
+      done(null);
+    }, UPDATE_TIMEOUT_MS);
 
     req.end();
   } catch (e) {

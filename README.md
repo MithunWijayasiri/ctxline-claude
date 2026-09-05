@@ -222,7 +222,7 @@ No, it's imperceptible. Almost every render reads a small local cache (sub-milli
 <details>
 <summary>What is the ⬆ segment, and what does it send?</summary>
 
-An extra row appears below the statusline — `⬆ 1.7.0 available · npx ctxline-claude@latest` — so the upgrade command is right there to copy. It shows only while you're behind, and the command works whichever way you installed. Once a week a short-lived background process asks the public npm registry for the package's latest version number and writes it to a local cache; the statusline itself only ever reads that cache, so no render waits on the network. The request carries nothing about you — no session data, no identifiers, just a plain GET for a public package. Hide it (and skip the request entirely) with `CTXLINE_DISABLE=update`.
+An extra row appears below the statusline — `⬆ 1.7.0 available · npx ctxline-claude@latest` — so the upgrade command is right there to copy. It shows only while you're behind, and the command works whichever way you installed. Once a week a short-lived background process asks the public npm registry for the package's latest version number and writes it to a local cache; the statusline itself only ever reads that cache, so no render waits on the network. The request carries no session data, credentials, or identifiers — it's a plain GET for a public package, though as with any HTTP request the registry does see your IP address. Hide it (and skip the request entirely) with `CTXLINE_DISABLE=update`.
 
 </details>
 
