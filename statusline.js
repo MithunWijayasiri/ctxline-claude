@@ -13,7 +13,7 @@ const { execSync, execFileSync, spawn } = require('child_process');
 // Installed version, compared against the npm registry's latest for the update nudge.
 // This file is copied standalone into ~/.claude/hooks/ with no package.json beside it,
 // so the version has to live here. Must match package.json "version" (see CLAUDE.md).
-const VERSION = '1.6.2';
+const VERSION = '1.7.0';
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
