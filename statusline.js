@@ -1020,5 +1020,5 @@ if (require.main === module) {
     readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion };
+  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion, VERSION };
 }

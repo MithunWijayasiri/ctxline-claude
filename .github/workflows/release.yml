@@ -5,11 +5,14 @@ name: Release
 # - auto-generated notes from commits/PRs since the previous release
 # - Source code (zip/tar.gz), which GitHub attaches automatically
 #
-# Bump the version in package.json before running — npm rejects re-publishing an
-# existing version (and the release step refuses a duplicate tag).
+# Bump the version in BOTH package.json and the VERSION constant in statusline.js before
+# running — the installers copy statusline.js alone, so it carries its own version for the
+# update check. `npm test` asserts the two match and fails the release if they drift.
+# npm also rejects re-publishing an existing version (and the release step refuses a
+# duplicate tag).
 
 on:
-  workflow_dispatch:   # version comes from package.json — bump it in a commit before running
+  workflow_dispatch:   # version comes from package.json — bump it (and statusline.js's VERSION) in a commit first
 
 permissions:
   contents: write   # required to create the tag + release

@@ -147,7 +147,7 @@ const BLINK = '\x1b[5m';
 // child process. What's left spawned: git-branch/ahead-behind detection (real .git dir +
 // subprocess), the usage cache/API pipeline, CTXLINE_DISABLE env-parsing (module-load-time
 // state, needs a fresh process per value), and the execution-contract tests below.
-const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion } = require('../statusline.js');
+const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion, VERSION } = require('../statusline.js');
 
 // Same shape as fixture()'s stdin JSON, but as a plain object (no JSON round-trip needed
 // for a direct call).
@@ -1013,4 +1013,11 @@ test('update nudge: CTXLINE_DISABLE=update hides it', () => {
   assert.ok(!clean.includes('⬆'), 'nudge suppressed');
   assert.match(clean, /^myproject │ /, 'the rest of the line is untouched');
   assert.ok(!clean.includes('\n'), 'no extra row');
+});
+
+test('VERSION matches package.json — a release must bump both', () => {
+  // Installers copy statusline.js alone into ~/.claude/hooks/, with no package.json beside
+  // it, so the running version has to live in the file. If the two drift, every installed
+  // copy compares a stale VERSION against npm and nudges for an update forever.
+  assert.strictEqual(VERSION, require('../package.json').version);
 });
