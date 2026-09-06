@@ -137,6 +137,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 | **Model limit** | Weekly limit scoped to a single model, when your account has one — labelled by the model's initial (`F` = Fable) |
 | **Cost** | Running session cost in USD (e.g. `$0.42`) |
 | **Task** | The in-progress todo, when there is one |
+| **Update** | An extra row with the upgrade command when a newer release is on npm — checked once a week, in the background |
 
 > [!NOTE]
 > Usage bars change color automatically as you approach your limits.
@@ -151,7 +152,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 
 The statusline is zero-config by default. To **hide segments you don't want**, set the `CTXLINE_DISABLE` environment variable to a comma-separated list of any of:
 
-`branch` · `effort` · `cost` · `task` · `usage` (5-hour + weekly + model-scoped)
+`branch` · `effort` · `cost` · `task` · `update` · `usage` (5-hour + weekly + model-scoped)
 
 Directory, model, and context always show; unknown names are ignored. Example below hides cost and the current task.
 
@@ -215,6 +216,13 @@ No — zero tokens, ever. The statusline is part of Claude Code's UI; its output
 <summary>Does fetching data slow down Claude Code?</summary>
 
 No, it's imperceptible. Almost every render reads a small local cache (sub-millisecond) instead of fetching. The usage API only runs as a fallback (and is cached); the git ahead/behind check runs at most once every ~5s and is hard-capped so it can never hang. The statusline runs as its own background command, so it never blocks your typing or Claude's responses — and in a non-git folder the git check doesn't run at all.
+
+</details>
+
+<details>
+<summary>What is the ⬆ segment, and what does it send?</summary>
+
+An extra row appears below the statusline — `⬆ 1.7.0 available · npx ctxline-claude@latest` — so the upgrade command is right there to copy. It shows only while you're behind, and the command works whichever way you installed. Once a week a short-lived background process asks the public npm registry for the package's latest version number and writes it to a local cache; the statusline itself only ever reads that cache, so no render waits on the network. The request carries no session data, credentials, or identifiers — it's a plain GET for a public package, though as with any HTTP request the registry does see your IP address. Hide it (and skip the request entirely) with `CTXLINE_DISABLE=update`.
 
 </details>
 

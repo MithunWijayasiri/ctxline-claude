@@ -11,7 +11,7 @@ description: Change the statusline's visible design — layout, segment format, 
 
 | File | What to change | Where |
 |---|---|---|
-| `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
+| `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getLatestUpdate`, `renderUpdateLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | assertions on labels / `NN%` / colors / order | match new label regexes (e.g. `/C\d+ /`, `/H\d+\b/`); ANSI const block near top |
 | `scripts/preview.js` | seed + render check | cache seed data (via `test/fixture.js`'s `seedUsageCache`), `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
 | `docs/assets/preview.svg` | marketing SVG (README/site) | 2 of its 12 `<text>` elements (main statusline + subagent row) are **generated**, not hand-edited — run `npm run preview:svg` after any output-shape change; the other 10 (window chrome, prompt lines, bullets) stay hand-authored |
@@ -24,6 +24,7 @@ After edits: `npm test` + `npm run preview` + `npm run preview:svg`. All must pa
 
 ```text
 dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 ↺ 4h20m │ W31 ↺ 2d13h │ F86 ↺ 2d13h │ $44.21 │ task
+⬆ 1.7.0 available · npx ctxline-claude@latest
 ```
 
 - Labels fused with percent: `C`=context, `H`=5h, `W`=7d, `<initial>`=model-scoped weekly limit (Fable → `F`, label derived from `scope.model.display_name` in `parseScopedLimits` — never hardcode a model list).
@@ -31,6 +32,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 - Labels live INSIDE the builder functions (`getContextBar`/`buildUsageBar`), not as prefixes in `renderStatusLine`. `renderStatusLine` pushes segments verbatim; `outputStatus`/`outputFallback` are thin writers that call it.
 - `↑N↓M` is appended to the branch string (↑ green / ↓ red), not a separate segment. Zero side omitted.
 - `$<cost>` is dim, sits after usage and before task.
+- The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆ <version>`, dim `available ·`, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
 
 ## Responsive wrap — reassign segments when order changes
@@ -39,6 +41,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 
 - line 1 = dir/branch + model/effort + `C`
 - line 2 = `H`/`W`/scoped + `$` + task
+- the `⬆` row, when present, is appended below both — a 3rd row on a narrow terminal
 
 Adding or moving a segment means picking its line in `renderStatusLine`, not just its position. Wrap fires only when `cols` is a known positive int **and** line 2 is non-empty. `outputFallback()` stays single-line — it calls `renderStatusLine` with a static `facts.cols: undefined`, which `layout` treats as unknown width.
 
@@ -46,7 +49,7 @@ Adding or moving a segment means picking its line in `renderStatusLine`, not jus
 
 ## Opt-out names are part of the visible contract
 
-`CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `task`, `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
+`CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `task`, `update`, `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
 
 ## Colors (two schemes — do NOT unify)
 
@@ -79,6 +82,7 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 `test/fixture.js` backs both `test/render.test.js` and `scripts/preview.js`: fake-HOME construction, `usage-cache.json` seeding (through `statusline.js`'s exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside `package.json`'s `files` whitelist.
 
 - `run()` opts: `columns` (unset → single line), `disable` (→ `CTXLINE_DISABLE`).
+- `makeHome()` seeds a `latest`-less `update-cache.json` stamped now — keeps tests offline (no registry child spawns) and shows no nudge. `seedUpdateCache(home, { latest, checkedAt, lastAttempt })` overrides it; preview's `render()` takes `update: '<version>'` for the same thing.
 - Preview's `render()` takes the matching params — narrow scenario passes 40, opt-out scenario passes `usage,cost` — plus `models` (`[{ label, percentage, resetsInMin }]`) for the scoped-limit scenario.
 - Both clear `COLUMNS`/`CTXLINE_DISABLE` when unset, so a dev-env value can't skew output.
 - Git ahead/behind tests need real `git` (skipped if absent) and a fresh HOME per test, to isolate `git-cache.json`.

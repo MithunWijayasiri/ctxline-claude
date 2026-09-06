@@ -6,9 +6,10 @@ npm package `ctxline-claude` — single-file statusline for Claude Code:
 
 ```text
 dir ⎇ branch ↑N↓M │ model · effort │ C<used> <bar> │ H<pct> ↺ <reset> │ W<pct> ↺ <reset> │ <model-initial><pct> ↺ <reset> │ $<cost> │ task
+⬆ <latest> available · npx ctxline-claude@latest
 ```
 
-`C` context (only segment with a bar), `H` 5-hour usage, `W` 7-day usage, `<model-initial>` model-scoped weekly limit (Fable → `F`), `$` session cost. Everything after `dir`/`model`/`C` is conditional — renders only when its source resolves.
+`C` context (only segment with a bar), `H` 5-hour usage, `W` 7-day usage, `<model-initial>` model-scoped weekly limit (Fable → `F`), `$` session cost. Everything after `dir`/`model`/`C` is conditional — renders only when its source resolves. The `⬆` row is **not a segment** — it's appended below whatever the layout produced, only when a newer release is cached.
 
 ## Commands
 
@@ -23,6 +24,9 @@ npm pack --dry-run # preview what publishes
 
 # Main line — the stdin JSON Claude Code sends:
 echo '{"model":{"display_name":"Opus 4.8"},"workspace":{"current_dir":"/tmp/x"},"session_id":"t","context_window":{"remaining_percentage":40}}' | node statusline.js
+
+# Update check (detached child; writes ~/.claude/cache/update-cache.json, prints nothing):
+node statusline.js update-check
 
 # Subagent rows (startTime = 4m12s ago, epoch seconds — format note below):
 echo '{"tasks":[{"id":"t1","name":"reviewer","model":"claude-opus-5","effort":"max","tokenCount":45200,"contextWindowSize":200000,"startTime":'$(($(date +%s)-252))'}]}' | node statusline.js subagent
@@ -40,7 +44,7 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 
 **Timing is load-bearing.** stdin raced against `overallTimeout` (500ms with `ANTHROPIC_API_KEY`, else 1300/1600ms by cache presence); first to fire prints and `exit(0)`. Usage API has its own timeout (1200ms warm / 1500ms cold) and fires only on the fallback path.
 
-**Segment opt-out.** `CTXLINE_DISABLE` comma list parsed once into `DISABLED` (trimmed, lowercased). Recognized: `branch`, `effort`, `cost`, `task`, `usage` (H+W). `dir`/`model`/`context` always render; unknown names ignored. Disabling skips the work, not just the output — `usage` means no network/cache/credentials at all.
+**Segment opt-out.** `CTXLINE_DISABLE` comma list parsed once into `DISABLED` (trimmed, lowercased). Recognized: `branch`, `effort`, `cost`, `task`, `update`, `usage` (H+W). `dir`/`model`/`context` always render; unknown names ignored. Disabling skips the work, not just the output — `usage` means no network/cache/credentials at all.
 
 **Responsive layout (`layout()`).** Visible width (ANSI stripped) > `COLUMNS - WIDTH_MARGIN` → two lines: line 1 dir/branch + model/effort + `C`; line 2 `H`/`W` + `$` + task. Fires only when `COLUMNS` is a known positive int and line 2 is non-empty — unknown width, wide terminal, or nothing to wrap stays single-line, as does `outputFallback()`. `cols` is a parameter, never an env read, so `layout()`/`renderStatusLine()` have no side effects.
 
@@ -55,6 +59,7 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 | `$` | stdin `cost.total_cost_usd`, no network/cache | `Number.isFinite`-guarded; client-side estimate at API pricing — for subscription users, not actual billing |
 | `H` / `W` | stdin `rate_limits` via `buildUsageFromStdin()`, else `getRawUsage()` → OAuth API | `rate_limits` exists only for Claude.ai Pro/Max **after the first API response** — absent at cold start and for API-key users, hence the fallback |
 | scoped weekly | OAuth API only | never arrives via stdin; `getScopedColor` (orange, red ≥90), not the H/W thresholds |
+| `⬆` row | `update-cache.json` only — never the network on the render path | `getLatestUpdate()` compares the cached `latest` against `VERSION`; `''` unless strictly newer, and both sides must be strict `x.y.z` (a prerelease never nudges). `renderUpdateLine()` appends it *after* `layout()`, so it never competes for width and never joins the wrap decision |
 | task | newest `~/.claude/todos/<sessionId>*-agent-*.json` | `activeForm` of the `in_progress` todo |
 
 **Usage API.** `GET api.anthropic.com/api/oauth/usage`, bearer token + `anthropic-beta: oauth-2025-04-20`. Token from `getCredentials()`: `~/.claude/.credentials.json`, then macOS keychain. API-key users get no usage.
@@ -64,10 +69,19 @@ Reads from stdin: `model.display_name`, `workspace.current_dir`, `session_id`, `
 - `parseScopedLimits(usage)` reads `limits[]` for `kind: 'weekly_scoped'`; label = first initial of `scope.model.display_name` (new model family needs no code change). Legacy flat `seven_day_opus`/`seven_day_sonnet` only when `limits` yields nothing → neither shape double-counts.
 - `resolveUsage()` still calls `getRawUsage()` for the scoped bars when `H`/`W` came from stdin. Capped at one call per `FRESH_TTL_MS`; a slow/failed call costs only those bars.
 
-**Render seam.** `collectFacts(data)` gathers everything touching fs/child_process/env (git branch + ahead/behind, in-progress task, `COLUMNS`); pure `renderStatusLine(data, facts, usage)` formats; `outputStatus` is a ~3-line writer, try/catch → `Status unavailable`. `outputFallback` calls the same renderer with a static git/task-free `facts` (`cols: undefined` → single line, matching the fallback contract). Entry guarded by `require.main === module` so `test/render.test.js` can `require()` and call exports directly instead of spawning: `renderStatusLine`, `renderSubagentTask`, `parseScopedLimits`, `parseUsagePayload`, `normalizePercentage`, `readStdinThen`, `serializeUsageCache`.
+**Update check.** `GET registry.npmjs.org/ctxline-claude/latest` → `parseRegistryVersion(body)` (pure; `null` on anything but strict `x.y.z`). Anonymous — no credentials, no session data.
+- Rendered as its **own stdout row** (Claude Code renders each line as a separate row), not a segment: the copy-pasteable `npx ctxline-claude@latest` is too wide to inline without forcing the main line to wrap on most terminals. `npx <pkg>@latest` is correct for `install.sh`/`install.ps1` users too — it recopies the hook.
+- **Render never fetches.** `emit()` calls `refreshUpdateCheck()` → spawns a **detached** `node statusline.js update-check` child (`stdio: 'ignore'`, `.unref()`), returns immediately. Parent exits on its usual stdin race; child writes the cache ~300ms later, so the nudge shows on the next render. Blocking inline would break the timing contract for a segment nobody waits on.
+- `lastAttempt` stamped **before** the spawn → offline machine / failed spawn / killed child backs off `UPDATE_RETRY_MS` (1h) instead of respawning per render. Success stamps `checkedAt` → next check gated by `UPDATE_TTL_MS` (7 days). Failure leaves `checkedAt` untouched, so the 1h backoff governs, not the weekly one.
+- Interval, not calendar-pinned. "7 days since last success" needs no date math; drift is harmless.
+- `VERSION` constant lives in `statusline.js`: installers copy that file alone into `~/.claude/hooks/`, no `package.json` beside it at runtime. **Bump it with `package.json`** — see keep-in-sync below.
+- `CTXLINE_DISABLE=update` skips cache read and spawn entirely.
 
-**Caches** (both in `~/.claude/cache/`):
+**Render seam.** `collectFacts(data)` gathers everything touching fs/child_process/env (git branch + ahead/behind, in-progress task, cached update version, `COLUMNS`); pure `renderStatusLine(data, facts, usage)` formats; `outputStatus` is a ~3-line writer, try/catch → `Status unavailable`. `outputFallback` calls the same renderer with a static git/task-free `facts` (`cols: undefined` → single line, matching the fallback contract). Entry guarded by `require.main === module` so `test/render.test.js` can `require()` and call exports directly instead of spawning: `renderStatusLine`, `renderSubagentTask`, `parseScopedLimits`, `parseUsagePayload`, `normalizePercentage`, `readStdinThen`, `serializeUsageCache`, `compareVersions`, `parseRegistryVersion`.
+
+**Caches** (all in `~/.claude/cache/`):
 - `usage-cache.json` — `{ timestamp, data: { fiveHour, weekly, models }, lastAttempt }`, not formatted strings → old string-format caches ignored on read. Shared across sessions; `models` optional (pre-scoped-bars caches still validate). Fresh `FRESH_TTL_MS` 30s → render cache, skip API; stale → refresh, on API failure fall back to cache up to `STALE_TTL_MS` 10m. `lastAttempt` — stamped by `recordUsageAttempt()` before the request fires, success or failure — is the retry cooldown, independent of `timestamp`. Segments re-rendered every time via `buildUsageBar()` so countdowns recompute from `resetsAt`. Fronts the API path only — stdin `rate_limits` never reads or writes it.
+- `update-cache.json` — `{ latest, checkedAt, lastAttempt }`, all optional. Written by the detached `update-check` child (`latest` + `checkedAt`) and by `refreshUpdateCheck()` (`lastAttempt` only). Read-only on the render path. Shared across sessions like the others.
 - `git-cache.json` — single entry `{ gitDir, timestamp, ahead, behind }`; different repo invalidates. Fresh `GIT_FRESH_TTL_MS` 5s (render burst spawns `git` once) → stale re-run → on slow/failed call fall back to last counts up to `GIT_STALE_TTL_MS` 60s so they don't flicker.
 
 **Two color schemes (intentional, do not unify):** context bar (`getContextBar`) steps 50/65/80 (≥80 → blink red); usage (`getUsageColor`) steps 50/75/90. Model-scoped bars opt out of both — `getScopedColor` (orange, red ≥90) passed as `buildUsageBar`'s optional 4th arg → several scoped bars read as one group while a nearly-spent one still stands out.
@@ -97,7 +111,7 @@ Skips everything main mode does besides stdin parsing — no usage API, git, tod
 
 ## Keep in sync when `statusline.js` changes
 
-`statusline.js` is source of truth; the five files below mirror the visible line and must change in the same edit or CI/release/site drifts. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
+`statusline.js` is source of truth; the six files below mirror it and must change in the same edit or CI/release/site drifts. Author edits `statusline.js`; assistant re-syncs. After any edit run `npm test` + `npm run preview`.
 
 | file | mirrors | trap |
 |---|---|---|
@@ -106,14 +120,15 @@ Skips everything main mode does besides stdin parsing — no usage API, git, tod
 | `docs/assets/preview.svg` | the statusline `<text>` elements' `<tspan>` runs (README + site) | generated, never hand-edited — run `npm run preview:svg` after anything that shifts this scenario's output; window chrome, prompt lines, and the "○ " bullet stay hand-authored |
 | `docs/index.html` | hero mock (`.term .line`) + subagent-panel rows | byte-compared against real `renderStatusLine()`/`renderSubagentTask()` calls by `test/docs-drift.test.js`, so drift fails `npm test`; inspector `SIGNALS[]` and `.term` color classes are unchecked — hand-verify |
 | `CLAUDE.md` | format diagram (top), segment-source table, visible contract below | — |
+| `package.json` | `version` ↔ the `VERSION` constant in `statusline.js` | not a visible-line mirror, but the same class of drift: a stale `VERSION` makes every installed copy nudge for an update forever (or never) |
 
-`test/fixture.js` is the shared harness behind test + preview, not one of the five: fake-HOME construction, `usage-cache.json` seeding (via the exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
+`test/fixture.js` is the shared harness behind test + preview, not one of the six: fake-HOME construction, `usage-cache.json` seeding (via the exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), `update-cache.json` seeding (`makeHome()` stamps a `latest`-less one so tests never spawn the registry child), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside the `files` whitelist.
 
-Triggers: change to **what the line looks like** → test assertions (+ `npm run preview:svg`). Change to **cache shape or stdin fields** → both seeds. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
+Triggers: change to **what the line looks like** → test assertions (+ `npm run preview:svg`). Change to **cache shape or stdin fields** → both seeds. Version bump → `VERSION` in `statusline.js` too. `npm run preview` is the fast visual check. (README has no sample line — leave it.)
 
 Full edit-point map, test-harness options, and the ANSI/SVG color tables: `.claude/skills/restyle-statusline/SKILL.md`.
 
-Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar glyph (`buildUsageBar` builds text-only `H`/`W`/scoped segments despite the name); `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
+Visible contract = format diagram (top) + color steps above, plus: only `C` gets a bar glyph (`buildUsageBar` builds text-only `H`/`W`/scoped segments despite the name); `$<cost>` dim, after usage and before task; `↑N↓M` ↑ green / ↓ red; the `⬆` row appended below the layout (green `⬆ <version>`, dim `available ·`, bold command), never inside it; responsive wrap (narrow → line 2 = `H`/`W`/`$`/task); always-print-and-exit-0 fallback.
 
 ## Do not touch the installers
 
@@ -128,4 +143,4 @@ Work in `statusline.js` only. Install path is frozen (inherited working from ups
 
 `statusline.js` is fetched verbatim from GitHub `main` by `install.sh`/`install.ps1` (via `REPO_URL`) and copied by `bin/install.js`. A change on `main` ships to anyone re-running the installers — keep `main` releasable. `package.json` `files` whitelists what publishes.
 
-Releases are owner-triggered, manual: bump `version` in `package.json` on `main`, then run the **Release** workflow (`.github/workflows/release.yml`), which publishes from that version. Never `npm publish` by hand; never bump the version unasked.
+Releases are owner-triggered, manual: bump `version` in `package.json` **and the `VERSION` constant in `statusline.js`** on `main`, then run the **Release** workflow (`.github/workflows/release.yml`), which publishes from that version. Never `npm publish` by hand; never bump the version unasked.

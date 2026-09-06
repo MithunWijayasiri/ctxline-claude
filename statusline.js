@@ -8,12 +8,18 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const https = require('https');
-const { execSync, execFileSync } = require('child_process');
+const { execSync, execFileSync, spawn } = require('child_process');
+
+// Installed version, compared against the npm registry's latest for the update nudge.
+// This file is copied standalone into ~/.claude/hooks/ with no package.json beside it,
+// so the version has to live here. Must match package.json "version" (see CLAUDE.md).
+const VERSION = '1.6.2';
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
 // Optional segment opt-out: CTXLINE_DISABLE is a comma list of segments to hide.
-// Recognized: branch, effort, cost, task, usage (H+W+model-scoped). dir/model/context always render.
+// Recognized: branch, effort, cost, task, update, usage (H+W+model-scoped). dir/model/context
+// always render.
 // Unknown names are ignored. Disabling a segment also skips its work (git, todo read,
 // usage fetch).
 const DISABLED = new Set(
@@ -53,6 +59,17 @@ const GIT_CACHE_FILE = path.join(CACHE_DIR, 'git-cache.json');
 const GIT_FRESH_TTL_MS = 5000;          // 5s: reuse counts within a render burst
 const GIT_STALE_TTL_MS = 60000;         // 60s: fall back to last counts if git fails
 const GIT_TIMEOUT_MS = 500;             // hard cap on the rev-list subprocess (warm ~130ms)
+
+// Update check: compares VERSION against the npm registry's dist-tags.latest. The render
+// only ever reads this cache; the refresh runs in a detached child (see refreshUpdateCheck),
+// so no render ever waits on the registry.
+const UPDATE_CACHE_FILE = path.join(CACHE_DIR, 'update-cache.json');
+const UPDATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days between successful checks
+const UPDATE_RETRY_MS = 60 * 60 * 1000;         // 1h backoff after a failed/killed check
+const UPDATE_TIMEOUT_MS = 2000;                 // socket idle AND whole-request deadline
+const REGISTRY_HOST = 'registry.npmjs.org';
+const PACKAGE_NAME = 'ctxline-claude';
+const SEMVER_RE = /^\d+\.\d+\.\d+$/;       // releases only: a prerelease never nudges
 
 // Subagent mode reads only stdin (no usage API to race), so its stdin read gets a
 // short hard cap of its own instead of the main-mode overallTimeout.
@@ -497,6 +514,125 @@ function recordUsageAttempt() {
   }
 }
 
+// Compare two strict "x.y.z" versions -> -1 | 0 | 1, or null when either side isn't that
+// shape (prerelease tags, missing parts, non-numeric). The nudge is a nicety, so an
+// unparseable version means no segment rather than a guess.
+function compareVersions(a, b) {
+  const parse = (v) => SEMVER_RE.test(String(v ?? '')) ? String(v).split('.').map(Number) : null;
+  const x = parse(a);
+  const y = parse(b);
+  if (!x || !y) return null;
+  for (let i = 0; i < 3; i++) {
+    if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1;
+  }
+  return 0;
+}
+
+// Pure: an npm registry version-manifest body -> its "x.y.z" version string, or null on
+// unparseable JSON, a missing version, or a non-release version (404 bodies land here too).
+function parseRegistryVersion(body) {
+  try {
+    const v = JSON.parse(body)?.version;
+    return SEMVER_RE.test(String(v ?? '')) ? String(v) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function readUpdateCache() {
+  try {
+    const c = JSON.parse(fs.readFileSync(UPDATE_CACHE_FILE, 'utf8'));
+    return c && typeof c === 'object' ? c : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeUpdateCache(obj) {
+  try {
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    fs.writeFileSync(UPDATE_CACHE_FILE, JSON.stringify(obj), 'utf8');
+  } catch (e) {}
+}
+
+// The cached latest version when it's newer than VERSION, else ''. Cache-only by design:
+// collectFacts calls this on the render path, and the render must never touch the network.
+function getLatestUpdate() {
+  const cached = readUpdateCache();
+  if (!cached) return '';
+  return compareVersions(cached.latest, VERSION) === 1 ? String(cached.latest) : '';
+}
+
+// Fire the weekly check in a detached child, so the render neither waits on the registry
+// nor races its own exit against the response. lastAttempt is stamped before the spawn, so
+// an offline machine, a failed spawn, or a child that dies backs off UPDATE_RETRY_MS
+// instead of respawning on every render.
+function refreshUpdateCheck() {
+  try {
+    const cached = readUpdateCache();
+    const now = Date.now();
+    if (cached) {
+      if (Number.isFinite(cached.checkedAt) && now - cached.checkedAt < UPDATE_TTL_MS) return;
+      if (Number.isFinite(cached.lastAttempt) && now - cached.lastAttempt < UPDATE_RETRY_MS) return;
+    }
+    writeUpdateCache({ ...(cached || {}), lastAttempt: now });
+    // windowsHide: a detached console app would otherwise flash its own console window on
+    // Windows. detached + unref so the child outlives this render's exit(0).
+    spawn(process.execPath, [__filename, 'update-check'], {
+      detached: true, stdio: 'ignore', windowsHide: true
+    }).unref();
+  } catch (e) {}
+}
+
+// The 'update-check' entry point: the detached child. Fetches the registry's latest
+// version, stamps the cache, exits. Writes nothing to stdout — it is not a statusline
+// mode, and its stdio is discarded by the parent anyway. A failed fetch leaves checkedAt
+// untouched, so the UPDATE_RETRY_MS backoff (not the weekly TTL) governs the next try.
+function runUpdateCheck() {
+  let settled = false;
+  let deadline;
+
+  const done = (latest) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(deadline);
+    if (latest) writeUpdateCache({ ...(readUpdateCache() || {}), latest, checkedAt: Date.now() });
+    process.exit(0);
+  };
+
+  try {
+    const req = https.request({
+      hostname: REGISTRY_HOST,
+      path: `/${PACKAGE_NAME}/latest`,
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      timeout: UPDATE_TIMEOUT_MS
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => done(parseRegistryVersion(body)));
+    });
+
+    req.on('error', () => done(null));
+    req.on('timeout', () => {
+      req.destroy();
+      done(null);
+    });
+
+    // The `timeout` option above is socket inactivity, not total duration -- a response
+    // that trickles bytes would keep this detached child alive indefinitely, and the
+    // parent's UPDATE_RETRY_MS only delays the next spawn, it can't reap this one.
+    deadline = setTimeout(() => {
+      req.destroy();
+      done(null);
+    }, UPDATE_TIMEOUT_MS);
+
+    req.end();
+  } catch (e) {
+    done(null);
+  }
+}
+
 function getCredentials() {
   // Try file first (legacy / Linux / Windows)
   const credsPath = path.join(os.homedir(), '.claude', '.credentials.json');
@@ -669,11 +805,23 @@ function collectFacts(data) {
     const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
     const sessionId = data?.session_id || '';
     const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
+    const update = DISABLED.has('update') ? '' : getLatestUpdate();
     const cols = parseInt(process.env.COLUMNS, 10);
-    return { dirname, branch, sync, task, cols };
+    return { dirname, branch, sync, task, update, cols };
   } catch (e) {
-    return { dirname: '~', branch: '', sync: '', task: '', cols: undefined };
+    return { dirname: '~', branch: '', sync: '', task: '', update: '', cols: undefined };
   }
+}
+
+// The update nudge gets its own row rather than a segment: Claude Code renders every
+// stdout line as a separate row, and the point of the nudge is the copy-pasteable command,
+// which is too wide to inline without forcing the main line to wrap on most terminals.
+// `npx <pkg>@latest` is the right command for script-installed users too — it recopies the
+// hook. Only the target version is shown — the running one is what you're looking at.
+function renderUpdateLine(latest) {
+  return `${colors.green}⬆ ${latest}${colors.reset} `
+    + `${colors.dim}available ·${colors.reset} `
+    + `${colors.bold}npx ${PACKAGE_NAME}@latest${colors.reset}`;
 }
 
 // Pure: data + facts (see collectFacts) + resolved usage bars -> the rendered line(s).
@@ -701,7 +849,8 @@ function renderStatusLine(data, facts, usage) {
   if (cost) line2.push(cost);
   if (facts.task) line2.push(`${colors.dim}${facts.task}${colors.reset}`);
 
-  return layout(line1, line2, facts.cols);
+  const body = layout(line1, line2, facts.cols);
+  return facts.update ? body + '\n' + renderUpdateLine(facts.update) : body;
 }
 
 // Main
@@ -714,7 +863,7 @@ function outputStatus(data, facts, usage) {
 }
 
 function outputFallback(usage) {
-  const facts = { dirname: '~', branch: '', sync: '', task: '', cols: undefined };
+  const facts = { dirname: '~', branch: '', sync: '', task: '', update: '', cols: undefined };
   process.stdout.write(renderStatusLine(null, facts, usage));
 }
 
@@ -774,6 +923,7 @@ function readStdinThen(timeoutMs, fn) {
 
 // Resolve usage for `data` (preferring stdin rate_limits), then render and exit.
 function emit(data) {
+  if (!DISABLED.has('update')) refreshUpdateCheck();
   resolveUsage(data, (usage) => {
     if (data) {
       outputStatus(data, collectFacts(data), usage);
@@ -854,10 +1004,14 @@ function emitSubagent(data) {
 // directly (the /usage response shape is the easiest thing here to get wrong, and it
 // can't be reached through stdin). Running the script normally is unchanged.
 if (require.main === module) {
-  const isSubagent = process.argv[2] === 'subagent';
+  const mode = process.argv[2];
+  const isSubagent = mode === 'subagent';
   const finish = isSubagent ? emitSubagent : emit;
 
-  if (process.stdin.isTTY) {
+  if (mode === 'update-check') {
+    // Detached child spawned by refreshUpdateCheck: no stdin, no output, just the fetch.
+    runUpdateCheck();
+  } else if (process.stdin.isTTY) {
     finish(null);
   } else {
     const timeoutMs = isSubagent
@@ -866,5 +1020,5 @@ if (require.main === module) {
     readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask };
+  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion };
 }

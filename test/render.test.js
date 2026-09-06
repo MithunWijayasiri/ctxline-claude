@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {
-  makeHome, seedCredentials, seedUsageCache, seedFakeRepo,
+  makeHome, seedCredentials, seedUsageCache, seedUpdateCache, seedFakeRepo,
   git, hasGit, gitCommit, seedDivergedRepo: buildDivergedRepo, spawnMain, spawnSubagent
 } = require('./fixture.js');
 
@@ -139,6 +139,7 @@ const ORANGE = '\x1b[38;5;208m';
 const RED = '\x1b[31m';
 const PURPLE = '\x1b[38;5;135m';
 const DIM = '\x1b[2m';
+const BOLD = '\x1b[1m';
 const BLINK = '\x1b[5m';
 
 // renderStatusLine/renderSubagentTask are pure (no fs/child_process/network), so format,
@@ -146,7 +147,7 @@ const BLINK = '\x1b[5m';
 // child process. What's left spawned: git-branch/ahead-behind detection (real .git dir +
 // subprocess), the usage cache/API pipeline, CTXLINE_DISABLE env-parsing (module-load-time
 // state, needs a fresh process per value), and the execution-contract tests below.
-const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask } = require('../statusline.js');
+const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion } = require('../statusline.js');
 
 // Same shape as fixture()'s stdin JSON, but as a plain object (no JSON round-trip needed
 // for a direct call).
@@ -157,7 +158,7 @@ function dataObj(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, 
 // facts a git-free, task-free directory produces (what collectFacts returns absent any
 // repo/task/COLUMNS); override individual fields per test.
 function plainFacts(overrides = {}) {
-  return { dirname: 'myproject', branch: '', sync: '', task: '', cols: undefined, ...overrides };
+  return { dirname: 'myproject', branch: '', sync: '', task: '', update: '', cols: undefined, ...overrides };
 }
 
 function render(data, facts, usage) {
@@ -945,4 +946,71 @@ test('subagent: model-ID shortening strips a trailing build date - "claude-haiku
 test('subagent: model-ID shortening strips us./anthropic. vendor prefixes', () => {
   const content = renderSubagentTask({ id: 't', model: 'us.anthropic.claude-opus-5' });
   assert.strictEqual(cleanContent(content), 'agent │ Opus 5');
+});
+
+// --- update nudge ---------------------------------------------------------------
+
+test('compareVersions: orders releases, and refuses anything that is not x.y.z', () => {
+  assert.strictEqual(compareVersions('1.9.0', '1.6.2'), 1);
+  assert.strictEqual(compareVersions('1.6.2', '1.9.0'), -1);
+  assert.strictEqual(compareVersions('1.6.2', '1.6.2'), 0);
+  assert.strictEqual(compareVersions('1.10.0', '1.9.0'), 1);   // numeric, not lexical
+  assert.strictEqual(compareVersions('2.0.0-beta.1', '1.6.2'), null);
+  assert.strictEqual(compareVersions('1.6', '1.6.2'), null);
+  assert.strictEqual(compareVersions(undefined, '1.6.2'), null);
+});
+
+test('parseRegistryVersion: pulls version from a manifest, null on anything else', () => {
+  assert.strictEqual(parseRegistryVersion('{"name":"ctxline-claude","version":"1.9.0"}'), '1.9.0');
+  assert.strictEqual(parseRegistryVersion('{"version":"2.0.0-beta.1"}'), null);
+  assert.strictEqual(parseRegistryVersion('{"error":"Not found"}'), null);
+  assert.strictEqual(parseRegistryVersion('<html>502</html>'), null);
+  assert.strictEqual(parseRegistryVersion(''), null);
+});
+
+test('update nudge: own row below the statusline, main line untouched', () => {
+  const { raw, clean } = render(
+    dataObj(40, '/tmp/myproject', 'Opus 4.8', undefined, 0.42),
+    plainFacts({ update: '1.9.0', task: 'Refactoring' })
+  );
+  const rows = clean.split('\n');
+  assert.strictEqual(rows.length, 2, 'exactly one extra row');
+  // The nudge is appended, never mixed into the statusline's own segments.
+  assert.deepStrictEqual(rows[0].split(' │ ').slice(-2), ['$0.42', 'Refactoring']);
+  assert.strictEqual(rows[1], '⬆ 1.9.0 available · npx ctxline-claude@latest');
+  assert.ok(raw.includes(`${GREEN}⬆ 1.9.0`), 'arrow and version are green');
+  assert.ok(raw.includes(`${BOLD}npx ctxline-claude@latest`), 'command is bold — the copy-paste target');
+});
+
+test('update nudge: absent when facts carry no update', () => {
+  const { clean } = render(dataObj(40), plainFacts());
+  assert.ok(!clean.includes('⬆'), 'no nudge row without a cached newer version');
+  assert.ok(!clean.includes('\n'), 'stays a single line');
+});
+
+test('update nudge: rides along with the responsive wrap as a third row', () => {
+  const { clean } = render(
+    dataObj(40, '/tmp/myproject', 'Opus 4.8', undefined, 0.42),
+    plainFacts({ update: '1.9.0', task: 'Refactoring', cols: 40 })
+  );
+  assert.strictEqual(clean.split('\n').length, 3);
+});
+
+test('update nudge: a newer cached version renders; an older one does not', () => {
+  const newer = freshHome();
+  seedUpdateCache(newer, { latest: '99.0.0' });
+  assert.match(run(fixture(40), { home: newer }).clean, /⬆ 99\.0\.0 available · npx ctxline-claude@latest/);
+
+  const older = freshHome();
+  seedUpdateCache(older, { latest: '0.0.1' });
+  assert.ok(!run(fixture(40), { home: older }).clean.includes('⬆'));
+});
+
+test('update nudge: CTXLINE_DISABLE=update hides it', () => {
+  const home = freshHome();
+  seedUpdateCache(home, { latest: '99.0.0' });
+  const { clean } = run(fixture(40), { home, disable: 'update' });
+  assert.ok(!clean.includes('⬆'), 'nudge suppressed');
+  assert.match(clean, /^myproject │ /, 'the rest of the line is untouched');
+  assert.ok(!clean.includes('\n'), 'no extra row');
 });
