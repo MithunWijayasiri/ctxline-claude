@@ -44,7 +44,7 @@ Never publish by hand — see Distribution + releasing. Publishing + local-insta
 **Invariants:**
 - Render path never touches the network: usage comes from stdin or `~/.claude/cache/`; the update check runs in a detached child with `lastAttempt` stamped before the spawn (failures back off 1h, successes 7d).
 - Model-scoped weekly bars exist only in the OAuth `/usage` payload — never in stdin.
-- `collectFacts()` owns fs/child_process/env access; `renderStatusLine()` is pure. Both exported under `require.main === module` for direct test use.
+- `collectFacts()` owns fs/child_process/env access; `renderStatusLine()` is pure. Exported under `require.main === module` for direct test use: `renderStatusLine`, `renderSubagentTask`, `parseScopedLimits`, `parseUsagePayload`, `normalizePercentage`, `readStdinThen`, `serializeUsageCache`, `compareVersions`, `parseRegistryVersion`, `VERSION` (not `collectFacts` — it's the impure half).
 - Caches (`~/.claude/cache/`): `usage-cache.json` fresh 30s / stale-fallback 10m, `lastAttempt` cooldown applies to failed attempts too; `git-cache.json` 5s/60s; `update-cache.json` read-only on the render path.
 
 Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.claude/skills/restyle-statusline/SKILL.md`.

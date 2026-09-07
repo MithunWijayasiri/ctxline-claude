@@ -35,6 +35,21 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 - The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆ <version>`, dim `available ·`, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
 
+### Segment sources
+
+| segment | source |
+|---|---|
+| dir | basename of stdin `workspace.current_dir` |
+| branch | `.git/HEAD` read directly, no subprocess (`resolveGitDir` walks up; worktree `.git` file + detached HEAD → short sha) |
+| `↑N↓M` | `getGitAheadBehind` — the only `git` subprocess, cache-fronted by `git-cache.json` |
+| model · effort | stdin `model.display_name` + `effort.level` |
+| `C` | stdin `context_window.remaining_percentage` (subagent rows: `tokenCount`/`contextWindowSize`) |
+| `H` / `W` | stdin `rate_limits` via `buildUsageFromStdin`, else the OAuth `/usage` API via `usage-cache.json` |
+| scoped weekly | `/usage` API only — never stdin |
+| `$` | stdin `cost.total_cost_usd`, no network/cache |
+| task | newest `~/.claude/todos/<sessionId>*-agent-*.json`, `activeForm` of the `in_progress` todo |
+| `⬆` row | `update-cache.json` only — the render path never fetches |
+
 ## Responsive wrap — reassign segments when order changes
 
 `layout(line1Parts, line2Parts, cols)` in `renderStatusLine` splits the line when visible width > `cols - WIDTH_MARGIN` (`cols` comes from `collectFacts`' read of `COLUMNS`; `layout` itself has no env access):
