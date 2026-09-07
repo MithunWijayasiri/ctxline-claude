@@ -16,7 +16,7 @@ description: Change the statusline's visible design — layout, segment format, 
 | `scripts/preview.js` | seed + render check | cache seed data (via `test/fixture.js`'s `seedUsageCache`), `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
 | `docs/assets/preview.svg` | marketing SVG (README/site) | 2 of its 12 `<text>` elements (main statusline + subagent row) are **generated**, not hand-edited — run `npm run preview:svg` after any output-shape change; the other 10 (window chrome, prompt lines, bullets) stay hand-authored |
 | `docs/index.html` | landing page | hero mock (`.term .line`) and subagent rows are checked by `test/docs-drift.test.js` (fails `npm test` on drift) — update its synthetic scenario if you change what they depict; inspector `SIGNALS[]` array and `.term` color classes are NOT checked, hand-verify |
-| `CLAUDE.md` | spec | format diagram (top), segment-source table, "visible contract" paragraph |
+| `CLAUDE.md` | spec | format diagram + segment legend (top) |
 
 After edits: `npm test` + `npm run preview` + `npm run preview:svg`. All must pass + look right.
 
