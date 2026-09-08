@@ -31,7 +31,7 @@ node statusline.js update-check
 echo '{"tasks":[{"id":"t1","name":"reviewer","model":"claude-opus-5","effort":"max","tokenCount":45200,"contextWindowSize":200000,"startTime":'$(($(date +%s)-252))'}]}' | node statusline.js subagent
 ```
 
-Never publish by hand — see Distribution + releasing. Publishing + local-install detail: `docs/DEV.md`.
+Live-test the working tree without installing: `.claude/skills/local-statusline-test/SKILL.md`.
 
 ## Architecture
 
@@ -42,7 +42,7 @@ Never publish by hand — see Distribution + releasing. Publishing + local-insta
 **stdin:** `model.display_name`, `workspace.current_dir`, `session_id`, `effort.level`, `context_window.remaining_percentage`, `cost.total_cost_usd`, `rate_limits.five_hour/seven_day` (`{ used_percentage, resets_at }` — `resets_at` is Unix epoch **seconds**). Env: `COLUMNS` (set by Claude Code v2.1.153+), `CTXLINE_DISABLE` (opt-out: `branch`, `effort`, `cost`, `task`, `update`, `usage`; `dir`/`model`/`context` always render; disabling skips the work, not just the output).
 
 **Invariants:**
-- Render path never touches the network: usage comes from stdin or `~/.claude/cache/`; the update check runs in a detached child with `lastAttempt` stamped before the spawn (failures back off 1h, successes 7d).
+- Usage is cache-first: stdin `rate_limits` or `~/.claude/cache/`, refreshed from the OAuth `/usage` API on the render path only when the cache is past `FRESH_TTL_MS` and no `lastAttempt` cooldown applies (own timeout, 1200ms warm / 1500ms cold). The update check is the one thing that never runs on the render path — detached child, `lastAttempt` stamped before the spawn (failures back off 1h, successes 7d).
 - Model-scoped weekly bars exist only in the OAuth `/usage` payload — never in stdin.
 - `collectFacts()` owns fs/child_process/env access; `renderStatusLine()` is pure. Exported under `require.main === module` for direct test use: `renderStatusLine`, `renderSubagentTask`, `parseScopedLimits`, `parseUsagePayload`, `normalizePercentage`, `readStdinThen`, `serializeUsageCache`, `compareVersions`, `parseRegistryVersion`, `VERSION` (not `collectFacts` — it's the impure half).
 - Caches (`~/.claude/cache/`): `usage-cache.json` fresh 30s / stale-fallback 10m, `lastAttempt` cooldown applies to failed attempts too; `git-cache.json` 5s/60s; `update-cache.json` read-only on the render path.
@@ -63,10 +63,10 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 | `test/render.test.js` | visible labels / percentages / colors / order | ANSI `colors` constants atop the file |
 | `docs/assets/preview.svg` | statusline `<tspan>` runs (README + site) | generated — run `npm run preview:svg`, never hand-edit |
 | `docs/index.html` | hero mock + subagent rows | byte-compared by `test/docs-drift.test.js` → drift fails `npm test` |
-| `CLAUDE.md` | format diagram + segment legend (top) | — |
+| `CLAUDE.md` | format diagram + legend (top), timing/TTL numbers, stdin fields, export list | the Invariants block hard-codes constants — grep it for any number you change |
 | `package.json` | `version` ↔ the `VERSION` constant | test-enforced; a stale `VERSION` nudges forever (or never) |
 
-Triggers: visible output change → test assertions + `npm run preview:svg`; cache shape or stdin fields → both seeds; version bump → `VERSION` in `statusline.js` too.
+Triggers: visible output change → test assertions + `npm run preview:svg`; cache shape or stdin fields → both seeds; timing/TTL constants or `module.exports` → the Invariants block above; version bump → `VERSION` in `statusline.js` too.
 
 `test/fixture.js` backs test + preview (fake HOME, cache seeds, spawn wrappers). Harness options: `SKILL.md`.
 
@@ -81,8 +81,8 @@ Install path frozen. No behavior change to `bin/install.js`, `install.sh`, `inst
 
 Uninstall: `npx ctxline-claude uninstall` removes only our two keys (guarded, backed up), deletes the hook, clears the cache. `install.sh`/`install.ps1` have no uninstall command — their printed manual-removal instructions must list both keys. No Full/Lite prompt or second statusline file.
 
-## Distribution + releasing
+## Distribution
 
 `statusline.js` is fetched verbatim from GitHub `main` by `install.sh`/`install.ps1` and copied by `bin/install.js` — a change on `main` ships to anyone re-running the installers; keep `main` releasable. `package.json` `files` whitelists what publishes.
 
-Releases are owner-triggered, manual: bump `version` in `package.json` **and the `VERSION` constant in `statusline.js`** on `main` (a test asserts they match), then run the **Release** workflow (`.github/workflows/release.yml`). Never `npm publish` by hand; never bump the version unasked.
+Version bump: `version` in `package.json` **and the `VERSION` constant in `statusline.js`**, on `main` (a test asserts they match).
