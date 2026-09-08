@@ -11,12 +11,12 @@ description: Change the statusline's visible design — layout, segment format, 
 
 | File | What to change | Where |
 |---|---|---|
-| `statusline.js` | render logic — source of truth | `getContextBar`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getLatestUpdate`, `renderUpdateLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
+| `statusline.js` | render logic — source of truth | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getLatestUpdate`, `renderUpdateLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | assertions on labels / `NN%` / colors / order | match new label regexes (e.g. `/C\d+ /`, `/H\d+\b/`); ANSI const block near top |
 | `scripts/preview.js` | seed + render check | cache seed data (via `test/fixture.js`'s `seedUsageCache`), `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
 | `docs/assets/preview.svg` | marketing SVG (README/site) | 2 of its 12 `<text>` elements (main statusline + subagent row) are **generated**, not hand-edited — run `npm run preview:svg` after any output-shape change; the other 10 (window chrome, prompt lines, bullets) stay hand-authored |
 | `docs/index.html` | landing page | hero mock (`.term .line`) and subagent rows are checked by `test/docs-drift.test.js` (fails `npm test` on drift) — update its synthetic scenario if you change what they depict; inspector `SIGNALS[]` array and `.term` color classes are NOT checked, hand-verify |
-| `CLAUDE.md` | spec | format diagram (top), segment-source table, "visible contract" paragraph |
+| `CLAUDE.md` | spec | format diagram + segment legend (top); its Invariants block also hard-codes the timing/TTL numbers, stdin field list, and `module.exports` list |
 
 After edits: `npm test` + `npm run preview` + `npm run preview:svg`. All must pass + look right.
 
@@ -29,11 +29,26 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 
 - Labels fused with percent: `C`=context, `H`=5h, `W`=7d, `<initial>`=model-scoped weekly limit (Fable → `F`, label derived from `scope.model.display_name` in `parseScopedLimits` — never hardcode a model list).
 - Context keeps a bar; `H`/`W`/scoped are label + `↺ countdown`, no bar.
-- Labels live INSIDE the builder functions (`getContextBar`/`buildUsageBar`), not as prefixes in `renderStatusLine`. `renderStatusLine` pushes segments verbatim; `outputStatus`/`outputFallback` are thin writers that call it.
+- Labels live INSIDE the builder functions (`renderContextBar`/`buildUsageBar`), not as prefixes in `renderStatusLine`. `renderStatusLine` pushes segments verbatim; `outputStatus`/`outputFallback` are thin writers that call it.
 - `↑N↓M` is appended to the branch string (↑ green / ↓ red), not a separate segment. Zero side omitted.
 - `$<cost>` is dim, sits after usage and before task.
 - The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆ <version>`, dim `available ·`, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
+
+### Segment sources
+
+| segment | source |
+|---|---|
+| dir | basename of stdin `workspace.current_dir` |
+| branch | `.git/HEAD` read directly, no subprocess (`resolveGitDir` walks up; worktree `.git` file + detached HEAD → short sha) |
+| `↑N↓M` | `getGitAheadBehind` — the only `git` subprocess, cache-fronted by `git-cache.json` |
+| model · effort | stdin `model.display_name` + `effort.level` |
+| `C` | stdin `context_window.remaining_percentage` (subagent rows: `tokenCount`/`contextWindowSize`) |
+| `H` / `W` | stdin `rate_limits` via `buildUsageFromStdin`, else the OAuth `/usage` API via `usage-cache.json` |
+| scoped weekly | `/usage` API only — never stdin |
+| `$` | stdin `cost.total_cost_usd`, no network/cache |
+| task | newest `~/.claude/todos/<sessionId>*-agent-*.json`, `activeForm` of the `in_progress` todo |
+| `⬆` row | `update-cache.json` only — the render path never fetches |
 
 ## Responsive wrap — reassign segments when order changes
 
@@ -55,9 +70,11 @@ Adding or moving a segment means picking its line in `renderStatusLine`, not jus
 
 | | Thresholds |
 |---|---|
-| context (`getContextBar`) | green <50 / yellow <65 / orange <80 / **blink-red** ≥80 |
+| context (`renderContextBar`) | green <50 / yellow <65 / orange <80 / **blink-red** ≥80 |
 | usage `H`/`W` (`getUsageColor`) | green <50 / yellow <75 / orange <90 / red ≥90 |
 | model-scoped bars (`getScopedColor`) | orange < 90 / red ≥90 — passed as `buildUsageBar`'s optional 4th arg |
+
+Context bands live in `renderContextBar`, not `getContextBar` — the latter only clamps remaining→used and delegates. `renderSubagentTask` calls the same function, so changing the bands recolors every subagent row too.
 
 Scoped bars are deliberately flat so a line carrying `H W O F` reads as two groups, not four severities; red ≥90 is the one exception, for a cap about to block its model. Restoring full threshold color means dropping that 4th arg — and updating the two scoped-color tests.
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// Claude Code Enhanced Statusline
-// Shows: directory | model | context usage | 5-hour + weekly + model-scoped usage | current task
-// Auto-detects API key vs subscription usage
+// Claude Code statusline: dir │ model │ context │ usage │ cost │ task
 // https://github.com/MithunWijayasiri/ctxline-claude
 
 const fs = require('fs');
@@ -10,18 +8,13 @@ const os = require('os');
 const https = require('https');
 const { execSync, execFileSync, spawn } = require('child_process');
 
-// Installed version, compared against the npm registry's latest for the update nudge.
-// This file is copied standalone into ~/.claude/hooks/ with no package.json beside it,
-// so the version has to live here. Must match package.json "version" (see CLAUDE.md).
+// Lives here, not package.json: this file ships standalone to ~/.claude/hooks/. Must match package.json.
 const VERSION = '1.7.0';
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
-// Optional segment opt-out: CTXLINE_DISABLE is a comma list of segments to hide.
-// Recognized: branch, effort, cost, task, update, usage (H+W+model-scoped). dir/model/context
-// always render.
-// Unknown names are ignored. Disabling a segment also skips its work (git, todo read,
-// usage fetch).
+// Segment opt-out: comma list. Recognized: branch, effort, cost, task, update, usage.
+// Disabling skips the work, not just the output; dir/model/context always render.
 const DISABLED = new Set(
   (process.env.CTXLINE_DISABLE || '')
     .split(',')
@@ -29,40 +22,30 @@ const DISABLED = new Set(
     .filter(Boolean)
 );
 
-// Shared width (cells) for all progress bars: context, current, weekly.
+// Context bar width in cells.
 const BAR_WIDTH = 6;
 
-// Max characters shown for the git branch; longer names are tail-truncated with "…".
-// Tail-truncation keeps the start (ticket IDs like "TAMA5-32796" live there) visible.
+// Branch names tail-truncated to this with "…", keeping leading ticket IDs visible.
 const MAX_BRANCH_LEN = 24;
 
-// Separator between segments on a rendered line.
 const SEGMENT_SEP = ' │ ';
 
-// Cells reserved at the terminal edge when deciding to wrap to a second line.
-// 0 = use the full COLUMNS; bump it if Claude Code reserves columns and the line
-// truncates a char or two before wrapping.
+// Cells reserved at the terminal edge when deciding to wrap; 0 = full width.
 const WIDTH_MARGIN = 0;
 
 // Cache configuration
 const CACHE_DIR = path.join(os.homedir(), '.claude', 'cache');
 const USAGE_CACHE_FILE = path.join(CACHE_DIR, 'usage-cache.json');
-// Fresh: trust the cache and skip the API call entirely (fewer calls, faster render).
-const FRESH_TTL_MS = 30000;            // 30 seconds
-// Stale: used only as a fallback when a live API call fails, so the usage bar stays
-// visible through transient timeouts/errors instead of disappearing.
-const STALE_TTL_MS = 10 * 60 * 1000;   // 10 minutes
+const FRESH_TTL_MS = 30000;            // fresh: render cache, skip API
+const STALE_TTL_MS = 10 * 60 * 1000;   // stale: fallback only when a live call fails
 
-// Git ahead/behind cache (single repo entry, keyed by git dir). Throttles the one
-// `git rev-list` subprocess so a burst of renders in a turn runs it once, not per render.
+// Single-entry ahead/behind cache: throttles the one git subprocess to once per render burst.
 const GIT_CACHE_FILE = path.join(CACHE_DIR, 'git-cache.json');
 const GIT_FRESH_TTL_MS = 5000;          // 5s: reuse counts within a render burst
 const GIT_STALE_TTL_MS = 60000;         // 60s: fall back to last counts if git fails
 const GIT_TIMEOUT_MS = 500;             // hard cap on the rev-list subprocess (warm ~130ms)
 
-// Update check: compares VERSION against the npm registry's dist-tags.latest. The render
-// only ever reads this cache; the refresh runs in a detached child (see refreshUpdateCheck),
-// so no render ever waits on the registry.
+// Update check: render only reads this cache; the registry fetch runs in a detached child.
 const UPDATE_CACHE_FILE = path.join(CACHE_DIR, 'update-cache.json');
 const UPDATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days between successful checks
 const UPDATE_RETRY_MS = 60 * 60 * 1000;         // 1h backoff after a failed/killed check
@@ -71,8 +54,7 @@ const REGISTRY_HOST = 'registry.npmjs.org';
 const PACKAGE_NAME = 'ctxline-claude';
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;       // releases only: a prerelease never nudges
 
-// Subagent mode reads only stdin (no usage API to race), so its stdin read gets a
-// short hard cap of its own instead of the main-mode overallTimeout.
+// Subagent mode reads only stdin (no fetch to race), so its read gets its own short cap.
 const SUBAGENT_TIMEOUT_MS = 500;
 
 // ANSI color codes
@@ -88,9 +70,7 @@ const colors = {
   blink: '\x1b[5m'
 };
 
-// Color for the thinking-effort indicator. Levels rank low < medium < high < xhigh < max
-// < ultracode; only the top two are highlighted — "max" red, "ultracode" purple. Every
-// other level (including xhigh) renders dim like the rest of the metadata.
+// Levels rank low<medium<high<xhigh<max<ultracode; only max (red) and ultracode (purple) stand out.
 function getEffortColor(level) {
   const lvl = String(level).toLowerCase();
   if (lvl === 'max') return colors.red;
@@ -105,9 +85,7 @@ function getUsageColor(percentage) {
   return colors.red;
 }
 
-// Model-scoped bars skip the H/W thresholds: a line can carry several at once, so a flat
-// orange keeps them readable as one group. Red at >=90 is the one distinction kept — that
-// bar is about to block the model it names.
+// Flat orange keeps several scoped bars readable as one group; >=90 red flags a nearly-spent cap.
 function getScopedColor(percentage) {
   return percentage >= 90 ? colors.red : colors.orange;
 }
@@ -117,9 +95,7 @@ function shortenModel(name) {
   return name.replace(/\s+context\)/i, ')');
 }
 
-// Shorten a resolved model ID (subagent task.model, e.g. "claude-opus-5") for the
-// subagent row: "claude-opus-5" -> "Opus 5", "claude-haiku-4-5-20251001" -> "Haiku 4.5".
-// Distinct from shortenModel, which trims a display name rather than parsing an ID.
+// Resolved model ID -> "Opus 5" / "Haiku 4.5" (strips prefixes + trailing -YYYYMMDD).
 function shortenModelId(id) {
   if (!id) return '';
   const stripped = String(id).replace(/^(us\.)?(anthropic\.)?claude-/, '').replace(/-\d{8}$/, '');
@@ -135,8 +111,7 @@ function truncateBranch(name) {
   return name.length > MAX_BRANCH_LEN ? name.slice(0, MAX_BRANCH_LEN - 1) + '…' : name;
 }
 
-// Resolve the repo's git dir by walking up from `dir` (no `git` subprocess). Handles
-// worktrees/submodules (".git" as a file pointing at the real dir). '' on any failure.
+// Walks up from `dir` to the git dir (no subprocess); handles worktrees (".git" file). '' on failure.
 function resolveGitDir(dir) {
   let cur = dir;
   let gitPath = '';
@@ -158,16 +133,14 @@ function resolveGitDir(dir) {
   return gitPath;
 }
 
-// Current git branch, read straight from .git/HEAD (no `git` subprocess — fast,
-// dependency-free). Detached HEAD -> short sha. Best-effort: '' on any failure.
+// Branch read straight from .git/HEAD (no subprocess); detached HEAD -> short sha; '' on failure.
 function getGitBranch(dir) {
   try {
     const gitDir = resolveGitDir(dir);
     if (!gitDir) return '';
     const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
     const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
-    // Strip control chars: HEAD is read raw (not git-validated), so a hand-crafted file
-    // in an untrusted archive could inject terminal escape sequences.
+    // HEAD is read raw, not git-validated: strip control chars (escape-sequence injection).
     if (ref) return truncateBranch(ref[1].replace(/[\x00-\x1f\x7f]/g, ''));
     if (/^[0-9a-f]{7,40}$/i.test(head)) return head.slice(0, 7);  // detached HEAD -> short sha
     return '';
@@ -176,8 +149,7 @@ function getGitBranch(dir) {
   }
 }
 
-// Read the cached ahead/behind for `gitDir`. Single-entry file: a different repo
-// invalidates it. Returns { age, ahead, behind } or null.
+// Cached ahead/behind for gitDir; different repo invalidates. { age, ahead, behind } or null.
 function readGitCache(gitDir) {
   try {
     const c = JSON.parse(fs.readFileSync(GIT_CACHE_FILE, 'utf8'));
@@ -196,10 +168,8 @@ function writeGitCache(gitDir, ahead, behind) {
   } catch (e) {}
 }
 
-// Commits ahead/behind the upstream (@{u}), cache-fronted. The single `git` call in the
-// whole script — gated by GIT_FRESH_TTL_MS so a render burst runs it once. No upstream /
-// detached / no git -> the subprocess errors -> null (segment omitted). On a slow/failed
-// call, falls back to the last counts up to GIT_STALE_TTL_MS so they don't flicker.
+// The only `git` subprocess, cache-fronted. null on no upstream/detached/failed (segment omitted);
+// slow/failed call falls back to last counts up to GIT_STALE_TTL_MS so counts don't flicker.
 function getGitAheadBehind(dir) {
   const gitDir = resolveGitDir(dir);
   if (!gitDir) return null;
@@ -210,8 +180,7 @@ function getGitAheadBehind(dir) {
   }
 
   try {
-    // execFileSync (no shell): faster cold spawn than execSync and passes `@{u}` literally.
-    // `@{u}...HEAD` with --left-right --count prints "<behind>\t<ahead>" (left = upstream).
+    // No shell (faster cold spawn, @{u} literal); --left-right --count prints "<behind>\t<ahead>".
     const out = execFileSync('git', ['rev-list', '--left-right', '--count', '@{u}...HEAD'], {
       cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore']
     }).trim();
@@ -231,9 +200,7 @@ function getGitAheadBehind(dir) {
   }
 }
 
-// "↑N↓M" from ahead/behind counts: ahead green (commits to push), behind red (missing
-// commits). Each part self-resets so it doesn't inherit the dim branch color. Omit a zero
-// side; '' when in sync or null.
+// "↑N↓M": ahead green, behind red, zero side omitted; '' when in sync or null.
 function formatAheadBehind(ab) {
   if (!ab) return '';
   let s = '';
@@ -242,15 +209,11 @@ function formatAheadBehind(ab) {
   return s;
 }
 
-// Colored "C<used> <bar>" (e.g. "C45 ███░░░") for an already-clamped 0-100 used
-// percentage. Shared by the main context bar (derived from remaining%) and the
-// subagent row (derived from tokenCount/contextWindowSize) so both use the same
-// thresholds and bar style.
+// Colored "C<used> <bar>" (e.g. "C45 ███░░░"); shared by main line and subagent rows.
 function renderContextBar(used) {
   const filled = Math.round((used / 100) * BAR_WIDTH);
   const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(BAR_WIDTH - filled);
 
-  // Context color: green <50 / yellow <65 / orange <80 / blink-red >=80.
   let color;
   if (used < 50) color = colors.green;
   else if (used < 65) color = colors.yellow;
@@ -271,10 +234,8 @@ function renderModelEffort(model, effort) {
   return effort ? `${model}${getEffortColor(effort)} · ${effort}${colors.reset}` : model;
 }
 
-// Render a compact usage segment from raw data: "<label><pct> ↺ <countdown>"
-// (e.g. "H81 ↺ 2h21m") — no bar. Called on every read (live or cached) so the reset
-// countdown is always recomputed from resetsAt rather than frozen at fetch time.
-// `color` overrides the threshold color — the model-scoped bars pass getScopedColor.
+// "<label><pct> ↺ <countdown>" (e.g. "H81 ↺ 2h21m"), no bar. Called on every read so the
+// countdown recomputes from resetsAt; `color` overrides the thresholds (scoped bars).
 function buildUsageBar(label, percentage, resetsAt, color) {
   let timeStr = '';
   if (resetsAt) {
@@ -293,32 +254,16 @@ function buildUsageBar(label, percentage, resetsAt, color) {
   return `${barColor}${label}${percentage}${colors.reset}${timePart}`;
 }
 
-// Model-scoped weekly limits (e.g. "Fable weekly limit at 86%"), rendered after the
-// account-wide W bar. The /usage payload reports these in a `limits` array, each entry
-// carrying the model in scope.model.display_name:
-//
-//   { kind: "weekly_scoped", percent: 86, severity: "warning",
-//     resets_at: "...", scope: { model: { display_name: "Fable" } } }
-//
-// The label is the model's first initial (Fable -> F), so a new model family needs no
-// code change. Older payloads instead exposed flat seven_day_<model> keys, kept below as
-// a fallback for accounts still reporting that shape.
-//
-// NOTE: these appear only in the API payload. Claude Code's statusline stdin carries just
-// five_hour and seven_day under rate_limits, so the scoped limits always come from the
-// cache/API path even when stdin supplies the H and W bars.
+// Model-scoped weekly limits, rendered after W. /usage payload `limits[]` entries:
+//   { kind: "weekly_scoped", percent, resets_at, scope: { model: { display_name } } }
+// Label = first initial of the model name (Fable -> F). Legacy flat seven_day_<model> keys
+// kept as fallback. Only ever in the API payload — stdin rate_limits never carries them.
 const LEGACY_MODEL_WEEKLY_KEYS = [
   { key: 'seven_day_opus', label: 'O' },
   { key: 'seven_day_sonnet', label: 'S' }
 ];
 
-// Build the usage segments from a raw { fiveHour, weekly, models } object — the shared
-// shape both buildUsageFromStdin and parseUsagePayload return. fiveHour/weekly are
-// { percentage, resetsAt } or null/absent; models is an array of { label, percentage,
-// resetsAt } (possibly empty). Returns { current, weekly, models } — the first two
-// rendered strings or null, models a (possibly empty) array of rendered strings. Scoped
-// bars use getScopedColor instead of the H/W thresholds, so the full threshold palette
-// stays exclusive to H/W.
+// Raw { fiveHour, weekly, models } -> rendered segments; scoped bars use getScopedColor.
 function buildUsageBars(raw) {
   const { fiveHour, weekly, models } = raw || {};
   return {
@@ -328,18 +273,13 @@ function buildUsageBars(raw) {
   };
 }
 
-// Normalize a raw API utilization into the 0-100 integer that the rest of the
-// pipeline (cache validation + bar rendering) expects. Returns null when the value
-// isn't a finite number, so callers can omit that bar instead of rendering "NaN%".
+// Clamp to 0-100 int; null on non-finite so callers omit the bar instead of rendering "NaN%".
 function normalizePercentage(value) {
   if (!Number.isFinite(value)) return null;
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-// Extract the model-scoped weekly limits from a raw /usage payload as
-// [{ label, percentage, resetsAt }], in payload order. Prefers the `limits` array;
-// falls back to the legacy flat keys only when it yields nothing, so an account
-// reporting both shapes doesn't render the same limit twice.
+// limits[] -> [{ label, percentage, resetsAt }]; legacy flat keys only when limits yields nothing.
 function parseScopedLimits(usage) {
   const scoped = [];
 
@@ -366,13 +306,9 @@ function parseScopedLimits(usage) {
   return scoped;
 }
 
-// Build usage bars from stdin `rate_limits` (Claude.ai Pro/Max, present only after the
-// first API response of a session). Same data as the OAuth usage API, so reading it here
-// skips the network/credentials/cache path entirely. `resets_at` is a Unix epoch in
-// SECONDS (not ISO) — ×1000 before Date. Returns raw { fiveHour, weekly, models } — same
-// shape as parseUsagePayload — or null when rate_limits is absent or the required
-// five_hour segment is unusable (caller falls back). models is always [] here: model-scoped
-// weekly limits are never present in stdin — see LEGACY_MODEL_WEEKLY_KEYS.
+// Usage from stdin `rate_limits` (Pro/Max only, absent at cold start) — skips the
+// network/cache path entirely. resets_at is Unix epoch SECONDS (not ISO). Same raw shape as
+// parseUsagePayload; models always [] — scoped limits never arrive via stdin.
 function buildUsageFromStdin(data) {
   const rl = data?.rate_limits;
   if (!rl) return null;
@@ -381,9 +317,7 @@ function buildUsageFromStdin(data) {
     if (!seg) return null;
     const pct = normalizePercentage(seg.used_percentage);
     if (pct == null) return null;
-    // resets_at is a Unix epoch in SECONDS. Coerce + validate defensively: a non-numeric
-    // or out-of-range value would make new Date(...).toISOString() throw, and this path
-    // runs outside outputStatus's try/catch. Fall back to resetsAt: null on anything bad.
+    // Defensive: this path runs outside outputStatus's try/catch — bad value -> null, never a throw.
     let resetsAt = null;
     const epoch = Number(seg.resets_at);
     if (Number.isFinite(epoch) && epoch > 0) {
@@ -398,11 +332,9 @@ function buildUsageFromStdin(data) {
   return { fiveHour, weekly: toEntry(rl.seven_day), models: [] };
 }
 
-// Parse a raw /usage API response body into { fiveHour, weekly, models } — same shape as
-// buildUsageFromStdin — or null on unparseable JSON or a missing/non-finite five_hour
-// utilization (that bar is required). Normalizes utilization first so a missing/non-finite
-// value omits a bar instead of rendering "NaN%". Pure — no fs/network — so it's unit
-// testable directly, unlike getApiUsage which needs a live socket.
+// /usage response body -> { fiveHour, weekly, models }, or null on unparseable JSON or a
+// missing/non-finite five_hour utilization (that bar is required). Pure, so unit-testable
+// directly — unlike getApiUsage, which needs a live socket.
 function parseUsagePayload(body) {
   try {
     const usage = JSON.parse(body);
@@ -420,8 +352,7 @@ function parseUsagePayload(body) {
   }
 }
 
-// Validate a single usage entry ({ percentage, resetsAt }). Returns true only for a
-// finite 0-100 percentage and a parseable (or absent) resetsAt.
+// Valid entry: finite 0-100 percentage, parseable (or absent) resetsAt.
 function isValidUsageEntry(entry) {
   if (!entry || typeof entry !== 'object') return false;
   if (!Number.isFinite(entry.percentage) || entry.percentage < 0 || entry.percentage > 100) return false;
@@ -429,9 +360,7 @@ function isValidUsageEntry(entry) {
   return true;
 }
 
-// Read the raw cached usage data
-// ({ timestamp, data: { fiveHour: {percentage,resetsAt}, weekly: {...}|null } }).
-// Returns { age, data } or null. Age-vs-TTL decisions are made by the caller.
+// Cached usage -> { age, data } or null; caller applies TTLs. Invalid shape -> null.
 function readCachedUsage() {
   try {
     if (!fs.existsSync(USAGE_CACHE_FILE)) return null;
@@ -439,10 +368,7 @@ function readCachedUsage() {
     const cache = JSON.parse(fs.readFileSync(USAGE_CACHE_FILE, 'utf8'));
     if (!cache || !Number.isFinite(cache.timestamp) || cache.timestamp <= 0) return null;
 
-    // Validate data. fiveHour is required; weekly and models are optional (the API may
-    // omit either). This also rejects the legacy single-{percentage,resetsAt} format from
-    // older versions, which had no fiveHour key, so stale caches are ignored on read.
-    // A cache written before model bars existed simply has no models key — still valid.
+    // fiveHour required; weekly/models optional. Rejects legacy formats lacking fiveHour.
     const data = cache.data;
     if (!data || typeof data !== 'object') return null;
     if (!isValidUsageEntry(data.fiveHour)) return null;
@@ -458,11 +384,8 @@ function readCachedUsage() {
   }
 }
 
-// Serialize usage data into the on-disk cache shape ({ timestamp, data, lastAttempt }). Pure
-// -- no fs -- so setCachedUsage and the test/preview cache seeds all produce exactly the same
-// bytes the real writer would; a reader/writer format mismatch becomes structurally impossible
-// instead of merely untested. `timestamp` defaults to now; tests override it to seed a stale
-// cache. A successful write is itself an attempt, so `lastAttempt` starts equal to `timestamp`.
+// On-disk cache shape; pure so test/preview seeds produce writer-identical bytes. lastAttempt
+// starts equal to timestamp: a successful write is itself an attempt.
 function serializeUsageCache(data, timestamp = Date.now()) {
   return JSON.stringify({ timestamp, data, lastAttempt: timestamp });
 }
@@ -480,9 +403,8 @@ function setCachedUsage(data) {
   }
 }
 
-// Age in ms since the last API attempt (success or failure), or null if none recorded yet.
-// Read directly from the raw file rather than via readCachedUsage so the cooldown still
-// applies when no valid data has ever been cached (every attempt so far has failed).
+// Age in ms since the last attempt (success or failure), or null. Read from the raw file, not
+// readCachedUsage, so the cooldown applies even when no valid data has ever been cached.
 function getLastAttemptAge() {
   try {
     if (!fs.existsSync(USAGE_CACHE_FILE)) return null;
@@ -494,9 +416,8 @@ function getLastAttemptAge() {
   }
 }
 
-// Record that an API attempt is starting, preserving any existing cached data/timestamp so a
-// failed refresh doesn't erase the last successful one. Written before the request so a hang
-// or a process exit mid-request still counts as an attempt for cooldown purposes.
+// Stamp lastAttempt before the request so failed attempts still enter cooldown; preserves
+// existing cached data so a failed refresh doesn't erase the last successful one.
 function recordUsageAttempt() {
   try {
     if (!fs.existsSync(CACHE_DIR)) {
@@ -514,9 +435,7 @@ function recordUsageAttempt() {
   }
 }
 
-// Compare two strict "x.y.z" versions -> -1 | 0 | 1, or null when either side isn't that
-// shape (prerelease tags, missing parts, non-numeric). The nudge is a nicety, so an
-// unparseable version means no segment rather than a guess.
+// Strict "x.y.z" -> -1|0|1, null otherwise (prerelease never nudges — a nicety, not a guess).
 function compareVersions(a, b) {
   const parse = (v) => SEMVER_RE.test(String(v ?? '')) ? String(v).split('.').map(Number) : null;
   const x = parse(a);
@@ -528,8 +447,7 @@ function compareVersions(a, b) {
   return 0;
 }
 
-// Pure: an npm registry version-manifest body -> its "x.y.z" version string, or null on
-// unparseable JSON, a missing version, or a non-release version (404 bodies land here too).
+// Registry body -> "x.y.z" or null (404 bodies land here too).
 function parseRegistryVersion(body) {
   try {
     const v = JSON.parse(body)?.version;
@@ -555,18 +473,15 @@ function writeUpdateCache(obj) {
   } catch (e) {}
 }
 
-// The cached latest version when it's newer than VERSION, else ''. Cache-only by design:
-// collectFacts calls this on the render path, and the render must never touch the network.
+// Cached latest when strictly newer than VERSION, else ''. Cache-only: render never touches the network.
 function getLatestUpdate() {
   const cached = readUpdateCache();
   if (!cached) return '';
   return compareVersions(cached.latest, VERSION) === 1 ? String(cached.latest) : '';
 }
 
-// Fire the weekly check in a detached child, so the render neither waits on the registry
-// nor races its own exit against the response. lastAttempt is stamped before the spawn, so
-// an offline machine, a failed spawn, or a child that dies backs off UPDATE_RETRY_MS
-// instead of respawning on every render.
+// Spawn the check in a detached child — the render never waits on the registry. lastAttempt is
+// stamped before the spawn, so an offline/failed/killed child backs off UPDATE_RETRY_MS.
 function refreshUpdateCheck() {
   try {
     const cached = readUpdateCache();
@@ -576,18 +491,15 @@ function refreshUpdateCheck() {
       if (Number.isFinite(cached.lastAttempt) && now - cached.lastAttempt < UPDATE_RETRY_MS) return;
     }
     writeUpdateCache({ ...(cached || {}), lastAttempt: now });
-    // windowsHide: a detached console app would otherwise flash its own console window on
-    // Windows. detached + unref so the child outlives this render's exit(0).
+    // windowsHide: no console flash on Windows; detached + unref: child outlives the render's exit.
     spawn(process.execPath, [__filename, 'update-check'], {
       detached: true, stdio: 'ignore', windowsHide: true
     }).unref();
   } catch (e) {}
 }
 
-// The 'update-check' entry point: the detached child. Fetches the registry's latest
-// version, stamps the cache, exits. Writes nothing to stdout — it is not a statusline
-// mode, and its stdio is discarded by the parent anyway. A failed fetch leaves checkedAt
-// untouched, so the UPDATE_RETRY_MS backoff (not the weekly TTL) governs the next try.
+// Detached 'update-check' entry point: fetch, stamp cache, exit. A failed fetch leaves
+// checkedAt untouched, so the UPDATE_RETRY_MS backoff (not the weekly TTL) governs the next try.
 function runUpdateCheck() {
   let settled = false;
   let deadline;
@@ -619,9 +531,7 @@ function runUpdateCheck() {
       done(null);
     });
 
-    // The `timeout` option above is socket inactivity, not total duration -- a response
-    // that trickles bytes would keep this detached child alive indefinitely, and the
-    // parent's UPDATE_RETRY_MS only delays the next spawn, it can't reap this one.
+    // The timeout option is socket inactivity, not total — a trickling response needs this hard deadline.
     deadline = setTimeout(() => {
       req.destroy();
       done(null);
@@ -634,7 +544,6 @@ function runUpdateCheck() {
 }
 
 function getCredentials() {
-  // Try file first (legacy / Linux / Windows)
   const credsPath = path.join(os.homedir(), '.claude', '.credentials.json');
   if (fs.existsSync(credsPath)) {
     try {
@@ -642,7 +551,7 @@ function getCredentials() {
     } catch (e) {}
   }
 
-  // Fallback: macOS keychain
+  // macOS keychain fallback
   if (os.platform() === 'darwin') {
     try {
       const raw = execSync('security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null', { encoding: 'utf8', timeout: 1000 });
@@ -655,7 +564,6 @@ function getCredentials() {
 
 function getApiUsage(callback) {
   try {
-    // Read credentials (file or macOS keychain)
     const creds = getCredentials();
     if (!creds) {
       return callback(null);
@@ -667,12 +575,10 @@ function getApiUsage(callback) {
       return callback(null);
     }
 
-    // Adaptive timeout: if cache exists, be faster (1200ms); if not, be patient (1500ms)
-    // API typically takes ~850ms, so 1200ms gives reasonable headroom
+    // Tighter timeout when the cache is warm — a fresh render already has data to print.
     const hasCache = fs.existsSync(USAGE_CACHE_FILE);
     const timeout = hasCache ? 1200 : 1500;
 
-    // Make API call with adaptive timeout
     const req = https.request({
       hostname: 'api.anthropic.com',
       path: '/api/oauth/usage',
@@ -689,7 +595,6 @@ function getApiUsage(callback) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         const resolved = parseUsagePayload(data);
-        // Cache the raw data (shared across sessions); callers render from it.
         if (resolved) setCachedUsage(resolved);
         callback(resolved);
       });
@@ -711,27 +616,21 @@ function getApiUsage(callback) {
 function getRawUsage(callback) {
   const cached = readCachedUsage();
 
-  // Cache is fresh -> use it and skip the API entirely (fewer calls, faster).
   if (cached && cached.age < FRESH_TTL_MS) {
     return callback(cached.data);
   }
 
-  // A refresh (successful or not) was attempted within FRESH_TTL_MS -> still in cooldown,
-  // don't hit the API again. Serve stale cached data if it's still within STALE_TTL_MS, else
-  // nothing. Without this, a repeatedly failing/timing-out refresh would re-hit the API on
-  // every render instead of backing off (issue #41).
+  // Refresh attempted (even failed) within FRESH_TTL_MS -> cooldown: serve stale up to STALE_TTL_MS (issue #41).
   const attemptAge = getLastAttemptAge();
   if (attemptAge != null && attemptAge < FRESH_TTL_MS) {
     return callback(cached && cached.age < STALE_TTL_MS ? cached.data : null);
   }
 
-  // Cache is stale or missing and no attempt is in cooldown -> refresh from the API.
   recordUsageAttempt();
   getApiUsage((fresh) => {
     if (fresh) {
       callback(fresh);
     } else if (cached && cached.age < STALE_TTL_MS) {
-      // API failed/timed out, but recent cache exists -> show it instead of nothing.
       callback(cached.data);
     } else {
       callback(null);
@@ -739,9 +638,7 @@ function getRawUsage(callback) {
   });
 }
 
-// Session cost from stdin `cost.total_cost_usd` (USD float, computed client-side by
-// Claude Code as tokens × per-model API pricing). Pure stdin — no network/cache.
-// Returns "$0.00" rendered dim, or '' when absent/non-finite so the segment is omitted.
+// "$0.00" (dim) from stdin cost.total_cost_usd — client-side estimate, no network; '' when absent.
 function getCostSegment(data) {
   const usd = data?.cost?.total_cost_usd;
   if (!Number.isFinite(usd)) return '';
@@ -777,11 +674,8 @@ function visibleWidth(str) {
   return [...str.replace(/\x1b\[[0-9;]*m/g, '')].length;
 }
 
-// Responsive layout: one line when it fits the terminal, else line1 (identity + context)
-// on top and line2 (usage/cost/task) below. Splits only when cols is known (Claude Code
-// v2.1.153+ sets COLUMNS, read by collectFacts) and the single line overflows — unknown
-// width or an empty line2 stays single, so there is no regression on older clients or wide
-// terminals.
+// Two lines only when cols is known (COLUMNS, set by Claude Code v2.1.153+) and the single
+// line overflows; unknown width or empty line2 stays single. cols is a parameter — no env read.
 function layout(line1Parts, line2Parts, cols) {
   const single = [...line1Parts, ...line2Parts].join(SEGMENT_SEP);
   if (line2Parts.length === 0) return single;
@@ -791,12 +685,9 @@ function layout(line1Parts, line2Parts, cols) {
   return single;
 }
 
-// Gathers everything outputStatus needs that touches fs/child_process/env: git branch +
-// ahead/behind (.git/HEAD, `git rev-list`), the in-progress task (~/.claude/todos), and the
-// terminal width (COLUMNS). Kept separate from renderStatusLine so the render step is pure.
-// Wrapped in its own try/catch (unlike renderStatusLine, it's called outside outputStatus's
-// try/catch in emit()) — a malformed workspace.current_dir (e.g. non-string) can throw from
-// path.basename or resolveGitDir, and this must still degrade to a renderable fallback.
+// Everything the render needs that touches fs/child_process/env (git, todos, update cache,
+// COLUMNS), so renderStatusLine stays pure. Own try/catch: called outside outputStatus's, and
+// a malformed current_dir must still degrade to a renderable fallback.
 function collectFacts(data) {
   try {
     const dir = data?.workspace?.current_dir || process.cwd();
@@ -813,19 +704,15 @@ function collectFacts(data) {
   }
 }
 
-// The update nudge gets its own row rather than a segment: Claude Code renders every
-// stdout line as a separate row, and the point of the nudge is the copy-pasteable command,
-// which is too wide to inline without forcing the main line to wrap on most terminals.
-// `npx <pkg>@latest` is the right command for script-installed users too — it recopies the
-// hook. Only the target version is shown — the running one is what you're looking at.
+// Own stdout row, not a segment: the copy-pasteable command is too wide to inline without
+// forcing a wrap. Appended after layout() so it never joins the wrap decision.
 function renderUpdateLine(latest) {
   return `${colors.green}⬆ ${latest}${colors.reset} `
     + `${colors.dim}available ·${colors.reset} `
     + `${colors.bold}npx ${PACKAGE_NAME}@latest${colors.reset}`;
 }
 
-// Pure: data + facts (see collectFacts) + resolved usage bars -> the rendered line(s).
-// No fs/child_process/network access, so it's callable directly in tests.
+// Pure: data + facts (see collectFacts) + usage bars -> rendered line(s); callable directly in tests.
 function renderStatusLine(data, facts, usage) {
   const model = shortenModel(data?.model?.display_name || 'Claude');
   const effort = DISABLED.has('effort') ? '' : (data?.effort?.level || '');
@@ -853,7 +740,6 @@ function renderStatusLine(data, facts, usage) {
   return facts.update ? body + '\n' + renderUpdateLine(facts.update) : body;
 }
 
-// Main
 function outputStatus(data, facts, usage) {
   try {
     process.stdout.write(renderStatusLine(data, facts, usage));
@@ -867,20 +753,15 @@ function outputFallback(usage) {
   process.stdout.write(renderStatusLine(null, facts, usage));
 }
 
-// Resolve usage bars for a (possibly null) parsed stdin payload.
-// Order: API-key users get none; otherwise prefer stdin `rate_limits` (no network),
-// then fall back to the cache+API flow when stdin lacks it (cold start / non-Pro/Max).
+// Usage bars: API-key users none; prefer stdin rate_limits, else cache+API (cold start / non-Pro/Max).
 function resolveUsage(data, callback) {
   if (IS_API_KEY || DISABLED.has('usage')) {
     return callback(null);
   }
   const fromStdin = buildUsageFromStdin(data);
   if (fromStdin) {
-    // stdin covers H and W with no network. Model-scoped weekly limits only exist in the
-    // API payload, so they come from the cache — refreshed on the same TTL as every other
-    // usage read, which keeps at most one call per FRESH_TTL_MS regardless of render rate.
-    // Falls back to the stale cache and finally to [] so a failed or slow call costs only
-    // the scoped bars, never the H/W bars stdin already gave us.
+    // Scoped limits only exist in the API payload -> fetch from cache; a failed/slow call
+    // costs only those bars, never the H/W bars stdin already gave us.
     return getRawUsage((cached) => {
       callback(buildUsageBars({ ...fromStdin, models: cached?.models || [] }));
     });
@@ -898,10 +779,8 @@ function parseInput(input) {
   }
 }
 
-// Accumulate stdin then call fn(input) exactly once, on whichever fires first:
-// timeout, 'end', or 'error' (an unhandled stdin error would otherwise throw,
-// breaking the never-throw contract). Shared by both entry points below, which
-// differ only in timeoutMs.
+// Accumulate stdin, call fn(input) exactly once — timeout, 'end', or 'error' whichever fires
+// first (the error handler preserves the never-throw contract). Shared by both entry points.
 function readStdinThen(timeoutMs, fn) {
   let input = '';
   let finished = false;
@@ -934,10 +813,8 @@ function emit(data) {
   });
 }
 
-// now - startTime as "45s" / "4m12s" / "2h5m". '' when startTime is missing/unparseable.
-// Format isn't documented by Claude Code, so accept epoch-seconds, epoch-ms, or an ISO
-// string: numbers below 1e12 are epoch-seconds (today's epoch-seconds ~1.7e9, epoch-ms
-// ~1.7e12 — far enough apart that the threshold is unambiguous for any real timestamp).
+// "45s" / "4m12s" / "2h5m". startTime's format is undocumented upstream, so accept epoch-seconds
+// (< 1e12), epoch-ms, or an ISO string. Revisit if a real payload contradicts.
 function formatElapsed(startTime) {
   if (startTime == null) return '';
   const ms = typeof startTime === 'number' && startTime < 1e12 ? startTime * 1000 : startTime;
@@ -978,10 +855,8 @@ function renderSubagentTask(t) {
   return parts.join(SEGMENT_SEP);
 }
 
-// subagentStatusLine mode: emit one {id, content} JSON line per task with an id, then
-// exit. No usage/git/todos/cache work — the task objects carry everything needed.
-// Bad payload or a task that fails to render -> emit nothing, keeping default
-// rendering for every task, rather than a partial/broken output.
+// subagentStatusLine mode: one {id, content} JSON line per task. No usage/git/todos/cache
+// work. Bad payload or a task that fails to render -> emit nothing (default rendering stays).
 function emitSubagent(data) {
   try {
     const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
@@ -990,9 +865,7 @@ function emitSubagent(data) {
       .map(t => JSON.stringify({ id: t.id, content: renderSubagentTask(t) }))
       .join('\n');
     if (out) {
-      // Exit from the write callback: process.exit() would drop output still queued
-      // behind stdout backpressure. A write error (e.g. EPIPE) also lands here — the
-      // callback form reports it instead of throwing, and the answer is the same: exit 0.
+      // Exit from the write callback: process.exit() would drop output queued behind backpressure.
       process.stdout.write(out + '\n', () => process.exit(0));
       return;
     }
@@ -1000,16 +873,13 @@ function emitSubagent(data) {
   process.exit(0);
 }
 
-// Entry point, guarded so tests can require this file to exercise payload parsing
-// directly (the /usage response shape is the easiest thing here to get wrong, and it
-// can't be reached through stdin). Running the script normally is unchanged.
+// Guarded so tests can require() the exports instead of spawning the script.
 if (require.main === module) {
   const mode = process.argv[2];
   const isSubagent = mode === 'subagent';
   const finish = isSubagent ? emitSubagent : emit;
 
   if (mode === 'update-check') {
-    // Detached child spawned by refreshUpdateCheck: no stdin, no output, just the fetch.
     runUpdateCheck();
   } else if (process.stdin.isTTY) {
     finish(null);
