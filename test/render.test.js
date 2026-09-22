@@ -242,7 +242,7 @@ test('control chars in a hand-crafted HEAD are stripped from the branch', () => 
 test('thinking effort renders next to the model (· <level>)', () => {
   const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', 'high'), plainFacts());
   const parts = clean.split(' │ ');
-  assert.match(parts[1], /Opus 4\.8 · high$/);
+  assert.match(parts[1], /Opus 5\.5 · high$/);
 });
 
 test('no effort field -> model segment unchanged', () => {
@@ -819,7 +819,7 @@ function seedTodo(activeForm) {
 test('disable=cost hides cost; model + context intact', () => {
   const { clean } = run(fixture(40, '/no/such/repo', 'Opus 5.5', undefined, 0.42), { disable: 'cost' });
   assert.ok(!clean.includes('$'), 'cost hidden');
-  assert.match(clean, /Opus 4\.8/, 'model still renders');
+  assert.match(clean, /Opus 5\.5/, 'model still renders');
   assert.match(clean, /C\d+ /, 'context still renders');
 });
 
