@@ -140,7 +140,6 @@ const RED = '\x1b[31m';
 const PURPLE = '\x1b[38;5;135m';
 const DIM = '\x1b[2m';
 const BOLD = '\x1b[1m';
-const BLINK = '\x1b[5m';
 
 // renderStatusLine/renderSubagentTask are pure (no fs/child_process/network), so format,
 // colour-band, segment-order and wrap assertions call them directly instead of spawning a
@@ -317,9 +316,10 @@ test('threshold: 65 <= used < 80 is orange', () => {
   assert.ok(raw.includes(ORANGE), 'expected orange color code');
 });
 
-test('threshold: used >= 80 is blinking red, no emoji', () => {
+test('threshold: used >= 80 is red, not blinking, no emoji', () => {
   const { raw, clean } = render(dataObj(10), plainFacts());             // used 90
-  assert.ok(raw.includes(BLINK) && raw.includes(RED), 'expected blink + red');
+  assert.ok(raw.includes(`${RED}C90`), 'expected red');
+  assert.ok(!raw.includes('\x1b[5m'), 'no blink');
   assert.ok(!clean.includes('\u{1F480}'), 'skull emoji should not be present');
   assert.match(clean, /C90 /);
 });
@@ -618,6 +618,19 @@ test('scoped bars render after W, in payload order', () => {
   assert.ok(idx(/^W\d+/) < idx(/^O\d+/), 'W precedes the scoped bars');
   assert.ok(idx(/^O\d+/) < idx(/^F\d+/), 'scoped bars keep payload order');
 });
+
+for (const [h, w, hColor, wColor] of [
+  [59, 60, GREEN, YELLOW],
+  [79, 80, YELLOW, ORANGE],
+  [89, 90, ORANGE, RED]
+]) {
+  test(`usage thresholds: H${h} / W${w} boundary colors`, () => {
+    const home = seedHome({ cacheAgeMs: 5000, percentage: h, weeklyPercentage: w });
+    const { raw } = run(fixture(40), { home, usage: true });
+    assert.ok(raw.includes(`${hColor}H${h}`), `H${h} color`);
+    assert.ok(raw.includes(`${wColor}W${w}`), `W${w} color`);
+  });
+}
 
 test('scoped bars are orange below 90, not threshold-colored', () => {
   // 12% would be green and 71% yellow on the usage scheme; scoped bars flatten both to

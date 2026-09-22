@@ -91,7 +91,7 @@ function ansiToRuns(line, { firstPlain } = {}) {
     flush(match.index);
     const code = match[1];
     if (code === '' || code === '0') currentHex = null;
-    else if (code !== '5') currentHex = ANSI_HEX[code] ?? currentHex; // '5' = blink, no hex of its own
+    else currentHex = ANSI_HEX[code] ?? currentHex;
     lastIndex = re.lastIndex;
   }
   flush(line.length);
