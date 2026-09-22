@@ -9,7 +9,7 @@ const https = require('https');
 const { execSync, execFileSync, spawn } = require('child_process');
 
 // Lives here, not package.json: this file ships standalone to ~/.claude/hooks/. Must match package.json.
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
