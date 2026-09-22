@@ -1,6 +1,7 @@
 name: Release
 
-# Manually triggered. Publishes to npm, then creates a matching GitHub release with:
+# Manually triggered. Publishes to npm via Trusted Publishing (OIDC, no token secret —
+# the trusted publisher on npmjs.com must name this file), then creates a matching GitHub release with:
 # - the statusline preview (colors stripped, GitHub markdown can't render ANSI)
 # - auto-generated notes from commits/PRs since the previous release
 # - Source code (zip/tar.gz), which GitHub attaches automatically
@@ -16,6 +17,7 @@ on:
 
 permissions:
   contents: write   # required to create the tag + release
+  id-token: write   # OIDC token for npm Trusted Publishing
 
 jobs:
   release:
@@ -26,8 +28,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: 'https://registry.npmjs.org'   # writes the auth line npm publish needs
+          node-version: 24   # Trusted Publishing needs npm >= 11.5.1
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Resolve tag
         id: ver
@@ -43,8 +45,6 @@ jobs:
         run: npm test
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish
 
       - name: Render statusline preview
