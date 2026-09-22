@@ -98,7 +98,7 @@ function render({ dir, model, remaining, current, currentResetsInMin, weekly, we
 const base = {
   dir: 'my-project',
   branch: 'main',
-  model: 'Opus 4.8 (1M context)',
+  model: 'Opus 5.5',
   remaining: 55,             // context 45% used
   current: 14,
   currentResetsInMin: 261,   // renders "H14 ↺ 4h21m"

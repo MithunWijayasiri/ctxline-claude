@@ -67,7 +67,7 @@ function seedHome({ cacheAgeMs, percentage = 42, weeklyPercentage = 31 } = {}) {
   return home;
 }
 
-function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, cost) {
+function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 5.5', effort, cost) {
   const obj = {
     model: { display_name: model },
     workspace: { current_dir: dir },
@@ -85,7 +85,7 @@ function fixture(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, 
 function fixtureWithRateLimits(remaining, { five = 23.5, seven = 41.2 } = {}) {
   const nowSec = Math.floor(Date.now() / 1000);
   return JSON.stringify({
-    model: { display_name: 'Opus 4.8' },
+    model: { display_name: 'Opus 5.5' },
     workspace: { current_dir: '/tmp/myproject' },
     session_id: 'test-session',
     context_window: { remaining_percentage: remaining },
@@ -151,7 +151,7 @@ const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, r
 
 // Same shape as fixture()'s stdin JSON, but as a plain object (no JSON round-trip needed
 // for a direct call).
-function dataObj(remaining, dir = '/tmp/myproject', model = 'Opus 4.8', effort, cost) {
+function dataObj(remaining, dir = '/tmp/myproject', model = 'Opus 5.5', effort, cost) {
   return JSON.parse(fixture(remaining, dir, model, effort, cost));
 }
 
@@ -174,10 +174,10 @@ test('line assembly: dir basename | model | context, separated by │', () => {
   assert.match(parts[2], /^C\d+ /);                    // compact context label "C60 ███░░░"
 });
 
-test('model name is shortened: "(1M context)" -> "(1M)"', () => {
-  const { clean } = render(dataObj(40, '/home/me/p', 'Opus 4.8 (1M context)'), plainFacts());
+test('model name drops the context suffix: "Opus 5.5 (1M context)" -> "Opus 5.5"', () => {
+  const { clean } = render(dataObj(40, '/home/me/p', 'Opus 5.5 (1M context)'), plainFacts());
   const parts = clean.split(' │ ');
-  assert.strictEqual(parts[1], 'Opus 4.8 (1M)');
+  assert.strictEqual(parts[1], 'Opus 5.5');
 });
 
 test('git branch renders next to the dir (⎇ <branch>)', () => {
@@ -241,55 +241,55 @@ test('control chars in a hand-crafted HEAD are stripped from the branch', () => 
 });
 
 test('thinking effort renders next to the model (· <level>)', () => {
-  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'high'), plainFacts());
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', 'high'), plainFacts());
   const parts = clean.split(' │ ');
   assert.match(parts[1], /Opus 4\.8 · high$/);
 });
 
 test('no effort field -> model segment unchanged', () => {
-  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8'), plainFacts());
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5'), plainFacts());
   const parts = clean.split(' │ ');
-  assert.strictEqual(parts[1], 'Opus 4.8');
+  assert.strictEqual(parts[1], 'Opus 5.5');
 });
 
 test('effort = max is red', () => {
-  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'max'), plainFacts());
-  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · max');
+  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', 'max'), plainFacts());
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 5.5 · max');
   assert.ok(raw.includes(RED), 'expected red for max effort');
 });
 
 test('effort = ultracode is purple', () => {
-  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'ultracode'), plainFacts());
-  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · ultracode');
+  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', 'ultracode'), plainFacts());
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 5.5 · ultracode');
   assert.ok(raw.includes(PURPLE), 'expected purple for ultracode effort');
 });
 
 test('effort = xhigh is dim (not highlighted red/purple)', () => {
-  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', 'xhigh'), plainFacts());
-  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8 · xhigh');
+  const { raw, clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', 'xhigh'), plainFacts());
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 5.5 · xhigh');
   assert.ok(raw.includes(DIM), 'xhigh effort uses the dim style');
   assert.ok(!raw.includes(PURPLE) && !raw.includes(RED), 'xhigh must not be highlighted');
 });
 
 test('session cost renders as $X.XX (two decimals)', () => {
-  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', undefined, 0.4), plainFacts());
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', undefined, 0.4), plainFacts());
   assert.match(clean, /\$0\.40\b/);                    // 0.4 -> "$0.40"
 });
 
 test('session cost is dim', () => {
-  const { raw } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', undefined, 1.5), plainFacts());
+  const { raw } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', undefined, 1.5), plainFacts());
   assert.ok(raw.includes(`${DIM}$1.50`), 'expected dim-rendered cost');
 });
 
 test('no cost field -> segment omitted (finite-guarded, no $)', () => {
-  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8'), plainFacts());
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5'), plainFacts());
   assert.ok(!clean.includes('$'), 'cost segment should be absent without cost.total_cost_usd');
 });
 
 test('cost renders after usage and before task', () => {
   // No task active (facts.task='') -> cost is the last segment.
   const usage = { current: 'H42', weekly: 'W31' };
-  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), plainFacts(), usage);
+  const { clean } = render(dataObj(40, '/no/such/repo', 'Opus 5.5', undefined, 0.42), plainFacts(), usage);
   const parts = clean.split(' │ ');
   const costIdx = parts.findIndex(p => p.includes('$0.42'));
   const weeklyIdx = parts.findIndex(p => p === 'W31');
@@ -349,7 +349,7 @@ test('malformed workspace.current_dir (non-string) -> no crash, exit 0', () => {
   // A non-string current_dir throws from path.basename/resolveGitDir inside collectFacts,
   // which runs outside outputStatus's try/catch (in emit()) -- collectFacts must swallow it.
   const { code, clean } = run(JSON.stringify({
-    model: { display_name: 'Opus 4.8' },
+    model: { display_name: 'Opus 5.5' },
     workspace: { current_dir: 12345 },
     session_id: 'test-session',
     context_window: { remaining_percentage: 40 }
@@ -711,13 +711,13 @@ test('unknown width (cols undefined) never wraps', () => {
 
 test('narrow terminal with no usage/cost/task stays single line', () => {
   // Only identity + context exist (no usage passed) -> nothing to wrap.
-  const { raw } = render(dataObj(40, '/no/such/repo', 'Opus 4.8'), plainFacts({ cols: 10 }));
+  const { raw } = render(dataObj(40, '/no/such/repo', 'Opus 5.5'), plainFacts({ cols: 10 }));
   assert.ok(!raw.includes('\n'), 'empty line2 -> single line regardless of width');
 });
 
 test('narrow wrap puts cost on line 2 alongside usage', () => {
   const usage = { current: 'H24 ↺ 2h', weekly: 'W41 ↺ 2d14h' };
-  const { clean } = render(dataObj(40, '/tmp/myproject', 'Opus 4.8', undefined, 1.23), plainFacts({ cols: 30 }), usage);
+  const { clean } = render(dataObj(40, '/tmp/myproject', 'Opus 5.5', undefined, 1.23), plainFacts({ cols: 30 }), usage);
   const [l1, l2] = clean.split('\n');
   assert.ok(!l1.includes('$1.23'), 'cost must not be on line 1');
   assert.match(l2, /\$1\.23\b/, 'cost wraps to line 2');
@@ -804,15 +804,15 @@ function seedTodo(activeForm) {
 }
 
 test('disable=cost hides cost; model + context intact', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), { disable: 'cost' });
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 5.5', undefined, 0.42), { disable: 'cost' });
   assert.ok(!clean.includes('$'), 'cost hidden');
   assert.match(clean, /Opus 4\.8/, 'model still renders');
   assert.match(clean, /C\d+ /, 'context still renders');
 });
 
 test('disable=effort drops the · level suffix', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'high'), { disable: 'effort' });
-  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8', 'no "· high"');
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 5.5', 'high'), { disable: 'effort' });
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 5.5', 'no "· high"');
 });
 
 test('disable=branch hides the branch (and ahead/behind) glyph', () => {
@@ -837,14 +837,14 @@ test('disable=task hides the in-progress todo', () => {
 });
 
 test('disable with an unknown token changes nothing', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', undefined, 0.42), { disable: 'bogus,nope' });
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 5.5', undefined, 0.42), { disable: 'bogus,nope' });
   assert.match(clean, /\$0\.42/, 'cost still renders for unknown tokens');
 });
 
 test('disable accepts multiple segments', () => {
-  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 4.8', 'high', 0.42), { disable: 'cost,effort' });
+  const { clean } = run(fixture(40, '/no/such/repo', 'Opus 5.5', 'high', 0.42), { disable: 'cost,effort' });
   assert.ok(!clean.includes('$'), 'cost hidden');
-  assert.strictEqual(clean.split(' │ ')[1], 'Opus 4.8', 'effort hidden');
+  assert.strictEqual(clean.split(' │ ')[1], 'Opus 5.5', 'effort hidden');
 });
 
 // Subagent mode (subagentStatusLine): `node statusline.js subagent` reads stdin
@@ -970,7 +970,7 @@ test('parseRegistryVersion: pulls version from a manifest, null on anything else
 
 test('update nudge: own row below the statusline, main line untouched', () => {
   const { raw, clean } = render(
-    dataObj(40, '/tmp/myproject', 'Opus 4.8', undefined, 0.42),
+    dataObj(40, '/tmp/myproject', 'Opus 5.5', undefined, 0.42),
     plainFacts({ update: '1.9.0', task: 'Refactoring' })
   );
   const rows = clean.split('\n');
@@ -990,7 +990,7 @@ test('update nudge: absent when facts carry no update', () => {
 
 test('update nudge: rides along with the responsive wrap as a third row', () => {
   const { clean } = render(
-    dataObj(40, '/tmp/myproject', 'Opus 4.8', undefined, 0.42),
+    dataObj(40, '/tmp/myproject', 'Opus 5.5', undefined, 0.42),
     plainFacts({ update: '1.9.0', task: 'Refactoring', cols: 40 })
   );
   assert.strictEqual(clean.split('\n').length, 3);

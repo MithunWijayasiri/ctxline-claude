@@ -107,7 +107,7 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 ## Render to verify (ANSI in terminal)
 
 ```bash
-echo '{"model":{"display_name":"Opus 4.8 (1M context)"},"workspace":{"current_dir":"/tmp/my-project"},"session_id":"t","context_window":{"remaining_percentage":55},"effort":{"level":"high"},"cost":{"total_cost_usd":44.21},"rate_limits":{"five_hour":{"used_percentage":81,"resets_at":'$(($(date +%s)+8460))'},"seven_day":{"used_percentage":31,"resets_at":'$(($(date +%s)+223200))'}}}' | node statusline.js
+echo '{"model":{"display_name":"Opus 5.5"},"workspace":{"current_dir":"/tmp/my-project"},"session_id":"t","context_window":{"remaining_percentage":55},"effort":{"level":"high"},"cost":{"total_cost_usd":44.21},"rate_limits":{"five_hour":{"used_percentage":81,"resets_at":'$(($(date +%s)+8460))'},"seven_day":{"used_percentage":31,"resets_at":'$(($(date +%s)+223200))'}}}' | node statusline.js
 ```
 
 Add `COLUMNS=40` in front to check the wrap, `CTXLINE_DISABLE=usage,cost` to check opt-out.

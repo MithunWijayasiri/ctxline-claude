@@ -90,9 +90,9 @@ function getScopedColor(percentage) {
   return percentage >= 90 ? colors.red : colors.orange;
 }
 
-// Shorten verbose model names for the statusline: "Opus 4.8 (1M context)" -> "Opus 4.8 (1M)".
+// Drop the context-window suffix: "Opus 5.5 (1M context)" -> "Opus 5.5".
 function shortenModel(name) {
-  return name.replace(/\s+context\)/i, ')');
+  return name.replace(/\s*\([^)]*context\)/i, '');
 }
 
 // Resolved model ID -> "Opus 5" / "Haiku 4.5" (strips prefixes + trailing -YYYYMMDD).
