@@ -22,7 +22,7 @@ npm run preview:svg # regenerate docs/assets/preview.svg's statusline tspans fro
 npm pack --dry-run  # preview what publishes
 
 # Main line — the stdin JSON Claude Code sends:
-echo '{"model":{"display_name":"Opus 4.8"},"workspace":{"current_dir":"/tmp/x"},"session_id":"t","context_window":{"remaining_percentage":40}}' | node statusline.js
+echo '{"model":{"display_name":"Opus 5.5"},"workspace":{"current_dir":"/tmp/x"},"session_id":"t","context_window":{"remaining_percentage":40}}' | node statusline.js
 
 # Update check (detached child; writes ~/.claude/cache/update-cache.json, prints nothing):
 node statusline.js update-check

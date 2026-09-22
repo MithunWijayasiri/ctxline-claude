@@ -70,15 +70,15 @@ Adding or moving a segment means picking its line in `renderStatusLine`, not jus
 
 | | Thresholds |
 |---|---|
-| context (`renderContextBar`) | green <50 / yellow <65 / orange <80 / **blink-red** ≥80 |
-| usage `H`/`W` (`getUsageColor`) | green <50 / yellow <75 / orange <90 / red ≥90 |
+| context (`renderContextBar`) | green <50 / yellow <65 / orange <80 / red ≥80 |
+| usage `H`/`W` (`getUsageColor`) | green <60 / yellow <80 / orange <90 / red ≥90 |
 | model-scoped bars (`getScopedColor`) | orange < 90 / red ≥90 — passed as `buildUsageBar`'s optional 4th arg |
 
 Context bands live in `renderContextBar`, not `getContextBar` — the latter only clamps remaining→used and delegates. `renderSubagentTask` calls the same function, so changing the bands recolors every subagent row too.
 
 Scoped bars are deliberately flat so a line carrying `H W O F` reads as two groups, not four severities; red ≥90 is the one exception, for a cap about to block its model. Restoring full threshold color means dropping that 4th arg — and updating the two scoped-color tests.
 
-ANSI (`colors` obj, top of `statusline.js`): green `\x1b[32m` · yellow `\x1b[33m` · orange `\x1b[38;5;208m` · red `\x1b[31m` · purple `\x1b[38;5;135m` · dim `\x1b[2m` · blink `\x1b[5m` · reset `\x1b[0m`.
+ANSI (`colors` obj, top of `statusline.js`): green `\x1b[32m` · yellow `\x1b[33m` · orange `\x1b[38;5;208m` · red `\x1b[31m` · purple `\x1b[38;5;135m` · dim `\x1b[2m` · reset `\x1b[0m`.
 
 Effort: only top two highlighted — `max` red, `ultracode` purple; rest dim.
 
@@ -107,7 +107,7 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 ## Render to verify (ANSI in terminal)
 
 ```bash
-echo '{"model":{"display_name":"Opus 4.8 (1M context)"},"workspace":{"current_dir":"/tmp/my-project"},"session_id":"t","context_window":{"remaining_percentage":55},"effort":{"level":"high"},"cost":{"total_cost_usd":44.21},"rate_limits":{"five_hour":{"used_percentage":81,"resets_at":'$(($(date +%s)+8460))'},"seven_day":{"used_percentage":31,"resets_at":'$(($(date +%s)+223200))'}}}' | node statusline.js
+echo '{"model":{"display_name":"Opus 5.5"},"workspace":{"current_dir":"/tmp/my-project"},"session_id":"t","context_window":{"remaining_percentage":55},"effort":{"level":"high"},"cost":{"total_cost_usd":44.21},"rate_limits":{"five_hour":{"used_percentage":81,"resets_at":'$(($(date +%s)+8460))'},"seven_day":{"used_percentage":31,"resets_at":'$(($(date +%s)+223200))'}}}' | node statusline.js
 ```
 
 Add `COLUMNS=40` in front to check the wrap, `CTXLINE_DISABLE=usage,cost` to check opt-out.

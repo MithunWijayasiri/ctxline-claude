@@ -66,8 +66,7 @@ const colors = {
   yellow: '\x1b[33m',
   orange: '\x1b[38;5;208m',
   red: '\x1b[31m',
-  purple: '\x1b[38;5;135m',
-  blink: '\x1b[5m'
+  purple: '\x1b[38;5;135m'
 };
 
 // Levels rank low<medium<high<xhigh<max<ultracode; only max (red) and ultracode (purple) stand out.
@@ -79,8 +78,8 @@ function getEffortColor(level) {
 }
 
 function getUsageColor(percentage) {
-  if (percentage < 50) return colors.green;
-  if (percentage < 75) return colors.yellow;
+  if (percentage < 60) return colors.green;
+  if (percentage < 80) return colors.yellow;
   if (percentage < 90) return colors.orange;
   return colors.red;
 }
@@ -90,9 +89,9 @@ function getScopedColor(percentage) {
   return percentage >= 90 ? colors.red : colors.orange;
 }
 
-// Shorten verbose model names for the statusline: "Opus 4.8 (1M context)" -> "Opus 4.8 (1M)".
+// Drop the context-window suffix: "Opus 5.5 (1M context)" -> "Opus 5.5".
 function shortenModel(name) {
-  return name.replace(/\s+context\)/i, ')');
+  return name.replace(/\s*\([^)]*context\)/i, '');
 }
 
 // Resolved model ID -> "Opus 5" / "Haiku 4.5" (strips prefixes + trailing -YYYYMMDD).
@@ -218,7 +217,7 @@ function renderContextBar(used) {
   if (used < 50) color = colors.green;
   else if (used < 65) color = colors.yellow;
   else if (used < 80) color = colors.orange;
-  else color = colors.blink + colors.red;
+  else color = colors.red;
 
   return `${color}C${used} ${bar}${colors.reset}`;
 }

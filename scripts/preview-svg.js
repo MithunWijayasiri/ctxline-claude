@@ -61,7 +61,7 @@ function ansiToRuns(line, { firstPlain } = {}) {
   };
 
   // SEGMENT_SEP (' │ ') carries no escape of its own, so it can end up fused with adjacent
-  // plain text into one flush (e.g. "reset} │ Opus 4.8" -- no escape between '│' and 'Opus').
+  // plain text into one flush (e.g. "reset} │ Opus 5.5" -- no escape between '│' and 'Opus').
   // Split it back out before assigning a color to what's left.
   const pushPlain = (text) => {
     const bits = text.split(' │ ');
@@ -91,7 +91,7 @@ function ansiToRuns(line, { firstPlain } = {}) {
     flush(match.index);
     const code = match[1];
     if (code === '' || code === '0') currentHex = null;
-    else if (code !== '5') currentHex = ANSI_HEX[code] ?? currentHex; // '5' = blink, no hex of its own
+    else currentHex = ANSI_HEX[code] ?? currentHex;
     lastIndex = re.lastIndex;
   }
   flush(line.length);
@@ -126,7 +126,7 @@ function renderPrimaryLine() {
   delete env.COLUMNS;
   delete env.CTXLINE_DISABLE;
   const res = spawnMain(JSON.stringify({
-    model: { display_name: 'Opus 4.8 (1M context)' },
+    model: { display_name: 'Opus 5.5' },
     workspace: { current_dir: projectDir },
     session_id: 'preview-svg',
     context_window: { remaining_percentage: 55 }, // used 45 -> "C45"

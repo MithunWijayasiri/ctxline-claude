@@ -48,7 +48,7 @@ test('hero mock line matches a real renderStatusLine() output', () => {
   const mockText = htmlLineToText(extractLine('class="proj">my-project'));
 
   const data = {
-    model: { display_name: 'Opus 4.8 (1M context)' },
+    model: { display_name: 'Opus 5.5' },
     effort: { level: 'high' },
     context_window: { remaining_percentage: 55 }, // used 45 -> "C45"
     cost: { total_cost_usd: 44.21 }
