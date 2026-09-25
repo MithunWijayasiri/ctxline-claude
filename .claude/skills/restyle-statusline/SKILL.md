@@ -5,18 +5,15 @@ description: Change the statusline's visible design — layout, segment format, 
 
 # Restyle statusline
 
-`statusline.js` is source of truth. **The visible line is mirrored in 5 other files — change them in the same pass or CI/release/site drift.** This skill lists every edit point so you skip re-reading the repo.
+`statusline.js` is source of truth. Mirror files and their traps: `CLAUDE.md` → "Keep in sync when `statusline.js` changes" — edit them in the same pass. Edit points beyond that table:
 
-## Sync surface (edit together)
-
-| File | What to change | Where |
-|---|---|---|
-| `statusline.js` | render logic — source of truth | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getLatestUpdate`, `renderUpdateLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
-| `test/render.test.js` | assertions on labels / `NN%` / colors / order | match new label regexes (e.g. `/C\d+ /`, `/H\d+\b/`); ANSI const block near top |
-| `scripts/preview.js` | seed + render check | cache seed data (via `test/fixture.js`'s `seedUsageCache`), `render()` params (`columns`, `disable`); **primary `console.log` stays FIRST line** (release takes `head -n 1`) |
-| `docs/assets/preview.svg` | marketing SVG (README/site) | 2 of its 12 `<text>` elements (main statusline + subagent row) are **generated**, not hand-edited — run `npm run preview:svg` after any output-shape change; the other 10 (window chrome, prompt lines, bullets) stay hand-authored |
-| `docs/index.html` | landing page | hero mock (`.term .line`) and subagent rows are checked by `test/docs-drift.test.js` (fails `npm test` on drift) — update its synthetic scenario if you change what they depict; inspector `SIGNALS[]` array and `.term` color classes are NOT checked, hand-verify |
-| `CLAUDE.md` | spec | format diagram + segment legend (top); its Invariants block also hard-codes the timing/TTL numbers, stdin field list, and `module.exports` list |
+| File | Where |
+|---|---|
+| `statusline.js` | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getLatestUpdate`, `renderUpdateLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
+| `test/render.test.js` | label regexes (e.g. `/C\d+ /`, `/H\d+\b/`) |
+| `scripts/preview.js` | cache seed via `test/fixture.js`'s `seedUsageCache`; `render()` params (`columns`, `disable`) |
+| `docs/assets/preview.svg` | only 2 of 12 `<text>` elements generated (main statusline + subagent row); other 10 (window chrome, prompt lines, bullets) hand-authored |
+| `docs/index.html` | hero mock (`.term .line`) / subagent rows depict something new → update `test/docs-drift.test.js`'s synthetic scenario; inspector `SIGNALS[]` and `.term` color classes unchecked → hand-verify |
 
 After edits: `npm test` + `npm run preview` + `npm run preview:svg`. All must pass + look right.
 
@@ -66,7 +63,7 @@ Adding or moving a segment means picking its line in `renderStatusLine`, not jus
 
 `CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `task`, `update`, `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
 
-## Colors (two schemes — do NOT unify)
+## Colors (three schemes, kept separate on purpose)
 
 | | Thresholds |
 |---|---|
@@ -89,8 +86,7 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 ## Gotchas
 
 - Bar glyphs are `█`/`░` **escapes** in `statusline.js` code, but **literal** `█`/`░` in comments, SVG, HTML, and tests. Match the right form when editing (Edit tool is byte-exact).
-- Scoped bars come only from the `/usage` API payload, never stdin — preview/tests exercise them through the seeded cache, so a scoped-bar restyle needs the cache seed updated too.
-- Don't touch installers (`bin/install.js`, `install.sh`, `install.ps1`) — frozen. No Full/Lite prompt or second file (deleted upstream).
+- Preview/tests exercise scoped bars through the seeded cache → scoped-bar restyle needs cache seed updated too.
 - README has no sample line — leave it.
 - New ANSI color in `colors` (top of `statusline.js`) → add it to `scripts/preview-svg.js`'s `ANSI_HEX` table too, or `npm run preview:svg` silently falls back to the default text color for it.
 
