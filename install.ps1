@@ -6,6 +6,8 @@ $HOOKS_DIR = "$env:USERPROFILE\.claude\hooks"
 $SETTINGS_FILE = "$env:USERPROFILE\.claude\settings.json"
 $REPO_URL = "https://raw.githubusercontent.com/MithunWijayasiri/ctxline-claude/main"
 
+Write-Host "█ " -ForegroundColor DarkYellow -NoNewline
+Write-Host "█ " -ForegroundColor DarkGray -NoNewline
 Write-Host "ctxline" -ForegroundColor Cyan -NoNewline
 Write-Host " · statusline for Claude Code" -ForegroundColor DarkGray
 Write-Host ""

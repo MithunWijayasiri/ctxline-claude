@@ -15,7 +15,7 @@ CYAN='\033[0;36m'
 DIM='\033[2m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}ctxline${NC} ${DIM}· statusline for Claude Code${NC}"
+echo -e "\033[38;5;173m█${NC} \033[38;5;239m█${NC} ${CYAN}ctxline${NC} ${DIM}· statusline for Claude Code${NC}"
 echo ""
 
 # Check if Claude Code is installed

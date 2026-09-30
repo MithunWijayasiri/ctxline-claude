@@ -16,6 +16,7 @@ const yellow = '\x1b[33m';
 const cyan = '\x1b[36m';
 const dim = '\x1b[2m';
 const reset = '\x1b[0m';
+const logo = '\x1b[38;5;173m█\x1b[0m \x1b[38;5;239m█\x1b[0m';
 
 const { VERSION: version, compareVersions } = require('../statusline.js');
 const repoUrl = 'https://github.com/MithunWijayasiri/ctxline-claude';
@@ -28,7 +29,7 @@ if (mode === 'uninstall' || mode === 'remove') {
   process.exit(0);
 }
 
-console.log(`${cyan}ctxline${reset} v${version} ${dim}· statusline for Claude Code${reset}\n`);
+console.log(`${logo} ${cyan}ctxline${reset} v${version} ${dim}· statusline for Claude Code${reset}\n`);
 
 function fail(message, hint) {
   console.log(`  ${red}✗ ${message}${reset}`);
@@ -112,7 +113,7 @@ if (previousVersion === version) {
 console.log('\nRestart Claude Code or start a new session.\n');
 
 function runUninstall() {
-  console.log(`${cyan}ctxline${reset} v${version} ${dim}· uninstall${reset}\n`);
+  console.log(`${logo} ${cyan}ctxline${reset} v${version} ${dim}· uninstall${reset}\n`);
 
   if (!fs.existsSync(claudeDir)) {
     console.log(`${yellow}Nothing to remove — ~/.claude was not found.${reset}\n`);
