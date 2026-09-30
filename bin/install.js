@@ -45,7 +45,13 @@ if (!fs.existsSync(claudeDir)) {
 // null = fresh install; '' = hook predates the VERSION constant
 let previousVersion = null;
 if (fs.existsSync(scriptDest)) {
-  const match = fs.readFileSync(scriptDest, 'utf8').match(/const VERSION = '([^']+)'/);
+  let existing;
+  try {
+    existing = fs.readFileSync(scriptDest, 'utf8');
+  } catch (e) {
+    fail(`Could not read ${displayPath(scriptDest)}`, e.message);
+  }
+  const match = existing.match(/const VERSION = '([^']+)'/);
   previousVersion = match ? match[1] : '';
 }
 
