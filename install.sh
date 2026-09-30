@@ -11,11 +11,11 @@ REPO_URL="https://raw.githubusercontent.com/MithunWijayasiri/ctxline-claude/main
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+CYAN='\033[0;36m'
+DIM='\033[2m'
 NC='\033[0m' # No Color
 
-echo "======================================"
-echo "  Claude Code Statusline Installer"
-echo "======================================"
+echo -e "${CYAN}ctxline${NC} ${DIM}· statusline for Claude Code${NC}"
 echo ""
 
 # Check if Claude Code is installed
@@ -123,13 +123,9 @@ fi
 
 # Success message
 echo ""
-echo -e "${GREEN}======================================"
-echo "  Installation Complete! ✓"
-echo "======================================${NC}"
+echo -e "${GREEN}✓ ctxline installed${NC}"
 echo ""
-echo "Next steps:"
-echo "  1. Restart Claude Code or start a new session"
-echo "  2. Your statusline should now be active!"
+echo "Restart Claude Code or start a new session."
 echo ""
 echo "To uninstall:"
 echo "  - Remove ~/.claude/hooks/$SCRIPT_NAME"
