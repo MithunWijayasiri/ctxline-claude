@@ -14,7 +14,13 @@ const green = '\x1b[32m';
 const red = '\x1b[31m';
 const yellow = '\x1b[33m';
 const cyan = '\x1b[36m';
+const dim = '\x1b[2m';
 const reset = '\x1b[0m';
+const logo = '\x1b[38;5;173m█\x1b[0m \x1b[38;5;239m█\x1b[0m';
+
+const { VERSION: version, compareVersions } = require('../statusline.js');
+const repoUrl = 'https://github.com/MithunWijayasiri/ctxline-claude';
+const displayPath = (p) => p.replace(os.homedir(), '~').replace(/\\/g, '/');
 
 // Uninstall mode: `npx ctxline-claude uninstall` (additive — plain install is unchanged)
 const mode = (process.argv[2] || '').toLowerCase();
@@ -23,37 +29,58 @@ if (mode === 'uninstall' || mode === 'remove') {
   process.exit(0);
 }
 
-console.log(`${cyan}======================================${reset}`);
-console.log(`${cyan}  Claude Code Statusline Installer${reset}`);
-console.log(`${cyan}======================================${reset}\n`);
+console.log(`${logo} ${cyan}ctxline${reset} v${version} ${dim}· statusline for Claude Code${reset}\n`);
 
-// Check Claude Code is installed
-if (!fs.existsSync(claudeDir)) {
-  console.log(`${red}Error: Claude Code not found!${reset}`);
-  console.log('Please install Claude Code first: https://github.com/anthropics/claude-code');
+function fail(message, hint) {
+  console.log(`  ${red}✗ ${message}${reset}`);
+  if (hint) console.log(`    ${dim}${hint}${reset}`);
+  console.log(`\n${red}Install failed.${reset} Stuck? ${cyan}${repoUrl}/issues${reset}\n`);
   process.exit(1);
 }
 
-// Create hooks directory
-if (!fs.existsSync(hooksDir)) {
-  fs.mkdirSync(hooksDir, { recursive: true });
+if (!fs.existsSync(claudeDir)) {
+  fail('Claude Code not found (~/.claude missing)', 'Install Claude Code first: https://github.com/anthropics/claude-code');
 }
 
-// Copy statusline script
-console.log(`${yellow}Installing statusline...${reset}`);
-fs.copyFileSync(scriptSrc, scriptDest);
-fs.chmodSync(scriptDest, 0o755);
-console.log(`${green}✓ Installed statusline.js${reset}`);
+// null = fresh install; '' = hook predates the VERSION constant
+let previousVersion = null;
+if (fs.existsSync(scriptDest)) {
+  let existing;
+  try {
+    existing = fs.readFileSync(scriptDest, 'utf8');
+  } catch (e) {
+    fail(`Could not read ${displayPath(scriptDest)}`, e.message);
+  }
+  const match = existing.match(/const VERSION = '([^']+)'/);
+  previousVersion = match ? match[1] : '';
+}
 
-// Update settings.json
-console.log(`${yellow}Updating settings...${reset}`);
+// npx can serve a stale cached copy — never overwrite a newer hook with it
+if (previousVersion && compareVersions(version, previousVersion) === -1) {
+  console.log(`  ${yellow}! v${previousVersion} is already installed — this copy is older (v${version})${reset}`);
+  console.log(`\nNothing changed. Get the latest: ${cyan}npx ctxline-claude@latest${reset}\n`);
+  process.exit(0);
+}
+
+try {
+  fs.mkdirSync(hooksDir, { recursive: true });
+  fs.copyFileSync(scriptSrc, scriptDest);
+  fs.chmodSync(scriptDest, 0o755);
+} catch (e) {
+  fail(`Could not write ${displayPath(scriptDest)}`, e.message);
+}
+console.log(`  ${green}✓${reset} Installed  ${displayPath(scriptDest)}`);
 
 let settings = {};
+let backupNote = '';
 if (fs.existsSync(settingsFile)) {
-  // Backup existing settings
   const backup = `${settingsFile}.backup.${Date.now()}`;
-  fs.copyFileSync(settingsFile, backup);
-  console.log(`${green}✓ Backed up existing settings${reset}`);
+  try {
+    fs.copyFileSync(settingsFile, backup);
+  } catch (e) {
+    fail(`Could not back up ${displayPath(settingsFile)}`, e.message);
+  }
+  backupNote = ` ${dim}(backup: ${path.basename(backup)})${reset}`;
 
   try {
     settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
@@ -75,19 +102,24 @@ settings.subagentStatusLine = {
   command: `node "${commandPath}" subagent`
 };
 
-fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
-console.log(`${green}✓ Updated settings.json${reset}`);
+try {
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+} catch (e) {
+  fail(`Could not write ${displayPath(settingsFile)}`, e.message);
+}
+console.log(`  ${green}✓${reset} Settings   statusLine + subagentStatusLine${backupNote}`);
 
-console.log(`\n${green}======================================${reset}`);
-console.log(`${green}  Installation Complete!${reset}`);
-console.log(`${green}======================================${reset}`);
-console.log('\nRestart Claude Code or start a new session.');
-console.log('The statusline will auto-detect your setup (subscription vs API key).\n');
+if (previousVersion === version) {
+  console.log(`\n  Already up to date (v${version})`);
+} else if (previousVersion !== null) {
+  console.log(`\n  ${green}Updated ${previousVersion ? `v${previousVersion} → ` : 'to '}v${version}${reset}`);
+  console.log(`  What's new → ${cyan}${repoUrl}/releases/tag/v${version}${reset}`);
+}
+
+console.log('\nRestart Claude Code or start a new session.\n');
 
 function runUninstall() {
-  console.log(`${cyan}======================================${reset}`);
-  console.log(`${cyan}  Claude Code Statusline Uninstaller${reset}`);
-  console.log(`${cyan}======================================${reset}\n`);
+  console.log(`${logo} ${cyan}ctxline${reset} v${version} ${dim}· uninstall${reset}\n`);
 
   if (!fs.existsSync(claudeDir)) {
     console.log(`${yellow}Nothing to remove — ~/.claude was not found.${reset}\n`);

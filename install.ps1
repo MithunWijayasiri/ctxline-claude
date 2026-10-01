@@ -6,9 +6,10 @@ $HOOKS_DIR = "$env:USERPROFILE\.claude\hooks"
 $SETTINGS_FILE = "$env:USERPROFILE\.claude\settings.json"
 $REPO_URL = "https://raw.githubusercontent.com/MithunWijayasiri/ctxline-claude/main"
 
-Write-Host "======================================" -ForegroundColor Cyan
-Write-Host "  Claude Code Statusline Installer" -ForegroundColor Cyan
-Write-Host "======================================" -ForegroundColor Cyan
+Write-Host "█ " -ForegroundColor DarkYellow -NoNewline
+Write-Host "█ " -ForegroundColor DarkGray -NoNewline
+Write-Host "ctxline" -ForegroundColor Cyan -NoNewline
+Write-Host " · statusline for Claude Code" -ForegroundColor DarkGray
 Write-Host ""
 
 # Check if Claude Code is installed
@@ -76,13 +77,9 @@ Write-Host "✓ Updated settings.json" -ForegroundColor Green
 
 # Success message
 Write-Host ""
-Write-Host "======================================" -ForegroundColor Green
-Write-Host "  Installation Complete! ✓" -ForegroundColor Green
-Write-Host "======================================" -ForegroundColor Green
+Write-Host "✓ ctxline installed" -ForegroundColor Green
 Write-Host ""
-Write-Host "Next steps:"
-Write-Host "  1. Restart Claude Code or start a new session"
-Write-Host "  2. Your statusline should now be active!"
+Write-Host "Restart Claude Code or start a new session."
 Write-Host ""
 Write-Host "To uninstall:"
 Write-Host "  - Remove ~/.claude/hooks/$SCRIPT_NAME"

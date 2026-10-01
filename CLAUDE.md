@@ -77,7 +77,7 @@ Triggers: visible output change → test assertions + `npm run preview:svg`; cac
 
 ## Do not touch the installers
 
-Install path frozen. No behavior change to `bin/install.js`, `install.sh`, `install.ps1` except branding (repo URL / package name) or wiring a settings.json entry a shipped feature already depends on. `npx ctxline-claude` installs silently. All three write both `statusLine` and `subagentStatusLine` to the same hook file (path written quoted). New entry point → wire into all three.
+Install path frozen: hook location, settings.json keys, backup behavior. Allowed: branding and console output in all three; `bin/install.js` install feedback (version detection, update/changelog line, downgrade guard, failure messages); wiring a settings.json entry a shipped feature already depends on. `npx ctxline-claude` installs silently. All three write both `statusLine` and `subagentStatusLine` to the same hook file (path written quoted). New entry point → wire into all three.
 
 Uninstall: `npx ctxline-claude uninstall` removes only our two keys (guarded, backed up), deletes the hook, clears the cache. `install.sh`/`install.ps1` have no uninstall command — their printed manual-removal instructions must list both keys. No Full/Lite prompt or second statusline file.
 
