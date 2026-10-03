@@ -127,14 +127,16 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 
 ## Claude desktop app
 
-The statusline above is for the `claude` terminal. The Claude desktop app's Code tab doesn't run statusline scripts, so ctxline ships a separate plugin for it, `ctxline-desktop`, installed from this repo:
+The statusline above is for the `claude` terminal. The Claude desktop app's Code tab doesn't run statusline scripts, so ctxline ships a separate plugin for it, `ctxline-desktop`, installed from this repo. Two ways to install:
+
+**In the app:** open **Plugins → Add → Add Marketplace**, enter `MithunWijayasiri/ctxline-claude`, then install **ctxline-desktop**.
+
+**With commands:**
 
 ```
 /plugin marketplace add MithunWijayasiri/ctxline-claude
 /plugin install ctxline-desktop@ctxline
 ```
-
-Or in the desktop app: **+ → Plugins → Manage plugins → Marketplaces**, add `MithunWijayasiri/ctxline-claude`, then install **ctxline-desktop**.
 
 <p align="center">
   <img src="docs/assets/desktop-preview.svg" alt="ctxline in the Claude desktop app">
