@@ -4,7 +4,9 @@ name: Release
 # the trusted publisher on npmjs.com must name this file), then creates a matching GitHub release with:
 # - the statusline preview (colors stripped, GitHub markdown can't render ANSI)
 # - auto-generated notes from commits/PRs since the previous release
-# - Source code (zip/tar.gz), which GitHub attaches automatically
+# - two zip assets: ctxline-claude (the npm package contents) and ctxline-desktop (the desktop
+#   plugin, at whatever version desktop/.claude-plugin/plugin.json holds — it has no releases of its
+#   own). GitHub still attaches its automatic Source code (zip/tar.gz); that can't be disabled.
 #
 # Bump the version in BOTH package.json and the VERSION constant in statusline.js before
 # running — the installers copy statusline.js alone, so it carries its own version for the
@@ -52,6 +54,20 @@ jobs:
         # the release body only wants the primary line (first line), colors stripped.
         run: node scripts/preview.js | perl -pe 's/\x1b\[[0-9;]*m//g' | head -n 1 > preview.txt
 
+      - name: Build zip assets
+        run: |
+          V="$(node -p "require('./package.json').version")"
+          DV="$(node -p "require('./desktop/.claude-plugin/plugin.json').version")"
+
+          npm pack --silent
+          mkdir ctxline-pkg && tar -xzf "ctxline-claude-$V.tgz" -C ctxline-pkg
+          (cd ctxline-pkg/package && zip -qr "$GITHUB_WORKSPACE/ctxline-claude-v$V.zip" .)
+
+          (cd desktop && zip -qr "$GITHUB_WORKSPACE/ctxline-desktop-v$DV.zip" .)
+
+          echo "pkg_version=$V" >> "$GITHUB_ENV"
+          echo "desktop_version=$DV" >> "$GITHUB_ENV"
+
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,7 +91,14 @@ jobs:
             cat preview.txt
             echo '```'
             echo ""
+            echo "### Downloads"
+            echo ""
+            echo "- \`ctxline-claude-v${pkg_version}.zip\` — statusline (same contents as the npm package)"
+            echo "- \`ctxline-desktop-v${desktop_version}.zip\` — Claude desktop plugin v${desktop_version} (updates itself through the plugin marketplace; not versioned with this release)"
+            echo ""
             echo "$NOTES"
           } > body.md
 
-          gh release create "$TAG" --title "$TAG" --notes-file body.md
+          gh release create "$TAG" --title "$TAG" --notes-file body.md \
+            "ctxline-claude-v${pkg_version}.zip" \
+            "ctxline-desktop-v${desktop_version}.zip"
