@@ -204,6 +204,10 @@
   .opt .cmd .copy{align-self:flex-end;margin-top:auto;min-width:84px;text-align:center}
   .opt .cmd code{background:none;border:0;padding:0;font-size:13px;line-height:1.6;color:var(--term-fg);overflow-wrap:normal}
   .opt .cmd code span{white-space:nowrap}
+  @media(max-width:640px){
+    .opt code,.opt .cmd code span{white-space:normal}
+    .opt code,.opt .cmd code{overflow-wrap:anywhere}
+  }
 
   .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
   .cta-stack{flex-direction:column;align-items:center}
