@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import type { Activity, CacheTally, Limit, Snapshot, UpdateCheck } from '../types'
+import type { Activity, CacheTally, Limit, Snapshot } from '../types'
 
 const IDLE: Activity = { isWorking: false, startedAt: 0, tools: 0, current: null, lastSeconds: null }
 const NO_CACHE: CacheTally = { read: 0, total: 0 }
@@ -10,7 +10,6 @@ const snap = atom({ plugin: 'ctxline-desktop', key: 'snap' } as const, null)
 const activity = atom({ plugin: 'ctxline-desktop', key: 'activity' } as const, IDLE)
 const frame = atom({ plugin: 'ctxline-desktop', key: 'frame' } as const, 0)
 const cache = atom({ plugin: 'ctxline-desktop', key: 'cache' } as const, NO_CACHE)
-const latest = atom({ plugin: 'ctxline-desktop', key: 'latest' } as const, null)
 
 const REFRESH_MS = 30000
 const SPIN_MS = 250
@@ -23,13 +22,6 @@ const YELLOW = 'yellow'
 const ORANGE = '#ff8700'
 const RED = 'red'
 const ACCENT = '#d97757'
-const UPDATE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days between successful checks
-const UPDATE_RETRY_MS = 60 * 60 * 1000 // 1h backoff after a failed check
-const UPDATE_KEY = 'update-check'
-const MANIFEST = '.claude-plugin/plugin.json'
-const LATEST_URL = `https://raw.githubusercontent.com/MithunWijayasiri/ctxline-claude/main/desktop/${MANIFEST}`
-const UPDATE_COMMAND = 'claude plugin update ctxline-desktop@ctxline'
-const SEMVER_RE = /^\d+\.\d+\.\d+$/ // releases only: a prerelease never nudges
 
 function usageColor(percent: number): string {
   if (percent < 60) return GREEN
@@ -75,38 +67,6 @@ function toolDetail(args: object): string {
   return ''
 }
 
-function isNewer(candidate: string, current: string): boolean {
-  if (!SEMVER_RE.test(candidate) || !SEMVER_RE.test(current)) return false
-  const a = candidate.split('.').map(Number)
-  const b = current.split('.').map(Number)
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return (a[i] ?? 0) > (b[i] ?? 0)
-  }
-  return false
-}
-
-// Weekly look at the plugin.json on GitHub main; the cooldown is stamped before the fetch, so a failure backs off 1h.
-async function checkUpdate($: EngineInterface): Promise<void> {
-  const now = await $.clock.now()
-  const saved = (await $.store.get(UPDATE_KEY)) as UpdateCheck | undefined
-  let found = saved?.latest
-  if (saved === undefined || now >= saved.nextCheckAt) {
-    await $.store.set(UPDATE_KEY, { nextCheckAt: now + UPDATE_RETRY_MS, latest: found })
-    try {
-      const res = await $.http.fetch(LATEST_URL)
-      const version = res.ok ? (JSON.parse(res.text) as { version?: unknown }).version : undefined
-      if (typeof version === 'string') {
-        found = version
-        await $.store.set(UPDATE_KEY, { nextCheckAt: now + UPDATE_TTL_MS, latest: found })
-      }
-    } catch {
-      // offline or bad payload: keep the last known version until the retry
-    }
-  }
-  const installed = (JSON.parse(await $.fs.read(`${$.plugin.root}/${MANIFEST}`)) as { version: string }).version
-  await update($, latest, () => (found !== undefined && isNewer(found, installed) ? found : null))
-}
-
 async function git($: EngineInterface, cwd: string, args: string[]): Promise<string | undefined> {
   const { exitCode, stdout } = await $.process.run(['git', ...args], { cwd, timeoutMs: 2000 })
   return exitCode === 0 ? stdout.trim() : undefined
@@ -149,7 +109,6 @@ export const register: Register = on => {
     ticker = $.clock.every(REFRESH_MS, () => {
       refresh($).catch((err: unknown) => $.ui.log(`refresh failed: ${String(err)}`, { to: 'debug' }))
     })
-    checkUpdate($).catch((err: unknown) => $.ui.log(`update check failed: ${String(err)}`, { to: 'debug' }))
 
     return started
   })
@@ -200,6 +159,8 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.surface !== 'desktop') return next(e)
+
     const s = await read($, snap)
     if (e.props.hasSurvey || s === null) return next(e)
 
@@ -247,7 +208,6 @@ export const register: Register = on => {
     ].filter(Boolean)
 
     const hasSync = s.ahead > 0 || s.behind > 0
-    const newer = await read($, latest)
     return (
       <Box flexDirection="column">
         {(live || stats.length > 0) && (
@@ -283,19 +243,14 @@ export const register: Register = on => {
             </Text>
           )}
         </Box>
-        {newer !== null && (
-          <Text wrap="truncate-end">
-            <Text color={GREEN}>⬆ {newer}</Text>
-            <Text dimColor> available · </Text>
-            <Text bold>{UPDATE_COMMAND}</Text>
-          </Text>
-        )}
       </Box>
     )
   })
 
   // Right side of the prompt footer, after the engine's own mode labels; Desktop caps its width.
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    if (e.surface !== 'desktop') return next(e)
+
     const s = await read($, snap)
     if (s === null) return next(e)
 

@@ -1,40 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="316" viewBox="0 0 1280 316" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440">
   <defs>
     <clipPath id="round">
-      <rect x="0.5" y="0.5" width="1279" height="315" rx="14" ry="14"></rect>
+      <rect x="0.5" y="0.5" width="1279" height="439" rx="14" ry="14"></rect>
     </clipPath>
+    <pattern id="dots" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="#2a2a2a"></rect>
+      <circle cx="1" cy="1" r="0.9" fill="#6b6b66"></circle>
+      <circle cx="3" cy="3" r="0.9" fill="#6b6b66"></circle>
+    </pattern>
   </defs>
 
-  <g clip-path="url(#round)">
+  <g clip-path="url(#round)" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15">
 
-    <rect x="0" y="0" width="1280" height="316" fill="#1a1a19"></rect>
+    <rect x="0" y="0" width="1280" height="440" fill="#141414"></rect>
+
+    <!-- Conversation -->
+    <rect x="820" y="24" width="420" height="40" rx="12" fill="#232323"></rect>
+    <text x="840" y="49" fill="#e8e6df">Add input validation to the signup form</text>
+    <text x="40" y="100" fill="#c9c6be">Sure. I will add checks for the email and password fields, then run the tests to make sure nothing broke.</text>
+    <rect x="40" y="116" width="360" height="36" rx="8" fill="#1c1c1c" stroke="#2a2a2a"></rect>
+    <text x="58" y="139" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="14"><tspan fill="#d97757">Bash</tspan><tspan fill="#8f8c84">  npm test</tspan></text>
 
     <!-- Desktop's own git bar -->
-    <rect x="24" y="24" width="1232" height="52" rx="10" fill="#262624" stroke="#34342f"></rect>
-    <text x="44" y="56" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="15"><tspan fill="#a9a69e">my-project</tspan><tspan fill="#77756e">  main</tspan></text>
-    <rect x="1000" y="36" width="106" height="28" rx="6" fill="#30302d"></rect>
-    <text x="1053" y="56" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="15"><tspan fill="#3fb950">+128</tspan><tspan fill="#f85149"> −14</tspan></text>
-    <rect x="1114" y="36" width="104" height="28" rx="6" fill="#3a3a37"></rect>
-    <text x="1166" y="55" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" fill="#e8e6df">Commit changes</text>
-    <text x="1236" y="55" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" fill="#8f8c84">×</text>
+    <rect x="40" y="176" width="1200" height="48" rx="10" fill="#202020"></rect>
+    <text x="64" y="205" fill="#8f8c84">my-project</text>
+    <text x="156" y="205" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#77756e">feat/auth-fix</text>
+    <rect x="930" y="185" width="118" height="30" rx="7" fill="#2e2e2e"></rect>
+    <text x="989" y="205" text-anchor="middle" font-weight="600"><tspan fill="#22c55e">+1,632</tspan><tspan fill="#f43f5e"> −26</tspan></text>
+    <rect x="1056" y="185" width="130" height="30" rx="7" fill="#383838"></rect>
+    <text x="1121" y="205" text-anchor="middle" font-size="14" fill="#e8e6df">Commit changes</text>
+    <path d="M1205 195 l9 9 m0 -9 l-9 9" stroke="#8f8c84" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
 
     <!-- ctxline-desktop band -->
-    <rect x="24" y="88" width="1232" height="76" rx="10" fill="#262624" stroke="#34342f"></rect>
-    <g font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15">
-      <text x="44" y="119"><tspan fill="#d97757">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
-      <text x="1236" y="119" text-anchor="end"><tspan fill="#8f8c84">cache </tspan><tspan fill="#e8e6df">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df">$5.82</tspan></text>
-      <text x="44" y="147"><tspan fill="#3fb950">C23 ████</tspan><tspan fill="#4a4a46">░░░░░░░░░░░░░░</tspan><tspan fill="#8f8c84"> 46k / 200k</tspan></text>
-      <text x="1236" y="147" text-anchor="end" fill="#3fb950">↑1</text>
-    </g>
+    <rect x="40" y="236" width="1200" height="76" rx="10" fill="#202020"></rect>
+    <text x="60" y="267"><tspan fill="#d97757" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
+    <text x="1220" y="267" text-anchor="end"><tspan fill="#8f8c84">cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
+    <text x="60" y="293" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#22c55e">C23</text>
+    <rect x="96" y="281" width="40" height="15" fill="#22c55e"></rect>
+    <rect x="136" y="281" width="140" height="15" fill="url(#dots)"></rect>
+    <text x="288" y="293" font-size="14" fill="#8f8c84">46k / 200k</text>
+    <text x="1220" y="293" text-anchor="end" fill="#22c55e" font-weight="600">↑1</text>
 
     <!-- Prompt -->
-    <rect x="24" y="176" width="1232" height="64" rx="12" fill="#262624" stroke="#3a3a37"></rect>
-    <text x="44" y="214" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="#77756e">Type / for commands</text>
-    <text x="1232" y="214" text-anchor="end" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="#77756e">↵</text>
+    <rect x="40" y="324" width="1200" height="60" rx="14" fill="#1c1c1c" stroke="#3a3a3a"></rect>
+    <text x="64" y="360" font-size="16" fill="#77756e">Type / for commands</text>
+    <path d="M1206 351 v7 h-13 m4 -4 l-4 4 l4 4" stroke="#8f8c84" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
 
     <!-- Footer -->
-    <text x="32" y="282" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" fill="#c9c6be">+     Auto</text>
-    <text x="1236" y="282" text-anchor="end" font-size="15"><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#3fb950">H12</tspan><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#8f8c84"> ↺ 1h28m │ </tspan><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#3fb950">W25</tspan><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#8f8c84"> ↺ 15h48m</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" fill="#e8e6df">     Opus 5.5     Medium</tspan></text>
+    <g stroke="#c9c6be" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M64 411 h12 M70 405 v12"></path>
+      <rect x="92" y="403" width="7" height="11" rx="3.5"></rect>
+      <path d="M89 411 a7 7 0 0 0 13 0 M95.500 418 v3"></path>
+      <path d="M114 409 l4 4 l4 -4" stroke="#8f8c84"></path>
+    </g>
+    <text x="140" y="416" fill="#c9c6be">Auto</text>
+    <text x="1196" y="416" text-anchor="end"><tspan fill="#22c55e">H12</tspan><tspan fill="#8f8c84"> ↺ 1h28m  │  </tspan><tspan fill="#22c55e">W25</tspan><tspan fill="#8f8c84"> ↺ 15h48m</tspan><tspan fill="#e8e6df" dx="26">Opus 5.5</tspan><tspan fill="#e8e6df" dx="22">Medium</tspan></text>
+    <circle cx="1224" cy="411" r="7" fill="none" stroke="#2e2e2e" stroke-width="2"></circle>
+    <path d="M1224 404 a7 7 0 0 1 7 7" fill="none" stroke="#8f8c84" stroke-width="2" stroke-linecap="round"></path>
 
   </g>
 </svg>

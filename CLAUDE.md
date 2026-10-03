@@ -59,18 +59,19 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `latest`; state keys must match plugin name or validation fails).
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`; state keys must match plugin name or validation fails).
 
 Layout (Desktop already shows dir/branch/model/effort — omitted):
 
 ```text
 AbovePrompt  <activity>                                   cache <pct>% · $<cost>
              C<used> <18-cell bar> <tokens> / <window>              ↑N↓M
-             ⬆ <latest> available · claude plugin update ctxline-desktop@ctxline
 SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
 ```
 
-`⬆` row only when GitHub `main`'s `desktop/.claude-plugin/plugin.json` `version` is newer than the installed one (releases only, no prerelease). Checked on `session.start` via `$.http.fetch`; `$.store` key `update-check` `{ nextCheckAt, latest }` — cooldown stamped before the fetch, failures back off 1h, successes 7d (same as npm check). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
+No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; user enables per marketplace in `/plugin` → Marketplaces; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
+
+`displayName` (`plugin.json`) is the UI name; `name` must stay kebab-case (no spaces). Marketplace `name` is the "from <name>" label and the `@` suffix in install ids; no spaces allowed. `icon` in `plugin.json` is read only by Anthropic's directory — Desktop ignores it, not set.
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 

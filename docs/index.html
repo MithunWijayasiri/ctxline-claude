@@ -4,23 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ctxline · claude code</title>
-<meta name="description" content="Zero-config Claude Code statusline for context usage, 5-hour and weekly limits, model, cost, Git status, and active tasks.">
+<meta name="description" content="Zero-config Claude Code statusline for context usage, 5-hour and weekly limits, model, cost, Git status, and active tasks. Also available as a plugin for the Claude desktop app.">
+<link rel="canonical" href="https://ctxline.js.org/">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ctxline - Claude Code Statusline">
 <meta property="og:title" content="Claude Code Statusline">
-<meta property="og:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance — live, inside Claude Code.">
-<meta property="og:url" content="https://mithunwijayasiri.github.io/ctxline-claude/">
-<meta property="og:image" content="https://mithunwijayasiri.github.io/ctxline-claude/assets/og.png">
+<meta property="og:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance — live, inside Claude Code and the Claude desktop app.">
+<meta property="og:url" content="https://ctxline.js.org/">
+<meta property="og:image" content="https://ctxline.js.org/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Claude Code Statusline">
-<meta name="twitter:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance — live, inside Claude Code.">
-<meta name="twitter:image" content="https://mithunwijayasiri.github.io/ctxline-claude/assets/og.png">
+<meta name="twitter:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance — live, inside Claude Code and the Claude desktop app.">
+<meta name="twitter:image" content="https://ctxline.js.org/assets/og.png">
 
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon.ico" sizes="48x48">
@@ -172,6 +173,41 @@
   .hero .term .line{justify-content:safe center}
   .hero .term::after{content:"";position:absolute;top:0;right:0;bottom:0;width:34px;pointer-events:none;
     background:linear-gradient(to right,transparent,var(--term-bg))}
+
+  /* desktop app mock: Desktop's own bars plain, ctxline's rows edged in accent */
+  .term.desk{max-width:760px;padding:16px;display:flex;flex-direction:column;gap:8px;
+    font-family:var(--sans);font-size:clamp(11px,1.5vw,14px);color:var(--term-fg)}
+  .desk .card{background:#1f1c15;border-radius:10px;padding:11px 16px;display:flex;flex-direction:column;gap:5px}
+  .desk .card.git{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap;color:#a7a191}
+  .desk .branch{font-family:var(--mono);font-size:.92em;color:var(--term-dim);margin-left:12px}
+  .desk .gitr{display:flex;align-items:center;gap:8px;flex:none}
+  .desk .pill{background:#2b271d;border-radius:6px;padding:3px 9px;font-weight:700}
+  .desk .commit{background:#3a3528;border-radius:6px;padding:4px 10px;color:var(--term-fg)}
+  .desk .card.mine{box-shadow:inset 3px 0 0 var(--accent)}
+  .desk .row{display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap}
+  .desk .row>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .desk .prompt{border:1px solid #322e22;border-radius:12px;padding:15px 16px;display:flex;justify-content:space-between;color:var(--term-dim)}
+  .desk .foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 14px;padding:2px 6px 0;color:#cfc8b7}
+  .desk .mine-t{border-bottom:1px dashed var(--accent);padding-bottom:1px}
+  .desk .gap{margin-left:18px}
+
+  /* desktop install: app steps and copy-paste commands side by side, equal weight */
+  .opts{display:grid;grid-template-columns:1fr 1.3fr;gap:16px;max-width:760px;margin:28px auto 0}
+  @media(max-width:640px){.opts{grid-template-columns:1fr}}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column}
+  .opt .kicker{display:block;margin-bottom:14px;color:var(--accent);font-weight:700}
+  .opt ol{list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+  .opt li{counter-increment:s;position:relative;padding-left:22px}
+  .opt li::before{content:counter(s);position:absolute;left:0;top:.2em;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent)}
+  .opt code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+  .opt .cmd{margin:0;max-width:none;flex:1;padding:14px 14px 14px 16px;flex-direction:column;align-items:stretch;gap:12px}
+  .opt .cmd .copy{align-self:flex-end;margin-top:auto;min-width:84px;text-align:center}
+  .opt .cmd code{background:none;border:0;padding:0;font-size:13px;line-height:1.6;color:var(--term-fg);overflow-wrap:normal}
+  .opt .cmd code span{white-space:nowrap}
+  @media(max-width:640px){
+    .opt code,.opt .cmd code span{white-space:normal}
+    .opt code,.opt .cmd code{overflow-wrap:anywhere}
+  }
 
   .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
   .cta-stack{flex-direction:column;align-items:center}
@@ -421,26 +457,41 @@
     <div class="sec-head">
       <span class="kicker">Claude desktop app</span>
       <h2>Also in the desktop app</h2>
-      <p>The desktop app's Code tab doesn't run statusline scripts, so ctxline ships a plugin for it. It skips what Desktop already shows — directory, branch, model — and adds live activity, prompt cache hit rate, cost, context, Git sync, and your usage limits.</p>
+      <p>The Code tab doesn't run statusline scripts, so ctxline ships a plugin instead: live activity, context, cost, Git sync, and usage limits.</p>
     </div>
-    <div class="term subagent-term" aria-label="Example desktop app rows">
-      <div class="head">
-        <span class="dot"></span>
-        <span class="name">above the prompt</span>
+    <div class="term desk" role="img" aria-label="Example Claude desktop app: activity, cache hit rate, cost, context bar and Git sync above the prompt; 5-hour and weekly limits in the footer">
+      <div class="card git">
+        <span>my-project<span class="branch">feat/auth-fix</span></span>
+        <span class="gitr"><span class="pill"><span class="ahead">+1,632</span> <span class="behind">−26</span></span><span class="commit">Commit changes</span></span>
       </div>
-      <div class="line" style="justify-content:space-between"><span><span style="color:var(--accent)">⠹&nbsp;</span><span>Bash</span><span class="dim">&nbsp;npm test · 14s · tool #5</span></span><span><span class="dim">cache&nbsp;</span>94%<span class="dim">&nbsp;·&nbsp;</span>$5.82</span></div>
-      <div class="line" style="justify-content:space-between"><span><span class="val">C23</span><span class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="dim">46k / 200k</span></span><span class="ahead">↑1</span></div>
-      <div class="head">
-        <span class="dot"></span>
-        <span class="name">prompt footer</span>
+      <div class="card mine">
+        <div class="row"><span><span style="color:var(--accent)">⠹&nbsp;</span>Bash<span class="dim">&nbsp;npm test · 14s · tool #5</span></span><span><span class="dim">cache&nbsp;</span><b>94%</b><span class="dim">&nbsp;·&nbsp;</span><b>$5.82</b></span></div>
+        <div class="row"><span><span class="val">C23</span><span class="bar" style="margin-right:9px"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="dim">46k / 200k</span></span><span class="ahead">↑1</span></div>
       </div>
-      <div class="line"><span class="val">H12</span><span class="dim">&nbsp;↺ 1h28m</span><span class="sep">│</span><span class="val">W25</span><span class="dim">&nbsp;↺ 15h48m</span></div>
+      <div class="prompt"><span>Type / for commands</span><span>↵</span></div>
+      <div class="foot">
+        <span>+&nbsp;&nbsp;Auto</span>
+        <span><span class="mine-t"><span class="val">H12</span><span class="dim">&nbsp;↺ 1h28m</span><span class="sep">│</span><span class="val">W25</span><span class="dim">&nbsp;↺ 15h48m</span></span><span class="gap">Opus&nbsp;5.5</span><span class="gap">Medium</span></span>
+      </div>
     </div>
-    <div class="cmd" style="max-width:640px">
-      <code style="overflow-wrap:anywhere">/plugin marketplace add MithunWijayasiri/ctxline-claude<br>/plugin install ctxline-desktop@ctxline</code>
-      <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop@ctxline')">Copy</button>
+    <p class="insp-hint">In the mock, the accent-edged row and dashed limits are ctxline. The rest is Desktop's own.</p>
+    <div class="opts">
+      <div class="opt">
+        <span class="kicker">In the app</span>
+        <ol>
+          <li>Open <b>Plugins</b> → <b>Add</b> → <b>Add Marketplace</b></li>
+          <li>Enter <code>MithunWijayasiri/ctxline-claude</code></li>
+          <li>Install <b>ctxline-desktop</b></li>
+        </ol>
+      </div>
+      <div class="opt">
+        <span class="kicker">With commands</span>
+        <div class="cmd">
+          <code>/plugin marketplace add <span>MithunWijayasiri/ctxline-claude</span><br>/plugin install <span>ctxline-desktop@ctxline</span></code>
+          <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop@ctxline')">Copy</button>
+        </div>
+      </div>
     </div>
-    <p class="insp-hint">Or in the app: + → Plugins → Manage plugins → Marketplaces, add <b>MithunWijayasiri/ctxline-claude</b>, then install ctxline-desktop.</p>
   </section>
 
   <!-- HOW IT WORKS -->
