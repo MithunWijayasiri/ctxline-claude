@@ -59,15 +59,18 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`; state keys must match plugin name or validation fails).
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `latest`; state keys must match plugin name or validation fails).
 
 Layout (Desktop already shows dir/branch/model/effort — omitted):
 
 ```text
 AbovePrompt  <activity>                                   cache <pct>% · $<cost>
              C<used> <18-cell bar> <tokens> / <window>              ↑N↓M
+             ⬆ <latest> available · claude plugin update ctxline-desktop@ctxline
 SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
 ```
+
+`⬆` row only when GitHub `main`'s `desktop/.claude-plugin/plugin.json` `version` is newer than the installed one (releases only, no prerelease). Checked on `session.start` via `$.http.fetch`; `$.store` key `update-check` `{ nextCheckAt, latest }` — cooldown stamped before the fetch, failures back off 1h, successes 7d (same as npm check). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`.
 
@@ -75,7 +78,7 @@ Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed 
 
 Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` width capped ~25 chars — footer holds only H/W; everything else in `AbovePrompt`. Desktop's own git/branch bar is not hookable.
 
-Not available in the plugin: model-scoped weekly bars, task, update notice (need OAuth usage cache / files the mod doesn't read).
+Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
 
 Validate: `claude plugin validate .` (marketplace) and `claude plugin validate ./desktop`. No tsconfig in `desktop/` → editor shows "Cannot find module 'claude-code'"; editor-only.
 
