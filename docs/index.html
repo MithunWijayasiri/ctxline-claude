@@ -332,6 +332,7 @@
     <div class="brand"><span class="pulse"></span> <b>ctxline</b>&nbsp;· claude</div>
     <div class="links">
       <a href="#features">Features</a>
+      <a href="#desktop">Desktop</a>
       <a href="#how">How it works</a>
       <a href="https://www.npmjs.com/package/ctxline-claude" target="_blank" rel="noopener">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
@@ -413,6 +414,33 @@
       <div class="line subrow"><span class="dim">○&nbsp;</span><span>test-coverage</span><span class="sep">│</span><span>Sonnet&nbsp;5<span class="dim">&nbsp;· high</span></span><span class="sep">│</span><span class="val">C36</span><span class="bar"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span><span class="sep">│</span><span class="dim">⏱ 1m48s</span></div>
     </div>
     <p class="insp-hint">Effort only shows when a subagent overrides it — not when it just inherits the session's setting.</p>
+  </section>
+
+  <!-- DESKTOP APP -->
+  <section class="block" id="desktop">
+    <div class="sec-head">
+      <span class="kicker">Claude desktop app</span>
+      <h2>Also in the desktop app</h2>
+      <p>The desktop app's Code tab doesn't run statusline scripts, so ctxline ships a plugin for it. It skips what Desktop already shows — directory, branch, model — and adds live activity, prompt cache hit rate, cost, context, Git sync, and your usage limits.</p>
+    </div>
+    <div class="term subagent-term" aria-label="Example desktop app rows">
+      <div class="head">
+        <span class="dot"></span>
+        <span class="name">above the prompt</span>
+      </div>
+      <div class="line" style="justify-content:space-between"><span><span style="color:var(--accent)">⠹&nbsp;</span><span>Bash</span><span class="dim">&nbsp;npm test · 14s · tool #5</span></span><span><span class="dim">cache&nbsp;</span>94%<span class="dim">&nbsp;·&nbsp;</span>$5.82</span></div>
+      <div class="line" style="justify-content:space-between"><span><span class="val">C23</span><span class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="dim">46k / 200k</span></span><span class="ahead">↑1</span></div>
+      <div class="head">
+        <span class="dot"></span>
+        <span class="name">prompt footer</span>
+      </div>
+      <div class="line"><span class="val">H12</span><span class="dim">&nbsp;↺ 1h28m</span><span class="sep">│</span><span class="val">W25</span><span class="dim">&nbsp;↺ 15h48m</span></div>
+    </div>
+    <div class="cmd" style="max-width:640px">
+      <code style="overflow-wrap:anywhere">/plugin marketplace add MithunWijayasiri/ctxline-claude<br>/plugin install ctxline-desktop@ctxline</code>
+      <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop@ctxline')">Copy</button>
+    </div>
+    <p class="insp-hint">Or in the app: + → Plugins → Manage plugins → Marketplaces, add <b>MithunWijayasiri/ctxline-claude</b>, then install ctxline-desktop.</p>
   </section>
 
   <!-- HOW IT WORKS -->
