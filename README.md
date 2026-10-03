@@ -33,7 +33,7 @@ See your **current directory**, **active model**, **context window usage**, and 
 
 - [Install](#install)
 - [Uninstall](#uninstall)
-- [Claude desktop app](#claude-desktop-app)
+- [Claude Desktop](#claude-desktop)
 - [What it shows](#what-it-shows)
 - [Configuration](#configuration)
 - [How it works](#how-it-works)
@@ -125,7 +125,7 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 
 </details>
 
-## Claude desktop app
+## Claude Desktop
 
 The statusline above is for the `claude` terminal. The Claude desktop app's Code tab doesn't run statusline scripts, so ctxline ships a separate plugin for it, `ctxline-desktop`, installed from this repo. Two ways to install:
 
