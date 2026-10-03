@@ -159,6 +159,8 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.surface !== 'desktop') return next(e)
+
     const s = await read($, snap)
     if (e.props.hasSurvey || s === null) return next(e)
 
@@ -247,6 +249,8 @@ export const register: Register = on => {
 
   // Right side of the prompt footer, after the engine's own mode labels; Desktop caps its width.
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    if (e.surface !== 'desktop') return next(e)
+
     const s = await read($, snap)
     if (s === null) return next(e)
 
