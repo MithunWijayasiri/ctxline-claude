@@ -11,6 +11,8 @@ dir ⎇ branch ↑N↓M │ model · effort │ C<used> <bar> │ H<pct> ↺ <re
 
 `C` context (only segment with a bar), `H` 5-hour usage, `W` 7-day usage, `<model-initial>` model-scoped weekly limit, `$` session cost. Everything after `dir`/`model`/`C` is conditional — renders only when its source resolves. The `⬆` row is not a segment — appended below the layout only when a newer release is cached.
 
+Repo also ships `ctxline-desktop`, a Claude Code plugin (mod) for the desktop app's Code tab, which doesn't run statusline scripts. See [Desktop plugin](#desktop-plugin).
+
 ## Commands
 
 No build, no lint. Edit `statusline.js` directly.
@@ -53,6 +55,33 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `node statusline.js subagent` — one `{"id","content"}` JSON row per running task in the agent panel. Reads only stdin (capped at `SUBAGENT_TIMEOUT_MS`); bad payload → emit nothing, exit 0. Row `name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed>`; every segment past `name` is independently conditional.
 
+## Desktop plugin
+
+`desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
+
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `latest`; state keys must match plugin name or validation fails).
+
+Layout (Desktop already shows dir/branch/model/effort — omitted):
+
+```text
+AbovePrompt  <activity>                                   cache <pct>% · $<cost>
+             C<used> <18-cell bar> <tokens> / <window>              ↑N↓M
+             ⬆ <latest> available · claude plugin update ctxline-desktop@ctxline
+SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
+```
+
+`⬆` row only when GitHub `main`'s `desktop/.claude-plugin/plugin.json` `version` is newer than the installed one (releases only, no prerelease). Checked on `session.start` via `$.http.fetch`; `$.store` key `update-check` `{ nextCheckAt, latest }` — cooldown stamped before the fetch, failures back off 1h, successes 7d (same as npm check). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
+
+`<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
+
+Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD` via `$.process.run`; `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
+
+Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` width capped ~25 chars — footer holds only H/W; everything else in `AbovePrompt`. Desktop's own git/branch bar is not hookable.
+
+Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
+
+Validate: `claude plugin validate .` (marketplace) and `claude plugin validate ./desktop`. No tsconfig in `desktop/` → editor shows "Cannot find module 'claude-code'"; editor-only.
+
 ## Keep in sync when `statusline.js` changes
 
 `statusline.js` is source of truth; these files mirror it — change in the same edit or CI/release/site drifts. After any edit run `npm test` + `npm run preview`.
@@ -65,6 +94,9 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 | `docs/index.html` | hero mock + subagent rows | byte-compared by `test/docs-drift.test.js` → drift fails `npm test` |
 | `CLAUDE.md` | format diagram + legend (top), timing/TTL numbers, stdin fields, export list | the Invariants block hard-codes constants — grep it for any number you change |
 | `package.json` | `version` ↔ the `VERSION` constant | test-enforced; a stale `VERSION` nudges forever (or never) |
+| `desktop/hooks/register.tsx` | usage/context color thresholds, countdown format | hand-copied, no test — `usageColor`/`contextColor` drift silently |
+
+Desktop plugin mirrors (hand-authored, not drift-tested) — update when `desktop/` layout changes: `docs/assets/desktop-preview.svg` (README), `docs/index.html` `#desktop` mock, README "Claude desktop app" section.
 
 Triggers: visible output change → test assertions + `npm run preview:svg`; cache shape or stdin fields → both seeds; timing/TTL constants or `module.exports` → the Invariants block above; version bump → `VERSION` in `statusline.js` too.
 

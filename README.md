@@ -33,6 +33,7 @@ See your **current directory**, **active model**, **context window usage**, and 
 
 - [Install](#install)
 - [Uninstall](#uninstall)
+- [Claude desktop app](#claude-desktop-app)
 - [What it shows](#what-it-shows)
 - [Configuration](#configuration)
 - [How it works](#how-it-works)
@@ -123,6 +124,35 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 ```
 
 </details>
+
+## Claude desktop app
+
+The statusline above is for the `claude` terminal. The Claude desktop app's Code tab doesn't run statusline scripts, so ctxline ships a separate plugin for it, `ctxline-desktop`, installed from this repo:
+
+```
+/plugin marketplace add MithunWijayasiri/ctxline-claude
+/plugin install ctxline-desktop@ctxline
+```
+
+Or in the desktop app: **+ → Plugins → Manage plugins → Marketplaces**, add `MithunWijayasiri/ctxline-claude`, then install **ctxline-desktop**.
+
+<p align="center">
+  <img src="docs/assets/desktop-preview.svg" alt="ctxline in the Claude desktop app">
+</p>
+
+The desktop app already shows the directory, branch and model, so the plugin skips those and shows:
+
+| Where | Detail |
+|---|---|
+| **Above the prompt, first row** | While Claude works: a spinner, the tool running now (e.g. `Bash npm test`), elapsed time and tool count. When idle: how long the last turn took and how many tools it called. On the right: prompt cache hit rate and session cost |
+| **Above the prompt, second row** | Context bar with tokens used / window size. On the right: `↑N↓M` commits ahead / behind |
+| **Prompt footer** | 5-hour and weekly limits with reset countdowns |
+
+Colors and thresholds match the terminal statusline. Nothing to configure, and no Node script runs: the plugin reads the same figures from Claude Code directly.
+
+**Updates.** Once a week the plugin checks GitHub for a newer release and, when there is one, adds a `⬆ <version> available` row with the update command. Third-party marketplaces don't auto-update by default. To turn it on, run `/plugin`, open **Marketplaces**, select `ctxline`, and choose **Enable auto-update**. Or update by hand with `claude plugin update ctxline-desktop@ctxline`. An update applies in your next session, or right away with `/reload-plugins`.
+
+Remove with `claude plugin uninstall ctxline-desktop@ctxline`. The source is in [`desktop/`](desktop/).
 
 ## What it shows
 

@@ -27,3 +27,20 @@ jobs:
         run: npm test
       - name: Render preview
         run: npm run preview
+
+  plugin:
+    name: validate desktop plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate marketplace
+        run: claude plugin validate .
+      - name: Validate plugin
+        run: claude plugin validate ./desktop

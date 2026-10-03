@@ -1,0 +1,10 @@
+{
+  "name": "ctxline-desktop",
+  "version": "0.1.0",
+  "description": "ctxline for the Claude desktop app: live activity, git sync, context and cost above the prompt; usage limits in the footer",
+  "author": { "name": "Mithun Wijayasiri" },
+  "homepage": "https://ctxline.js.org",
+  "repository": "https://github.com/MithunWijayasiri/ctxline-claude",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
