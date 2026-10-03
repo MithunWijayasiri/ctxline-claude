@@ -146,7 +146,9 @@ export const register: Register = on => {
     await update($, cache, () => NO_CACHE)
     await refresh($)
     ticker?.cancel()
-    ticker = $.clock.every(REFRESH_MS, () => void refresh($))
+    ticker = $.clock.every(REFRESH_MS, () => {
+      refresh($).catch((err: unknown) => $.ui.log(`refresh failed: ${String(err)}`, { to: 'debug' }))
+    })
     void checkUpdate($)
 
     return started
