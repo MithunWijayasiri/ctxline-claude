@@ -150,7 +150,9 @@ The desktop app already shows the directory, branch and model, so the plugin ski
 
 Colors and thresholds match the terminal statusline. Nothing to configure, and no Node script runs: the plugin reads the same figures from Claude Code directly.
 
-Update with `claude plugin update ctxline-desktop@ctxline`. Remove with `claude plugin uninstall ctxline-desktop@ctxline`. The source is in [`desktop/`](desktop/).
+**Updates.** Once a week the plugin checks GitHub for a newer release and, when there is one, adds a `⬆ <version> available` row with the update command. Third-party marketplaces don't auto-update by default. To turn it on, run `/plugin`, open **Marketplaces**, select `ctxline`, and choose **Enable auto-update**. Or update by hand with `claude plugin update ctxline-desktop@ctxline`. An update applies in your next session, or right away with `/reload-plugins`.
+
+Remove with `claude plugin uninstall ctxline-desktop@ctxline`. The source is in [`desktop/`](desktop/).
 
 ## What it shows
 
