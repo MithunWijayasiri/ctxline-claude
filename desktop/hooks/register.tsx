@@ -149,7 +149,7 @@ export const register: Register = on => {
     ticker = $.clock.every(REFRESH_MS, () => {
       refresh($).catch((err: unknown) => $.ui.log(`refresh failed: ${String(err)}`, { to: 'debug' }))
     })
-    void checkUpdate($)
+    checkUpdate($).catch((err: unknown) => $.ui.log(`update check failed: ${String(err)}`, { to: 'debug' }))
 
     return started
   })
