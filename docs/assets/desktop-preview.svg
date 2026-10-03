@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="316" viewBox="0 0 1280 316" xml:space="preserve">
+  <defs>
+    <clipPath id="round">
+      <rect x="0.5" y="0.5" width="1279" height="315" rx="14" ry="14"></rect>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+
+    <rect x="0" y="0" width="1280" height="316" fill="#1a1a19"></rect>
+
+    <!-- Desktop's own git bar -->
+    <rect x="24" y="24" width="1232" height="52" rx="10" fill="#262624" stroke="#34342f"></rect>
+    <text x="44" y="56" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="15"><tspan fill="#a9a69e">my-project</tspan><tspan fill="#77756e">  main</tspan></text>
+    <rect x="1000" y="36" width="106" height="28" rx="6" fill="#30302d"></rect>
+    <text x="1053" y="56" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="15"><tspan fill="#3fb950">+128</tspan><tspan fill="#f85149"> −14</tspan></text>
+    <rect x="1114" y="36" width="104" height="28" rx="6" fill="#3a3a37"></rect>
+    <text x="1166" y="55" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="13" fill="#e8e6df">Commit changes</text>
+    <text x="1236" y="55" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" fill="#8f8c84">×</text>
+
+    <!-- ctxline-desktop band -->
+    <rect x="24" y="88" width="1232" height="76" rx="10" fill="#262624" stroke="#34342f"></rect>
+    <g font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="15">
+      <text x="44" y="119"><tspan fill="#d97757">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
+      <text x="1236" y="119" text-anchor="end"><tspan fill="#8f8c84">cache </tspan><tspan fill="#e8e6df">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df">$5.82</tspan></text>
+      <text x="44" y="147"><tspan fill="#3fb950">C23 ████</tspan><tspan fill="#4a4a46">░░░░░░░░░░░░░░</tspan><tspan fill="#8f8c84"> 46k / 200k</tspan></text>
+      <text x="1236" y="147" text-anchor="end" fill="#3fb950">↑1</text>
+    </g>
+
+    <!-- Prompt -->
+    <rect x="24" y="176" width="1232" height="64" rx="12" fill="#262624" stroke="#3a3a37"></rect>
+    <text x="44" y="214" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="#77756e">Type / for commands</text>
+    <text x="1232" y="214" text-anchor="end" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="16" fill="#77756e">↵</text>
+
+    <!-- Footer -->
+    <text x="32" y="282" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" fill="#c9c6be">+     Auto</text>
+    <text x="1236" y="282" text-anchor="end" font-size="15"><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#3fb950">H12</tspan><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#8f8c84"> ↺ 1h28m │ </tspan><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#3fb950">W25</tspan><tspan font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#8f8c84"> ↺ 15h48m</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" fill="#e8e6df">     Opus 5.5     Medium</tspan></text>
+
+  </g>
+</svg>
