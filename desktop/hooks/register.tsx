@@ -229,6 +229,8 @@ export const register: Register = on => {
           <Text dimColor> · {a.tools} {a.tools === 1 ? 'tool' : 'tools'}</Text>
         </Text>
       )
+    } else {
+      live = <Text dimColor>ready · no turns yet</Text>
     }
 
     const c = await read($, cache)

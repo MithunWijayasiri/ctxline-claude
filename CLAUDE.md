@@ -72,7 +72,7 @@ SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
 
 `⬆` row only when GitHub `main`'s `desktop/.claude-plugin/plugin.json` `version` is newer than the installed one (releases only, no prerelease). Checked on `session.start` via `$.http.fetch`; `$.store` key `update-check` `{ nextCheckAt, latest }` — cooldown stamped before the fetch, failures back off 1h, successes 7d (same as npm check). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
-`<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`.
+`<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 
 Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD` via `$.process.run`; `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
