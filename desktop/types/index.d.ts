@@ -24,11 +24,8 @@ export type Activity = {
 // Main-loop input tokens this session: served from the prompt cache vs all.
 export type CacheTally = { read: number; total: number }
 
-// $.store 'update-check': when to look again, and the last version seen on GitHub main.
-export type UpdateCheck = { nextCheckAt: number; latest?: string }
-
 declare module 'claude-code' {
   interface PluginState {
-    'ctxline-desktop': { snap: Snapshot | null; activity: Activity; frame: number; cache: CacheTally; latest: string | null }
+    'ctxline-desktop': { snap: Snapshot | null; activity: Activity; frame: number; cache: CacheTally }
   }
 }
