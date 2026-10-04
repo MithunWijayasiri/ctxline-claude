@@ -183,7 +183,12 @@
   .desk .gitr{display:flex;align-items:center;gap:8px;flex:none}
   .desk .pill{background:#2b271d;border-radius:6px;padding:3px 9px;font-weight:700}
   .desk .commit{background:#3a3528;border-radius:6px;padding:4px 10px;color:var(--term-fg)}
-  .desk .card.mine{box-shadow:inset 3px 0 0 var(--accent)}
+  .desk .card.mine{box-shadow:inset 3px 0 0 var(--accent);gap:9px}
+  .desk .ctx{flex:1;display:flex;align-items:center;gap:8px}
+  .desk .cbar{flex:1;display:flex;height:12px;border-radius:2px;overflow:hidden;background:#2e3240}
+  .desk .cbar i{min-width:2px}
+  .desk .legend{display:flex;flex-wrap:wrap;gap:2px 14px;padding-left:2.6em;color:var(--term-dim);font-size:.9em}
+  .desk .legend i{font-style:normal}
   .desk .row{display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap}
   .desk .row>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
   .desk .prompt{border:1px solid #322e22;border-radius:12px;padding:15px 16px;display:flex;justify-content:space-between;color:var(--term-dim)}
@@ -457,16 +462,17 @@
     <div class="sec-head">
       <span class="kicker">Claude desktop app</span>
       <h2>Also in the desktop app</h2>
-      <p>The Code tab doesn't run statusline scripts, so ctxline ships a plugin instead: live activity, context, cost, Git sync, and usage limits.</p>
+      <p>The Code tab doesn't run statusline scripts, so ctxline ships a plugin instead: live activity, a context breakdown, one-click compact, cost, Git sync, and usage limits.</p>
     </div>
-    <div class="term desk" role="img" aria-label="Example Claude desktop app: activity, cache hit rate, cost, context bar and Git sync above the prompt; 5-hour and weekly limits in the footer">
+    <div class="term desk" role="img" aria-label="Example Claude desktop app: activity, cache hit rate, cost, a context bar split by category, Git sync and a compact button above the prompt; 5-hour and weekly limits in the footer">
       <div class="card git">
         <span>my-project<span class="branch">feat/auth-fix</span></span>
         <span class="gitr"><span class="pill"><span class="ahead">+1,632</span> <span class="behind">−26</span></span><span class="commit">Commit changes</span></span>
       </div>
       <div class="card mine">
         <div class="row"><span><span style="color:var(--accent)">⠹&nbsp;</span>Bash<span class="dim">&nbsp;npm test · 14s · tool #5</span></span><span><span class="dim">cache&nbsp;</span><b>94%</b><span class="dim">&nbsp;·&nbsp;</span><b>$5.82</b></span></div>
-        <div class="row"><span><span class="val">C23</span><span class="bar" style="margin-right:9px"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="dim">46k / 200k</span></span><span class="ahead">↑1</span></div>
+        <div class="row"><span class="ctx"><span class="val">C23</span><span class="cbar"><i style="flex:3;background:#a78bfa"></i><i style="flex:12;background:#60a5fa"></i><i style="flex:6;background:#f472b6"></i><i style="flex:1;background:#34d399"></i><i style="flex:2;background:#fde047"></i><i style="flex:4;background:#fb923c"></i><i style="flex:18;background:#22d3ee"></i><i style="flex:33;background:#4b5160"></i><i style="flex:121"></i></span></span><span><span class="dim">46k / 200k</span>&nbsp;&nbsp;<span class="ahead">↑1</span><span class="sep">│</span><span class="dim">⇣ compact</span></span></div>
+        <div class="legend"><span><i style="color:#a78bfa">■</i>&nbsp;sys 3k</span><span><i style="color:#60a5fa">■</i>&nbsp;tools 12k</span><span><i style="color:#f472b6">■</i>&nbsp;mcp 6k</span><span><i style="color:#34d399">■</i>&nbsp;agents 1k</span><span><i style="color:#fde047">■</i>&nbsp;mem 2k</span><span><i style="color:#fb923c">■</i>&nbsp;skills 4k</span><span><i style="color:#22d3ee">■</i>&nbsp;msgs 18k</span><span><i style="color:#8b92a3">▨</i>&nbsp;buffer 33k</span></div>
       </div>
       <div class="prompt"><span>Type / for commands</span><span>↵</span></div>
       <div class="foot">

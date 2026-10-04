@@ -65,7 +65,8 @@ Layout (Desktop already shows dir/branch/model/effort — omitted):
 
 ```text
 AbovePrompt  <activity>                                   cache <pct>% · $<cost>
-             C<used> <18-cell bar> <tokens> / <window>              ↑N↓M
+             C<used> <full-width category bar> <tokens> / <window> ↑N↓M │ ⇣ compact
+                 ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
 ```
 
@@ -74,6 +75,10 @@ No in-plugin update check. Updates come from Claude Code's marketplace auto-upda
 `displayName` (`plugin.json`) is the UI name; `name` must stay kebab-case (no spaces). Marketplace `name` is the "from <name>" label and the `@` suffix in install ids; no spaces allowed. `icon` in `plugin.json` is read only by Anthropic's directory — Desktop ignores it, not set.
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
+
+Context bar: one segment per `/context` category from `$.session.usage({ breakdown: 'summary' })` (local estimate, no API call); deferred rows skipped, `free`/`buffer` by `kind`. Short labels + colors come from `CATEGORIES`, keyed by `/context` category name (checked against Claude Code 2.1.289); an unknown name falls back to its lowercased name + theme color — add it to `CATEGORIES` when one shows up. No breakdown → two-segment bar from `contextUsed`, no legend.
+
+`⇣ compact`: `Button` → `$.command.run({ command: 'compact' })` — Desktop sessions are headless: `$.session.compact()` throws there, and `$.prompt.submit` refuses `/`-prefixed text (both found by testing). The compaction runs as a turn, so the activity row shows it; dim unclickable text while any turn runs; submit failure → toast.
 
 Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD` via `$.process.run`; `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
