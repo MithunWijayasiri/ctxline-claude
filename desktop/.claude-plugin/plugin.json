@@ -1,8 +1,8 @@
 {
   "name": "ctxline-desktop",
   "displayName": "ctxline desktop",
-  "version": "0.2.0",
-  "description": "Statusline for the Claude desktop app: live activity, context, cache hit rate, cost and Git sync above the prompt, plus 5-hour and weekly usage limits in the footer. Learn more at ctxline.js.org",
+  "version": "0.3.0",
+  "description": "Statusline for the Claude desktop app: live activity, context broken down by category, one-click compact, cache hit rate, cost and Git sync above the prompt, plus 5-hour and weekly usage limits in the footer. Learn more at ctxline.js.org",
   "author": { "name": "Mithun Wijayasiri" },
   "homepage": "https://ctxline.js.org",
   "repository": "https://github.com/MithunWijayasiri/ctxline-claude",

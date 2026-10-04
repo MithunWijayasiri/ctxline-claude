@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480">
   <defs>
     <clipPath id="round">
-      <rect x="0.5" y="0.5" width="1279" height="439" rx="14" ry="14"></rect>
+      <rect x="0.5" y="0.5" width="1279" height="479" rx="14" ry="14"></rect>
     </clipPath>
     <pattern id="dots" width="4" height="4" patternUnits="userSpaceOnUse">
       <rect width="4" height="4" fill="#2a2a2a"></rect>
@@ -12,7 +12,7 @@
 
   <g clip-path="url(#round)" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15">
 
-    <rect x="0" y="0" width="1280" height="440" fill="#141414"></rect>
+    <rect x="0" y="0" width="1280" height="480" fill="#141414"></rect>
 
     <!-- Conversation -->
     <rect x="820" y="24" width="420" height="40" rx="12" fill="#232323"></rect>
@@ -32,15 +32,23 @@
     <path d="M1205 195 l9 9 m0 -9 l-9 9" stroke="#8f8c84" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
 
     <!-- ctxline-desktop band -->
-    <rect x="40" y="236" width="1200" height="76" rx="10" fill="#202020"></rect>
+    <rect x="40" y="236" width="1200" height="116" rx="10" fill="#202020"></rect>
     <text x="60" y="267"><tspan fill="#d97757" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
     <text x="1220" y="267" text-anchor="end"><tspan fill="#8f8c84">cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
-    <text x="60" y="293" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#22c55e">C23</text>
-    <rect x="96" y="281" width="40" height="15" fill="#22c55e"></rect>
-    <rect x="136" y="281" width="140" height="15" fill="url(#dots)"></rect>
-    <text x="288" y="293" font-size="14" fill="#8f8c84">46k / 200k</text>
-    <text x="1220" y="293" text-anchor="end" fill="#22c55e" font-weight="600">↑1</text>
+    <text x="60" y="300" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#22c55e">C23</text>
+    <rect x="96" y="287" width="12.6" height="16" fill="#a78bfa"></rect>
+    <rect x="108.6" y="287" width="50.4" height="16" fill="#60a5fa"></rect>
+    <rect x="159" y="287" width="25.2" height="16" fill="#f472b6"></rect>
+    <rect x="184.2" y="287" width="4.2" height="16" fill="#34d399"></rect>
+    <rect x="188.4" y="287" width="8.4" height="16" fill="#fde047"></rect>
+    <rect x="196.8" y="287" width="16.8" height="16" fill="#fb923c"></rect>
+    <rect x="213.6" y="287" width="75.6" height="16" fill="#22d3ee"></rect>
+    <rect x="289.2" y="287" width="138.6" height="16" fill="#4b5160"></rect>
+    <rect x="427.8" y="287" width="508.2" height="16" fill="#2e3240"></rect>
+    <text x="1220" y="300" text-anchor="end"><tspan fill="#8f8c84" font-size="14">46k / 200k</tspan><tspan fill="#22c55e" font-weight="600" dx="10">↑1</tspan><tspan fill="#5a5852" dx="10">│</tspan><tspan fill="#8f8c84" dx="10">⇣ compact</tspan></text>
+    <text x="96" y="333" font-size="14" fill="#8f8c84"><tspan fill="#a78bfa">■</tspan> sys 3k<tspan fill="#60a5fa" dx="16">■</tspan> tools 12k<tspan fill="#f472b6" dx="16">■</tspan> mcp 6k<tspan fill="#34d399" dx="16">■</tspan> agents 1k<tspan fill="#fde047" dx="16">■</tspan> mem 2k<tspan fill="#fb923c" dx="16">■</tspan> skills 4k<tspan fill="#22d3ee" dx="16">■</tspan> msgs 18k<tspan fill="#8b92a3" dx="16">▨</tspan> buffer 33k</text>
 
+    <g transform="translate(0 40)">
     <!-- Prompt -->
     <rect x="40" y="324" width="1200" height="60" rx="14" fill="#1c1c1c" stroke="#3a3a3a"></rect>
     <text x="64" y="360" font-size="16" fill="#77756e">Type / for commands</text>
@@ -57,6 +65,7 @@
     <text x="1196" y="416" text-anchor="end"><tspan fill="#22c55e">H12</tspan><tspan fill="#8f8c84"> ↺ 1h28m  │  </tspan><tspan fill="#22c55e">W25</tspan><tspan fill="#8f8c84"> ↺ 15h48m</tspan><tspan fill="#e8e6df" dx="26">Opus 5.5</tspan><tspan fill="#e8e6df" dx="22">Medium</tspan></text>
     <circle cx="1224" cy="411" r="7" fill="none" stroke="#2e2e2e" stroke-width="2"></circle>
     <path d="M1224 404 a7 7 0 0 1 7 7" fill="none" stroke="#8f8c84" stroke-width="2" stroke-linecap="round"></path>
+    </g>
 
   </g>
 </svg>

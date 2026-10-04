@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, Timer } from 'claude-code'
+import type { EngineInterface, Register, SessionContextBreakdown, Timer } from 'claude-code'
 
-import type { Activity, CacheTally, Limit, Snapshot } from '../types'
+import type { Activity, CacheTally, Limit, Segment, Snapshot } from '../types'
 
 const IDLE: Activity = { isWorking: false, startedAt: 0, tools: 0, current: null, lastSeconds: null }
 const NO_CACHE: CacheTally = { read: 0, total: 0 }
@@ -10,11 +10,12 @@ const snap = atom({ plugin: 'ctxline-desktop', key: 'snap' } as const, null)
 const activity = atom({ plugin: 'ctxline-desktop', key: 'activity' } as const, IDLE)
 const frame = atom({ plugin: 'ctxline-desktop', key: 'frame' } as const, 0)
 const cache = atom({ plugin: 'ctxline-desktop', key: 'cache' } as const, NO_CACHE)
+const compacting = atom({ plugin: 'ctxline-desktop', key: 'compacting' } as const, false)
 
 const REFRESH_MS = 30000
 const SPIN_MS = 250
-const BAR_WIDTH = 18
 const MAX_DETAIL_LEN = 40
+const BAR_SCALE = 1000 // flexGrow is capped at 10000
 const SPINNER = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 const DETAIL_KEYS = ['command', 'file_path', 'pattern', 'url', 'query', 'description', 'skill'] as const
 const GREEN = 'green'
@@ -22,6 +23,20 @@ const YELLOW = 'yellow'
 const ORANGE = '#ff8700'
 const RED = 'red'
 const ACCENT = '#d97757'
+const BUFFER_COLOR = '#4b5160'
+const FREE_COLOR = '#2e3240'
+
+// Keyed by /context's category names (Claude Code 2.1.289); an unknown name falls back to its own name and theme color.
+const CATEGORIES: Record<string, { label: string; color: string }> = {
+  'System prompt': { label: 'sys', color: '#a78bfa' },
+  'System tools': { label: 'tools', color: '#60a5fa' },
+  'MCP tools': { label: 'mcp', color: '#f472b6' },
+  'MCP server instructions': { label: 'mcp info', color: '#f9a8d4' },
+  'Custom agents': { label: 'agents', color: '#34d399' },
+  'Memory files': { label: 'mem', color: '#fde047' },
+  Skills: { label: 'skills', color: '#fb923c' },
+  Messages: { label: 'msgs', color: '#22d3ee' },
+}
 
 function usageColor(percent: number): string {
   if (percent < 60) return GREEN
@@ -48,7 +63,23 @@ function countdown(resetsAt: string, now: number): string {
 
 function tokens(n: number): string {
   if (n >= 1e6) return `${+(n / 1e6).toFixed(1)}M`
+  if (n < 1000) return String(n)
   return `${Math.round(n / 1000)}k`
+}
+
+function segments(breakdown: SessionContextBreakdown | undefined): Segment[] {
+  if (!breakdown) return []
+  const out: Segment[] = []
+  for (const c of breakdown.categories) {
+    if (c.kind === 'deferred' || c.tokens <= 0) continue
+    if (c.kind === 'free') out.push({ kind: 'free', label: 'free', tokens: c.tokens, color: FREE_COLOR })
+    else if (c.kind === 'buffer') out.push({ kind: 'buffer', label: 'buffer', tokens: c.tokens, color: BUFFER_COLOR })
+    else {
+      const known = CATEGORIES[c.name]
+      out.push({ kind: 'used', label: known?.label ?? c.name.toLowerCase(), tokens: c.tokens, color: known?.color ?? c.color })
+    }
+  }
+  return out
 }
 
 function duration(seconds: number): string {
@@ -75,7 +106,7 @@ async function git($: EngineInterface, cwd: string, args: string[]): Promise<str
 async function refresh($: EngineInterface): Promise<void> {
   const cwd = await $.session.cwd()
   const [usage, counts] = await Promise.all([
-    $.session.usage(),
+    $.session.usage({ breakdown: 'summary' }),
     git($, cwd, ['rev-list', '--left-right', '--count', '@{u}...HEAD']),
   ])
   const [behind = 0, ahead = 0] = (counts ?? '').split(/\s+/).map(n => parseInt(n, 10) || 0)
@@ -89,11 +120,28 @@ async function refresh($: EngineInterface): Promise<void> {
     contextUsed: Math.max(0, Math.min(100, Math.round(usage.context.percent ?? 0))),
     contextTokens: usage.context.tokens,
     contextWindow: usage.context.window,
+    segments: segments(usage.context.breakdown),
     fiveHour: limit('five_hour'),
     sevenDay: limit('seven_day'),
     costUsd: usage.cost?.usd,
   }
   await update($, snap, () => next)
+}
+
+/*
+ * Desktop sessions are headless, where $.session.compact() is unavailable; /compact runs as a command instead.
+ * command.run queues every call, so presses are locked out until the running compaction settles.
+ */
+async function compact($: EngineInterface): Promise<void> {
+  if (await read($, compacting)) return
+  await update($, compacting, () => true)
+  try {
+    await $.command.run({ command: 'compact' })
+  } catch (err) {
+    $.ui.toast(`compact failed: ${String(err)}`)
+  } finally {
+    await update($, compacting, () => false)
+  }
 }
 
 export const register: Register = on => {
@@ -104,6 +152,7 @@ export const register: Register = on => {
     const started = await next(e)
     await update($, activity, () => IDLE)
     await update($, cache, () => NO_CACHE)
+    await update($, compacting, () => false)
     await refresh($)
     ticker?.cancel()
     ticker = $.clock.every(REFRESH_MS, () => {
@@ -166,8 +215,7 @@ export const register: Register = on => {
 
     const a = await read($, activity)
     const now = await $.clock.now()
-    const { Box, Text } = $.ui.resolve(e)
-    const filled = Math.round((s.contextUsed / 100) * BAR_WIDTH)
+    const { Box, Button, Text } = $.ui.resolve(e)
 
     let live = null
     if (a.isWorking) {
@@ -207,9 +255,20 @@ export const register: Register = on => {
       s.costUsd !== undefined && <Text>${s.costUsd.toFixed(2)}</Text>,
     ].filter(Boolean)
 
+    const label = `C${s.contextUsed}`
+    const bar: Segment[] =
+      s.segments.length > 0
+        ? s.segments
+        : [
+            { kind: 'used', label: '', tokens: s.contextUsed, color: contextColor(s.contextUsed) },
+            { kind: 'free', label: '', tokens: 100 - s.contextUsed, color: FREE_COLOR },
+          ]
+    const barTotal = bar.reduce((sum, g) => sum + g.tokens, 0) || 1
+    const legend = s.segments.filter(g => g.kind !== 'free')
+    const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" rowGap={1}>
         {(live || stats.length > 0) && (
           <Box justifyContent="space-between" columnGap={2}>
             <Text wrap="truncate-end">{live}</Text>
@@ -223,26 +282,46 @@ export const register: Register = on => {
             </Text>
           </Box>
         )}
-        <Box justifyContent="space-between" columnGap={2}>
-          <Text wrap="truncate-end">
-            <Text color={contextColor(s.contextUsed)}>
-              C{s.contextUsed} {'█'.repeat(filled)}
+        <Box alignItems="center" columnGap={1}>
+          <Text color={contextColor(s.contextUsed)}>{label}</Text>
+          <Box flexGrow={1} height={1}>
+            {bar.map((g, i) => (
+              <Box key={String(i)} flexGrow={Math.round((g.tokens / barTotal) * BAR_SCALE)} width={0} minWidth={1} height={1} backgroundColor={g.color} />
+            ))}
+          </Box>
+          {s.contextTokens !== undefined && (
+            <Text dimColor>
+              {tokens(s.contextTokens)} / {tokens(s.contextWindow)}
             </Text>
-            <Text dimColor>{'░'.repeat(BAR_WIDTH - filled)}</Text>
-            {s.contextTokens !== undefined && (
-              <Text dimColor>
-                {' '}
-                {tokens(s.contextTokens)} / {tokens(s.contextWindow)}
-              </Text>
-            )}
-          </Text>
+          )}
           {hasSync && (
             <Text>
               {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
               {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
             </Text>
           )}
+          <Text dimColor>│</Text>
+          {isCompacting ? (
+            <Text dimColor>compacting…</Text>
+          ) : a.isWorking || e.props.isWorking ? (
+            <Text dimColor>⇣ compact</Text>
+          ) : (
+            <Button key="compact" label="⇣ compact" plain dimColor onPress={() => void compact($)} />
+          )}
         </Box>
+        {legend.length > 0 && (
+          <Box flexWrap="wrap" columnGap={2} paddingLeft={label.length + 1}>
+            {legend.map((g, i) => (
+              <Text key={String(i)}>
+                <Text color={g.color}>{g.kind === 'buffer' ? '▨' : '■'}</Text>
+                <Text dimColor>
+                  {' '}
+                  {g.label} {tokens(g.tokens)}
+                </Text>
+              </Text>
+            ))}
+          </Box>
+        )}
       </Box>
     )
   })

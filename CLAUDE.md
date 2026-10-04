@@ -59,13 +59,14 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`; state keys must match plugin name or validation fails).
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`; state keys must match plugin name or validation fails).
 
 Layout (Desktop already shows dir/branch/model/effort — omitted):
 
 ```text
 AbovePrompt  <activity>                                   cache <pct>% · $<cost>
-             C<used> <18-cell bar> <tokens> / <window>              ↑N↓M
+             C<used> <full-width category bar> <tokens> / <window> ↑N↓M │ ⇣ compact
+                 ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
 ```
 
@@ -75,9 +76,13 @@ No in-plugin update check. Updates come from Claude Code's marketplace auto-upda
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 
+Context bar: one segment per `/context` category from `$.session.usage({ breakdown: 'summary' })` (local estimate, no API call); deferred rows skipped, `free`/`buffer` by `kind`. Short labels + colors come from `CATEGORIES`, keyed by `/context` category name (checked against Claude Code 2.1.289); an unknown name falls back to its lowercased name + theme color — add it to `CATEGORIES` when one shows up. No breakdown → two-segment bar from `contextUsed`, no legend.
+
+`⇣ compact`: `Button` → `$.command.run({ command: 'compact' })` — Desktop sessions are headless: `$.session.compact()` throws there, and `$.prompt.submit` refuses `/`-prefixed text (both found by testing). `command.run` queues every call → `compacting` atom locks presses (shows `compacting…`) until the run settles; dim unclickable text while a turn runs (`activity` or `e.props.isWorking`); failure → toast. Neither `isWorking` flag covers a compaction (found by testing).
+
 Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD` via `$.process.run`; `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
-Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` width capped ~25 chars — footer holds only H/W; everything else in `AbovePrompt`. Desktop's own git/branch bar is not hookable.
+Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` width capped ~25 chars — footer holds only H/W; everything else in `AbovePrompt`. Desktop's own git/branch bar is not hookable. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
 
 Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
 

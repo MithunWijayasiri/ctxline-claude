@@ -147,7 +147,8 @@ The desktop app already shows the directory, branch and model, so the plugin ski
 | Where | Detail |
 |---|---|
 | **Above the prompt, first row** | While Claude works: a spinner, the tool running now (e.g. `Bash npm test`), elapsed time and tool count. When idle: how long the last turn took and how many tools it called. On the right: prompt cache hit rate and session cost |
-| **Above the prompt, second row** | Context bar with tokens used / window size. On the right: `↑N↓M` commits ahead / behind |
+| **Above the prompt, second row** | Full-width context bar split by what fills it (system prompt, tools, MCP, memory, skills, messages, autocompact buffer), tokens used / window size, `↑N↓M` commits ahead / behind, and a `⇣ compact` button that runs `/compact` |
+| **Above the prompt, third row** | Legend: each category's tokens |
 | **Prompt footer** | 5-hour and weekly limits with reset countdowns |
 
 Colors and thresholds match the terminal statusline. Nothing to configure, and no Node script runs: the plugin reads the same figures from Claude Code directly.
