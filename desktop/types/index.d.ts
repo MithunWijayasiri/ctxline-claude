@@ -30,6 +30,12 @@ export type CacheTally = { read: number; total: number }
 
 declare module 'claude-code' {
   interface PluginState {
-    'ctxline-desktop': { snap: Snapshot | null; activity: Activity; frame: number; cache: CacheTally }
+    'ctxline-desktop': {
+      snap: Snapshot | null
+      activity: Activity
+      frame: number
+      cache: CacheTally
+      compacting: boolean
+    }
   }
 }

@@ -10,6 +10,7 @@ const snap = atom({ plugin: 'ctxline-desktop', key: 'snap' } as const, null)
 const activity = atom({ plugin: 'ctxline-desktop', key: 'activity' } as const, IDLE)
 const frame = atom({ plugin: 'ctxline-desktop', key: 'frame' } as const, 0)
 const cache = atom({ plugin: 'ctxline-desktop', key: 'cache' } as const, NO_CACHE)
+const compacting = atom({ plugin: 'ctxline-desktop', key: 'compacting' } as const, false)
 
 const REFRESH_MS = 30000
 const SPIN_MS = 250
@@ -127,12 +128,19 @@ async function refresh($: EngineInterface): Promise<void> {
   await update($, snap, () => next)
 }
 
-// Desktop sessions are headless, where $.session.compact() is unavailable; /compact runs as its own turn instead.
+/*
+ * Desktop sessions are headless, where $.session.compact() is unavailable; /compact runs as a command instead.
+ * command.run queues every call, so presses are locked out until the running compaction settles.
+ */
 async function compact($: EngineInterface): Promise<void> {
+  if (await read($, compacting)) return
+  await update($, compacting, () => true)
   try {
     await $.command.run({ command: 'compact' })
   } catch (err) {
     $.ui.toast(`compact failed: ${String(err)}`)
+  } finally {
+    await update($, compacting, () => false)
   }
 }
 
@@ -144,6 +152,7 @@ export const register: Register = on => {
     const started = await next(e)
     await update($, activity, () => IDLE)
     await update($, cache, () => NO_CACHE)
+    await update($, compacting, () => false)
     await refresh($)
     ticker?.cancel()
     ticker = $.clock.every(REFRESH_MS, () => {
@@ -256,6 +265,7 @@ export const register: Register = on => {
           ]
     const barTotal = bar.reduce((sum, g) => sum + g.tokens, 0) || 1
     const legend = s.segments.filter(g => g.kind !== 'free')
+    const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
     return (
       <Box flexDirection="column" rowGap={1}>
@@ -291,7 +301,9 @@ export const register: Register = on => {
             </Text>
           )}
           <Text dimColor>│</Text>
-          {a.isWorking ? (
+          {isCompacting ? (
+            <Text dimColor>compacting…</Text>
+          ) : a.isWorking || e.props.isWorking ? (
             <Text dimColor>⇣ compact</Text>
           ) : (
             <Button key="compact" label="⇣ compact" plain dimColor onPress={() => void compact($)} />
