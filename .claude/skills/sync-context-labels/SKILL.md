@@ -32,7 +32,7 @@ Git Bash, binary grep, slow → Bash timeout ~180000ms.
 grep -a -o 'name:"[A-Z][A-Za-z ()]\{2,30\}",tokens:[^,]\{1,40\},color:"[a-zA-Z_]*"' "$BIN" | sort -u
 ```
 
-Regex may miss entries of a different shape → cross-check context around a known entry:
+Regex only matches this exact name format and `name`/`tokens`/`color` field order → a differently shaped entry is silently missed, so a missed new category reads as "in sync" and a missed existing one as "removed". Cross-check the neighbouring entries around a known one:
 
 ```bash
 grep -a -o '.\{300\}name:"Custom agents",tokens.\{900\}' "$BIN" | head -1
@@ -50,7 +50,7 @@ Compare extracted non-deferred names vs `CATEGORIES` keys. Report:
 - **Removed** — in map, not in binary.
 - **Renamed** — likely pairs (one removed + one added with similar meaning); flag as a guess, user decides.
 
-No diff → report "in sync with <version>"; still offer to bump the version string (step 4.1–4.2) only, no plugin version bump.
+A clean diff is not proof (step 2 regex can miss entries) — the runtime check at the end confirms it. No diff → report "in sync with <version>"; still offer to bump the version string (step 4.1–4.2) only, no plugin version bump.
 
 For each added/renamed name, propose:
 - Label: short lowercase, ≤ 8 chars, consistent with existing (`sys`, `tools`, `mcp`, `mcp info`, `agents`, `mem`, `skills`, `msgs`). Renamed → keep the old label unless meaning changed.

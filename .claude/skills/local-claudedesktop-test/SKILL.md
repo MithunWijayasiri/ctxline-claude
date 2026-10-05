@@ -21,7 +21,7 @@ Set:
 
 ```json
 "env": {
-  "CLAUDE_CODE_PLUGIN_DIRS": "<repo-abs-path>\\desktop",
+  "CLAUDE_CODE_PLUGIN_DIRS": "<repo-abs-path>/desktop",
   "CLAUDE_CODE_PLUGIN_DIR_WATCH": "1"
 },
 "enabledPlugins": { "ctxline-desktop@ctxline": false }
@@ -29,7 +29,7 @@ Set:
 
 - Merge into existing `env` / `enabledPlugins` — don't replace other keys.
 - `CLAUDE_CODE_PLUGIN_DIRS` → desktop sessions are headless/SDK; this env var is the documented way to load a plugin there. `CLAUDE_CODE_PLUGIN_DIR_WATCH=1` → hot reload on save.
-- Windows path: backslashes JSON-escaped (`C:\\Github\\ctxline\\desktop`).
+- Absolute path (or `~`-prefixed) — relative paths are skipped. Windows: backslashes JSON-escaped (`C:\\Github\\ctxline\\desktop`); forward slashes untested there.
 - Marketplace copy disabled → same plugin name as the local one. Whether both together actually conflict is untested; disabled to be safe.
 - Not a local marketplace (`claude plugin marketplace add <folder>`): its name clashes with the installed `ctxline` marketplace (GitHub source), would need removing that first.
 
