@@ -46,6 +46,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Use npm readme
+        run: cp npm/README.md README.md
+
       - name: Publish to npm
         run: npm publish
 
