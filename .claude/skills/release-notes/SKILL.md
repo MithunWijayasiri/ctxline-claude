@@ -9,12 +9,14 @@ Input: version `X.Y.Z`. User triggers the `Release` workflow themselves (publish
 
 ## 1. Preflight
 
+Tag `vX.Y.Z` already exists (`git tag -l vX.Y.Z`) → already published: skip rest of step 1 and step 2, go to step 3 with range `vPREV..vX.Y.Z` (`vPREV` = tag just before `vX.Y.Z` in `git tag --sort=-v:refname`). Otherwise new version:
+
 - Version must be semver, greater than latest tag (`git tag --sort=-v:refname | head -1`). Gap (e.g. 1.7.2 → 1.7.5) → ask before continuing.
 - Branch `main`, no tracked changes, in sync with `origin/main`. Untracked files are ignored. Otherwise stop and report.
 
 ## 2. Bump, commit, push
 
-Invoking the skill with a version is approval to commit and push `main` — no further ask.
+New versions only. Invoking the skill with a version is approval to commit and push `main` — no further ask.
 
 1. `package.json` `version` → `X.Y.Z`.
 2. `statusline.js` `VERSION` → `'X.Y.Z'`. Both must match (test-enforced; workflow fails otherwise).
@@ -24,7 +26,7 @@ Desktop plugin version (`desktop/.claude-plugin/plugin.json`) is never bumped he
 
 ## 3. Draft notes in chat
 
-Gather changes since the previous tag via `git-bot` (digest of commits + merged PR titles, `vPREV..HEAD`). Reply with title + body in one block, then stop; user is releasing meanwhile.
+Gather changes via `git-bot` (digest of commits + merged PR titles): new version → `vPREV..HEAD` (`vPREV` = latest tag); already published → `vPREV..vX.Y.Z`. Reply with title + body in one block, then stop; user is releasing meanwhile (already published → go straight to step 4 on the user's OK).
 
 **Title:** `vX.Y.Z (Short label)` — 2–3 words naming the headline change (`v1.7.2 (Installer feedback)`, `v1.7.5 (Desktop plugin)`).
 
