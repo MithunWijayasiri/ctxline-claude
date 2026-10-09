@@ -119,14 +119,11 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 | **Task** | The in-progress todo, when there is one |
 | **Update** | An extra row with the upgrade command when a newer release is on npm — checked once a week, in the background |
 
-> [!NOTE]
-> Usage bars change color automatically as you approach your limits.
+> 📝 **Note** — Usage bars change color automatically as you approach your limits.
 
-> [!NOTE]
-> **Responsive.** On a narrow terminal the line wraps to two — directory, model, and context on the first line; usage, cost, and task on the second. Wide terminals stay on a single line. (Auto-sizing needs Claude Code v2.1.153+.)
+> 📝 **Note — Responsive.** On a narrow terminal the line wraps to two — directory, model, and context on the first line; usage, cost, and task on the second. Wide terminals stay on a single line. (Auto-sizing needs Claude Code v2.1.153+.)
 
-> [!TIP]
-> Don't want every segment? You can hide any of them — see [Configuration](#configuration).
+> 💡 **Tip** — Don't want every segment? You can hide any of them — see [Configuration](#configuration).
 
 ## Configuration
 
