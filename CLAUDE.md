@@ -94,7 +94,7 @@ Validate: `claude plugin validate .` (marketplace) and `claude plugin validate .
 
 | file | mirrors | trap |
 |---|---|---|
-| `scripts/preview.js` | cache seed, `render()` params, stdin input | release body shows `head -n 1` → primary-line `console.log` stays **first** |
+| `scripts/preview.js` | cache seed, `render()` params, stdin input | — |
 | `test/render.test.js` | visible labels / percentages / colors / order | ANSI `colors` constants atop the file |
 | `docs/assets/preview.svg` | statusline `<tspan>` runs (README + site) | generated — run `npm run preview:svg`, never hand-edit |
 | `docs/index.html` | hero mock + subagent rows | byte-compared by `test/docs-drift.test.js` → drift fails `npm test` |

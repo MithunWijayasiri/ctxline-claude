@@ -22,7 +22,7 @@ process.on('exit', () => {
 
 // Build a real diverged git repo (ahead 2, behind 1) in `projectDir` so statusline.js
 // renders ↑2↓1. Best-effort: returns true on success, false if git is unavailable (caller
-// falls back to a fake .git/HEAD so the line — and the release body — still render).
+// falls back to a fake .git/HEAD so the line still renders).
 function setupDivergedRepo(projectDir, branch) {
   try {
     fs.mkdirSync(projectDir, { recursive: true });
@@ -107,8 +107,7 @@ const base = {
   cost: 44.21                // renders dim "$44.21" (stdin cost.total_cost_usd)
 };
 
-// Primary line (default effort). NOTE: this MUST stay the first printed line —
-// the release workflow takes only line 1 (`head -n 1`) for the GitHub release body.
+// Primary line (default effort).
 // `diverged` shows ↑N↓M from a real upstream; falls back to no-counts if git is missing.
 console.log(render({ ...base, effort: 'high', diverged: true }));
 

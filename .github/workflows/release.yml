@@ -2,7 +2,6 @@ name: Release
 
 # Manually triggered. Publishes to npm via Trusted Publishing (OIDC, no token secret —
 # the trusted publisher on npmjs.com must name this file), then creates a matching GitHub release with:
-# - the statusline preview (colors stripped, GitHub markdown can't render ANSI)
 # - auto-generated notes from commits/PRs since the previous release
 # - two zip assets: ctxline-claude-code (the npm package contents) and ctxline-claude-desktop (the desktop
 #   plugin, at whatever version desktop/.claude-plugin/plugin.json holds — it has no releases of its
@@ -52,11 +51,6 @@ jobs:
       - name: Publish to npm
         run: npm publish
 
-      - name: Render statusline preview
-        # preview.js prints several scenarios for the CI visual sync-check; 
-        # the release body only wants the primary line (first line), colors stripped.
-        run: node scripts/preview.js | perl -pe 's/\x1b\[[0-9;]*m//g' | head -n 1 > preview.txt
-
       - name: Build zip assets
         run: |
           V="$(node -p "require('./package.json').version")"
@@ -86,14 +80,6 @@ jobs:
             -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" --jq .body)"
 
           {
-            echo "### Statusline preview"
-            echo ""
-            echo "_Sample line — colors render in a real terminal; stripped here._"
-            echo ""
-            echo '```text'
-            cat preview.txt
-            echo '```'
-            echo ""
             echo "### Downloads"
             echo ""
             echo "- \`ctxline-claude-code-v${pkg_version}.zip\` — statusline (same contents as the npm package)"

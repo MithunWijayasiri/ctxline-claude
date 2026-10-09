@@ -5,7 +5,7 @@ description: Prepare a ctxline release — bump the version, commit and push the
 
 # Release notes
 
-Input: version `X.Y.Z`. User triggers the `Release` workflow themselves (publishes npm + creates the GitHub release with preview, Downloads, auto-generated notes). This skill: bump + push before, notes in chat meanwhile, rewrite notes/title after.
+Input: version `X.Y.Z`. User triggers the `Release` workflow themselves (publishes npm + creates the GitHub release with Downloads, auto-generated notes). This skill: bump + push before, notes in chat meanwhile, rewrite notes/title after.
 
 ## 1. Preflight
 
@@ -33,14 +33,6 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 **Body:**
 
 ````markdown
-### Statusline preview
-
-_Sample line — colors render in a real terminal; stripped here._
-
-```text
-<first line of `node scripts/preview.js`, ANSI stripped>
-```
-
 ### Downloads
 
 - `ctxline-claude-code-vX.Y.Z.zip` — statusline (same contents as the npm package)
@@ -58,13 +50,12 @@ Rules:
 - Drop internal-only changes (skills, tests, CI tweaks) unless users see them (new release assets, npm page, installer output).
 - Statusline output unchanged (no visible diff in `statusline.js`/renders) → end bullets with `Statusline itself is unchanged.`
 - First desktop plugin release or new install path → include the install commands.
-- Preview line comes from `scripts/preview.js`, not from memory.
 
 ## 4. Apply to the release
 
 Wait for the user to say the release is made.
 
 1. `gh release view vX.Y.Z` — must exist; else stop and say so.
-2. Read the live body. Keep `### Statusline preview` and `### Downloads` verbatim from it (they are generated from the actual run); replace everything from `## What's Changed` down with the drafted bullets + Full Changelog.
+2. Read the live body. Keep `### Downloads` verbatim from it (generated from the actual run); replace everything from `## What's Changed` down with the drafted bullets + Full Changelog.
 3. `gh release edit vX.Y.Z --title "<title>" --notes-file -` (heredoc).
 4. Re-read the body once; report the release URL.
