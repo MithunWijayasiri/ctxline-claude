@@ -9,7 +9,7 @@ Input: version `X.Y.Z`. User triggers the `Release` workflow themselves (publish
 
 ## 1. Preflight
 
-Tag `vX.Y.Z` already exists (`git tag -l vX.Y.Z`) → already published: skip rest of step 1 and step 2, go to step 3 with range `vPREV..vX.Y.Z` (`vPREV` = tag just before `vX.Y.Z` in `git tag --sort=-v:refname`). Otherwise new version:
+Run `git fetch --tags origin` first (the workflow creates tags on GitHub, so the local clone can lack them). Tag `vX.Y.Z` exists on `origin` (`git ls-remote --tags origin vX.Y.Z` prints a ref) → already published: skip rest of step 1 and step 2, go to step 3 with range `vPREV..vX.Y.Z` (`vPREV` = tag just before `vX.Y.Z` in `git tag --sort=-v:refname`). Otherwise new version:
 
 - Version must be semver, greater than latest tag (`git tag --sort=-v:refname | head -1`). Gap (e.g. 1.7.2 → 1.7.5) → ask before continuing.
 - Branch `main`, no tracked changes, in sync with `origin/main`. Untracked files are ignored. Otherwise stop and report.
