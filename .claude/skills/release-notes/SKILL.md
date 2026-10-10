@@ -1,6 +1,7 @@
 ---
 name: release-notes
-description: Prepare a ctxline release — bump the version, commit and push the chore commit to main, then draft the GitHub release title and notes in chat; after the user triggers the release workflow, apply them to the live release. Use when the user gives a release version (e.g. "release 1.7.6", "/release-notes 1.7.6") or asks for release notes for a published tag.
+description: Bump the version, push the chore commit, draft the release title and notes, then apply them to the GitHub release. Invoke manually with a version, e.g. /release-notes 1.7.6.
+disable-model-invocation: true
 ---
 
 # Release notes
@@ -39,8 +40,13 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 - `ctxline-claude-desktop-v<plugin.json version>.zip` — Claude desktop plugin v<plugin.json version> (updates itself through the plugin marketplace; not versioned with this release)
 
 ## What's Changed
+
+### ctxline-claude-code
 * <user-facing bullet>
 * Statusline itself is unchanged.
+
+### ctxline-claude-desktop
+* <user-facing bullet>
 
 **Full Changelog**: https://github.com/MithunWijayasiri/ctxline-claude/compare/vPREV...vX.Y.Z
 ````
@@ -48,7 +54,8 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 Rules:
 - Bullets: plain words, user-visible effect first, no PR numbers, authors, or `feat(...)` prefixes. Name commands/labels in backticks.
 - Drop internal-only changes (skills, tests, CI tweaks) unless users see them (new release assets, npm page, installer output).
-- Statusline output unchanged (no visible diff in `statusline.js`/renders) → end bullets with `Statusline itself is unchanged.`
+- Split by what changed: `statusline.js`, installers, npm package/readme → `ctxline-claude-code`; `desktop/` → `ctxline-claude-desktop`. Release-wide changes (e.g. new release assets) → `ctxline-claude-code`. Nothing changed in a section → single bullet `No changes.`
+- Statusline output unchanged (no visible diff in `statusline.js`/renders) → end `ctxline-claude-code` bullets with `Statusline itself is unchanged.`
 - First desktop plugin release or new install path → include the install commands.
 
 ## 4. Apply to the release
@@ -56,6 +63,6 @@ Rules:
 Wait for the user to say the release is made.
 
 1. `gh release view vX.Y.Z` — must exist; else stop and say so.
-2. Read the live body. Keep `### Downloads` verbatim from it (generated from the actual run); replace everything from `## What's Changed` down with the drafted bullets + Full Changelog.
+2. Read the live body. Keep `### Downloads` verbatim from it (generated from the actual run); replace everything from `## What's Changed` down with the drafted subsections + Full Changelog.
 3. `gh release edit vX.Y.Z --title "<title>" --notes-file -` (heredoc).
 4. Re-read the body once; report the release URL.
