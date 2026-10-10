@@ -43,7 +43,6 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 
 ### ctxline-claude-code
 * <user-facing bullet>
-* Statusline itself is unchanged.
 
 ### ctxline-claude-desktop
 * <user-facing bullet>
@@ -55,8 +54,8 @@ Rules:
 - Bullets: plain words, user-visible effect first, no PR numbers, authors, or `feat(...)` prefixes. Name commands/labels in backticks.
 - Drop internal-only changes (skills, tests, CI tweaks) unless users see them (new release assets, npm page, installer output).
 - Split by what changed: `statusline.js`, installers, npm package/readme → `ctxline-claude-code`; `desktop/` → `ctxline-claude-desktop`. Release-wide changes (e.g. new release assets) → `ctxline-claude-code`. Nothing changed in a section → single bullet `No changes.`
-- Statusline output unchanged (no visible diff in `statusline.js`/renders) → end `ctxline-claude-code` bullets with `Statusline itself is unchanged.`
-- First desktop plugin release or new install path → include the install commands.
+- Statusline output unchanged (no visible diff in `statusline.js`/renders) and `ctxline-claude-code` has other bullets → end them with `Statusline itself is unchanged.` Never add it next to `No changes.`
+- First desktop plugin release or new install path → include the install commands under `ctxline-claude-desktop`.
 
 ## 4. Apply to the release
 
