@@ -37,6 +37,7 @@ cd ctxline-claude
 Or install by hand. Download the script:
 
 ```bash
+mkdir -p ~/.claude/hooks
 curl -o ~/.claude/hooks/statusline.js https://raw.githubusercontent.com/MithunWijayasiri/ctxline-claude/main/statusline.js
 chmod +x ~/.claude/hooks/statusline.js
 ```
