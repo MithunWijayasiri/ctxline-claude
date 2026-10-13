@@ -146,7 +146,7 @@ const BOLD = '\x1b[1m';
 // child process. What's left spawned: git-branch/ahead-behind detection (real .git dir +
 // subprocess), the usage cache/API pipeline, CTXLINE_DISABLE env-parsing (module-load-time
 // state, needs a fresh process per value), and the execution-contract tests below.
-const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion, VERSION } = require('../statusline.js');
+const { parseScopedLimits, parseUsagePayload, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion, isReleaseBody, VERSION } = require('../statusline.js');
 
 // Same shape as fixture()'s stdin JSON, but as a plain object (no JSON round-trip needed
 // for a direct call).
@@ -1026,6 +1026,53 @@ test('update nudge: CTXLINE_DISABLE=update hides it', () => {
   assert.ok(!clean.includes('⬆'), 'nudge suppressed');
   assert.match(clean, /^myproject │ /, 'the rest of the line is untouched');
   assert.ok(!clean.includes('\n'), 'no extra row');
+});
+
+// --- self-install ------------------------------------------------------------------
+
+test('isReleaseBody: accepts only a file declaring exactly the requested version', () => {
+  assert.strictEqual(isReleaseBody("#!/usr/bin/env node\nconst VERSION = '1.9.0';\n", '1.9.0'), true);
+  assert.strictEqual(isReleaseBody("const VERSION = '1.8.0';", '1.9.0'), false);
+  assert.strictEqual(isReleaseBody("// const VERSION = '1.9.0';\nconst VERSION = '1.8.0';\n", '1.9.0'), false);
+  assert.strictEqual(isReleaseBody('404: Not Found', '1.9.0'), false);
+  assert.strictEqual(isReleaseBody(null, '1.9.0'), false);
+});
+
+test('updated row: replaces the nudge, same slot below the statusline', () => {
+  const { raw, clean } = render(
+    dataObj(40, '/tmp/myproject', 'Opus 5.5', undefined, 0.42),
+    plainFacts({ update: '1.9.0', updated: { from: '1.7.5', to: '1.8.0' }, task: 'Refactoring' })
+  );
+  const rows = clean.split('\n');
+  assert.strictEqual(rows.length, 2, 'exactly one extra row');
+  assert.strictEqual(rows[1], '⬆ ctxline updated 1.7.5 → 1.8.0');
+  assert.ok(raw.includes(`${GREEN}⬆ ctxline updated`), 'arrow and label are green');
+  assert.ok(raw.includes(`${BOLD}1.8.0`), 'new version is bold');
+});
+
+test('updated row: shows on first render, stamps updatedShownAt, gone after 5s', () => {
+  const home = freshHome();
+  seedUpdateCache(home, { latest: VERSION, updatedFrom: '0.0.1', updatedTo: VERSION, updatedShownAt: null });
+  assert.ok(run(fixture(40), { home }).clean.endsWith(`\n⬆ ctxline updated 0.0.1 → ${VERSION}`));
+  const cache = JSON.parse(fs.readFileSync(path.join(home, '.claude', 'cache', 'update-cache.json'), 'utf8'));
+  assert.ok(Number.isFinite(cache.updatedShownAt), 'first render stamps the start of the 5s window');
+  assert.ok(run(fixture(40), { home }).clean.includes('⬆ ctxline updated'), 'still inside the window');
+
+  const expired = freshHome();
+  seedUpdateCache(expired, { latest: VERSION, updatedFrom: '0.0.1', updatedTo: VERSION, updatedShownAt: Date.now() - 5000 });
+  assert.ok(!run(fixture(40), { home: expired }).clean.includes('⬆'));
+});
+
+test('updated row: ignored when the running VERSION is not the installed one', () => {
+  const home = freshHome();
+  seedUpdateCache(home, { latest: '99.0.0', updatedFrom: VERSION, updatedTo: '99.0.0', updatedShownAt: null });
+  assert.match(run(fixture(40), { home }).clean, /\n⬆ 99\.0\.0 available · npx ctxline-claude@latest$/);
+});
+
+test('updated row: CTXLINE_DISABLE=update hides it', () => {
+  const home = freshHome();
+  seedUpdateCache(home, { latest: VERSION, updatedFrom: '0.0.1', updatedTo: VERSION, updatedShownAt: null });
+  assert.ok(!run(fixture(40), { home, disable: 'update' }).clean.includes('⬆'));
 });
 
 test('VERSION matches package.json — a release must bump both', () => {

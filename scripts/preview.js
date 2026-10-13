@@ -10,6 +10,7 @@ const path = require('node:path');
 const {
   makeHome, seedCredentials, seedUsageCache, seedUpdateCache, seedFakeRepo, seedDivergedRepo, spawnMain, spawnSubagent
 } = require('../test/fixture.js');
+const { VERSION } = require('../statusline.js');
 
 // makeHome() creates each scenario's home independently (os.tmpdir()-rooted, not nested
 // under a shared parent) -- track them here for one cleanup pass on exit.
@@ -33,12 +34,14 @@ function setupDivergedRepo(projectDir, branch) {
   }
 }
 
-function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, models, branch, effort, rateLimits, cost, columns, diverged, disable, update }) {
+function render({ dir, model, remaining, current, currentResetsInMin, weekly, weeklyResetsInMin, models, branch, effort, rateLimits, cost, columns, diverged, disable, update, updatedFrom }) {
   const home = makeHome();
   HOMES.push(home);
   // makeHome() already seeds a latest-less, freshly-stamped update cache (no registry
-  // child, no nudge); `update` overwrites it with a newer version to show the segment.
+  // child, no nudge); `update` overwrites it with a newer version to show the segment,
+  // `updatedFrom` with a just-finished self-install to the running VERSION.
   if (update) seedUpdateCache(home, { latest: update });
+  if (updatedFrom) seedUpdateCache(home, { latest: VERSION, updatedFrom, updatedTo: VERSION, updatedShownAt: null });
   // Only H/W bypass the cache: with rateLimits and no models, seed neither creds nor cache,
   // proving that path needs no network. Model-scoped bars never arrive via stdin, so seed a
   // fresh cache whenever `models` is set — rateLimits or not (statusline.js reads both).
@@ -164,11 +167,16 @@ console.log('  ' + render({
 console.log('\nSegment opt-out (CTXLINE_DISABLE=usage,cost):');
 console.log('  ' + render({ ...base, effort: 'high', disable: 'usage,cost' }));
 
-// Update nudge: a weekly background check caches npm's latest version; when that is newer
+// Update nudge: a 3-day background check caches npm's latest version; when that is newer
 // than the running one, an extra row carrying the upgrade command is appended below the
 // statusline. Cache-only on the render path — the fetch runs in a detached child.
 console.log('\nUpdate available (cached newer npm version):');
 console.log('  ' + render({ ...base, effort: 'high', update: '9.9.9' }));
+
+// Self-install: the same background check installed a newer release over the hook; the
+// next render (now running it) shows this row for 5s instead of the nudge.
+console.log('\nAuto-updated (shown 5s after a silent self-install):');
+console.log('  ' + render({ ...base, effort: 'high', updatedFrom: '0.0.1' }));
 
 // Subagent panel (subagentStatusLine mode): separate entry point (`node statusline.js
 // subagent`), separate stdin shape ({ tasks: [...] }), no cache/HOME seeding needed since
