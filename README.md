@@ -23,20 +23,16 @@
   <img src="docs/assets/preview.svg" alt="Claude Code Statusline">
 </p>
 
-<p align="center">
-  Monitor context usage, session limits, and weekly allowance without leaving Claude Code.
-</p>
-
-See your **current directory**, **active model**, **context window usage**, and **Claude usage limits** at a glance — including both your **current 5-hour session** and **weekly allowance**.
+Shows your directory, git branch, model, context window, 5-hour and weekly usage limits, and session cost in one line under the Claude Code prompt.
 
 ## Contents
 
 - [Install](#install)
-- [Uninstall](#uninstall)
-- [Claude Desktop](#claude-desktop)
 - [What it shows](#what-it-shows)
 - [Configuration](#configuration)
-- [How it works](#how-it-works)
+- [Update](#update)
+- [Uninstall](#uninstall)
+- [Claude desktop app](#claude-desktop-app)
 - [FAQ](#faq)
 
 ## Install
@@ -45,12 +41,12 @@ See your **current directory**, **active model**, **context window usage**, and 
 npx ctxline-claude     # or: bunx ctxline-claude
 ```
 
-Then restart Claude Code or start a new session. That's it.
+Restart Claude Code or start a new session.
 
 <details>
 <summary>Other install methods</summary>
 
-**Clone & run the installer:**
+Clone and run the installer:
 
 ```bash
 git clone https://github.com/MithunWijayasiri/ctxline-claude.git
@@ -59,26 +55,22 @@ cd ctxline-claude
 ./install.ps1     # Windows (PowerShell)
 ```
 
-**Manual:** download the script, then point `~/.claude/settings.json` at it.
+Or install by hand. Download the script:
 
 ```bash
+mkdir -p ~/.claude/hooks
 curl -o ~/.claude/hooks/statusline.js https://raw.githubusercontent.com/MithunWijayasiri/ctxline-claude/main/statusline.js
 chmod +x ~/.claude/hooks/statusline.js
 ```
+
+Then add both entries to `~/.claude/settings.json`. The second one draws a row per running subagent in the agent panel.
 
 ```json
 {
   "statusLine": {
     "type": "command",
     "command": "node ~/.claude/hooks/statusline.js"
-  }
-}
-```
-
-**Subagent rows.** The same script also renders per-task rows in the agent panel for running subagents — wire it as a separate `subagentStatusLine` command:
-
-```json
-{
+  },
   "subagentStatusLine": {
     "type": "command",
     "command": "node ~/.claude/hooks/statusline.js subagent"
@@ -86,19 +78,61 @@ chmod +x ~/.claude/hooks/statusline.js
 }
 ```
 
-Note: the effort level only shows on a subagent row when that task has its own effort override — Claude Code doesn't currently report effort for a subagent that just inherits the session's setting.
-
 </details>
 
+## What it shows
+
+| Segment | Detail |
+|---|---|
+| Directory | Current working directory |
+| Branch | Git branch, plus `↑N↓M` commits ahead / behind upstream |
+| Model | Active model and effort level |
+| `C` Context | Bar of context window used |
+| `H` 5-hour | 5-hour usage limit and reset countdown |
+| `W` Weekly | Weekly usage limit and reset countdown |
+| Model limit | Weekly limit for one model, if your account has one, labeled by the model's initial (`F` = Fable) |
+| `$` Cost | Session cost in USD |
+| Task | The in-progress todo |
+
+Segments past model and context appear only when there is data for them. Usage limits show for Pro/Max subscriptions only. Bars change color as you near a limit. On a narrow terminal the line wraps to two (needs Claude Code v2.1.153+).
+
+## Configuration
+
+To hide segments, set `CTXLINE_DISABLE` to a comma-separated list of:
+
+| Name | Hides |
+|---|---|
+| `branch` | Branch and ahead / behind |
+| `effort` | Effort level |
+| `cost` | Session cost |
+| `task` | Current task |
+| `usage` | 5-hour, weekly, and model limits |
+| `autoupdate` | Auto-update. You get an upgrade notice instead |
+| `update` | Auto-update and the upgrade notice |
+
+Directory, model, and context always show.
+
+Set it in `~/.claude/settings.json` so it works on every OS:
+
+```json
+{
+  "env": {
+    "CTXLINE_DISABLE": "cost,task"
+  }
+}
+```
+
+Or export it in your shell before running `claude`. Restart Claude Code to apply either one.
+
 ## Update
+
+ctxline updates itself. Every 3 days a background process checks npm. When a newer release is out, it downloads it from GitHub and swaps it in. The statusline then shows `⬆ ctxline updated <old> → <new>` for 5 seconds.
+
+To update by hand:
 
 ```bash
 npx ctxline-claude@latest
 ```
-
-ctxline updates itself: every 3 days it checks npm in the background and, when a newer release is out, installs it silently. The next render runs the new version and shows `⬆ ctxline updated <old> → <new>` for 5 seconds. To turn this off, add `autoupdate` to [`CTXLINE_DISABLE`](#configuration) — you'll get an upgrade notice instead.
-
-To update by hand, the command above re-runs the installer with the latest published version. Restart Claude Code or start a new session for the update to take effect.
 
 ## Uninstall
 
@@ -106,17 +140,17 @@ To update by hand, the command above re-runs the installer with the latest publi
 npx ctxline-claude uninstall
 ```
 
-Removes the `statusLine` entry from `settings.json` (backed up first, other settings untouched), deletes the hook script, and clears the usage cache. If `settings.json` points at a different statusline, it's left alone.
+This removes the `statusLine` and `subagentStatusLine` entries from `settings.json` (after a backup), deletes the script, and clears the cache. It leaves other statuslines alone.
 
 <details>
 <summary>Manual uninstall</summary>
 
-Undo the two things the installer did — remove the `statusLine` block from `~/.claude/settings.json` (a timestamped `settings.json.backup.<n>` exists if you'd rather restore), then delete the script:
+Remove the `statusLine` and `subagentStatusLine` blocks from `~/.claude/settings.json`. The installer left a backup at `settings.json.backup.<n>`. Then delete the script:
 
 ```bash
 # macOS / Linux
 rm ~/.claude/hooks/statusline.js
-rm -f ~/.claude/cache/usage-cache.json   # optional: clears cached usage
+rm -f ~/.claude/cache/usage-cache.json
 ```
 
 ```powershell
@@ -127,183 +161,63 @@ Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction Silen
 
 </details>
 
-## Claude Desktop
+## Claude desktop app
 
-The statusline above is for the `claude` terminal. The Claude desktop app's Code tab doesn't run statusline scripts, so ctxline ships a separate plugin for it, `ctxline-desktop`, installed from this repo. Two ways to install:
+The desktop app's Code tab doesn't run statusline scripts, so ctxline has a separate plugin for it, `ctxline-desktop`.
 
-**In the app:** open **Plugins → Add → Add Marketplace**, enter `MithunWijayasiri/ctxline-claude`, then install **ctxline-desktop**.
+<p align="center">
+  <img src="docs/assets/desktop-preview.svg" alt="ctxline in the Claude desktop app">
+</p>
 
-**With commands:**
+Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/ctxline-claude`, or run:
 
 ```
 /plugin marketplace add MithunWijayasiri/ctxline-claude
 /plugin install ctxline-desktop@ctxline
 ```
 
-<p align="center">
-  <img src="docs/assets/desktop-preview.svg" alt="ctxline in the Claude desktop app">
-</p>
+The app already shows directory, branch, and model. The plugin adds:
 
-The desktop app already shows the directory, branch and model, so the plugin skips those and shows:
+- Above the prompt: what Claude is doing now (tool, elapsed time, tool count), cache hit rate, and session cost.
+- A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts, commits ahead / behind, and a `⇣ compact` button.
+- In the prompt footer: 5-hour and weekly limits with reset countdowns.
 
-| Where | Detail |
-|---|---|
-| **Above the prompt, first row** | While Claude works: a spinner, the tool running now (e.g. `Bash npm test`), elapsed time and tool count. When idle: how long the last turn took and how many tools it called. On the right: prompt cache hit rate and session cost |
-| **Above the prompt, second row** | Full-width context bar split by what fills it (system prompt, tools, MCP, memory, skills, messages, autocompact buffer), tokens used / window size, `↑N↓M` commits ahead / behind, and a `⇣ compact` button that runs `/compact` |
-| **Above the prompt, third row** | Legend: each category's tokens |
-| **Prompt footer** | 5-hour and weekly limits with reset countdowns |
-
-Colors and thresholds match the terminal statusline. Nothing to configure, and no Node script runs: the plugin reads the same figures from Claude Code directly.
-
-**Updates.** Third-party marketplaces don't auto-update by default. To turn it on, run `/plugin`, open **Marketplaces**, select `ctxline`, and choose **Enable auto-update**. Claude Code then checks for new versions after each session starts and installs them. Or update by hand with `claude plugin update ctxline-desktop@ctxline`. An update applies in your next session, or right away with `/reload-plugins`.
-
-Remove with `claude plugin uninstall ctxline-desktop@ctxline`. The source is in [`desktop/`](desktop/).
-
-## What it shows
-
-| Segment | Detail |
-|---|---|
-| **Directory** | Current working directory |
-| **Branch** | Active git branch, with `↑N↓M` commits ahead / behind your upstream when it diverges |
-| **Model** | Active Claude model (Opus / Sonnet / Haiku) |
-| **Context** | Visual bar of context-window usage |
-| **Current** | Live 5-hour session limit + reset countdown (subscription users) |
-| **Weekly** | Weekly usage allowance + time until the weekly reset (subscription users) |
-| **Model limit** | Weekly limit scoped to a single model, when your account has one — labelled by the model's initial (`F` = Fable) |
-| **Cost** | Running session cost in USD (e.g. `$0.42`) |
-| **Task** | The in-progress todo, when there is one |
-| **Update** | An extra row for 5 seconds after ctxline updates itself, or, with auto-update off, the upgrade command when a newer release is on npm — checked every 3 days, in the background |
-
-> [!NOTE]
-> Usage bars change color automatically as you approach your limits.
-
-> [!NOTE]
-> **Responsive.** On a narrow terminal the line wraps to two — directory, model, and context on the first line; usage, cost, and task on the second. Wide terminals stay on a single line. (Auto-sizing needs Claude Code v2.1.153+.)
-
-> [!TIP]
-> Don't want every segment? You can hide any of them — see [Configuration](#configuration).
-
-## Configuration
-
-The statusline is zero-config by default. To **hide segments you don't want**, set the `CTXLINE_DISABLE` environment variable to a comma-separated list of any of:
-
-`branch` · `effort` · `cost` · `task` · `update` · `usage` (5-hour + weekly + model-scoped)
-
-To **turn off auto-update**, add `autoupdate` — ctxline then only shows the upgrade notice. `update` turns off both the update check and the notice.
-
-Directory, model, and context always show; unknown names are ignored. Example below hides cost and the current task.
-
-### Option A — `settings.json` (recommended)
-
-Works on every OS and survives restarts. Add a top-level `env` block to `~/.claude/settings.json` — Claude Code passes it to every command it spawns, including the statusline:
-
-```json
-{
-  "env": {
-    "CTXLINE_DISABLE": "cost,task"
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "node ~/.claude/hooks/statusline.js"
-  }
-}
-```
-
-Restart Claude Code (or start a new session) to apply.
-
-### Option B — shell environment
-
-Set the variable **before** launching `claude` (the statusline inherits Claude Code's environment):
-
-```bash
-# macOS / Linux
-export CTXLINE_DISABLE="cost,task"
-claude
-```
-
-```powershell
-# Windows (PowerShell) — this terminal only
-$env:CTXLINE_DISABLE = "cost,task"; claude
-
-# Windows — persist for future sessions (then open a NEW terminal)
-setx CTXLINE_DISABLE "cost,task"
-```
-
-To re-enable a segment, remove it from the list (or delete the variable) and restart Claude Code.
-
-## How it works
-
-- **Source** — context comes from Claude Code's session data. The 5-hour and weekly bars are read straight from the `rate_limits` field Claude Code pipes in (no network), falling back to `https://api.anthropic.com/api/oauth/usage` when that field isn't present yet. API-key users skip usage entirely.
-- **Model-scoped limits** — `rate_limits` carries only `five_hour` and `seven_day`, so a model-scoped weekly limit can only come from `/usage` (its `limits` array). It's served from the same cache as everything else, so this costs at most one call per 30s no matter how often the line renders.
-- **No network on the fast path** — when `rate_limits` is in the session data, there's no API call at all. The fetch below only runs as a fallback (e.g. the first render of a session, before the field appears).
-- **Adaptive timing** — for the fallback fetch: 1.5s timeout on the first prompt (cold start), 1.2s after (connection reused).
-- **Caching** — the fallback fetch is cached at `~/.claude/cache/usage-cache.json`, shared across sessions. Within 30s the cache renders directly (the API call is skipped); if a live call fails, the last value (up to 10 min old) is shown so the bar never vanishes. The reset countdown recomputes every render.
-- **Never breaks** — every failure path falls back silently; the statusline always prints.
+Third-party plugins don't auto-update by default. To turn it on, run `/plugin`, open **Marketplaces**, select `ctxline`, and choose **Enable auto-update**. To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove it, run `claude plugin uninstall ctxline-desktop@ctxline`. Source is in [`desktop/`](desktop/).
 
 ## FAQ
 
 <details>
-<summary>Does it use extra tokens?</summary>
+<summary>Does it use tokens?</summary>
 
-No — zero tokens, ever. The statusline is part of Claude Code's UI; its output is drawn in your terminal and is **never sent to the model**. Nothing it shows (context, usage, cost, git status) enters the conversation or counts toward your context window.
-
-</details>
-
-<details>
-<summary>Does fetching data slow down Claude Code?</summary>
-
-No, it's imperceptible. Almost every render reads a small local cache (sub-millisecond) instead of fetching. The usage API only runs as a fallback (and is cached); the git ahead/behind check runs at most once every ~5s and is hard-capped so it can never hang. The statusline runs as its own background command, so it never blocks your typing or Claude's responses — and in a non-git folder the git check doesn't run at all.
+No. Claude Code draws the statusline in your terminal and never sends it to the model.
 
 </details>
 
 <details>
-<summary>What is the ⬆ segment, and what does it send?</summary>
+<summary>Does it slow Claude Code down?</summary>
 
-An extra row appears below the statusline — `⬆ 1.7.0 available · npx ctxline-claude@latest` — so the upgrade command is right there to copy. It shows only while you're behind, and the command works whichever way you installed. Once a week a short-lived background process asks the public npm registry for the package's latest version number and writes it to a local cache; the statusline itself only ever reads that cache, so no render waits on the network. The request carries no session data, credentials, or identifiers — it's a plain GET for a public package, though as with any HTTP request the registry does see your IP address. Hide it (and skip the request entirely) with `CTXLINE_DISABLE=update`.
-
-</details>
-
-<details>
-<summary>Does this use the same data as /usage?</summary>
-
-Yes — the same 5-hour and weekly limits. It reads them from the session data Claude Code provides when available, and falls back to Anthropic's usage API (the endpoint `/usage` uses) otherwise.
+No. Most renders read a local cache. Usage comes from the session data Claude Code passes in, and the usage API is called only when that is missing, at most once every 30 seconds. The git check runs at most every 5 seconds and has a time limit. If anything fails, the line still prints.
 
 </details>
 
 <details>
-<summary>Is the session cost my actual bill?</summary>
+<summary>Is the cost my actual bill?</summary>
 
-It's the cost Claude Code computes for the session (tokens × per-model API pricing), read straight from the session data. For subscription (Pro/Max) users it's the *equivalent* pay-as-you-go API cost — useful as a gauge of session weight, but not what you're billed (you pay the flat subscription). It's an estimate, accurate to the extent your Claude Code pricing tables are current.
-
-</details>
-
-<details>
-<summary>Does it work with API keys?</summary>
-
-Yes. The statusline automatically detects subscription vs API-key usage.
+No, if you're on Pro or Max. It's what the session would cost at API prices, as Claude Code computes it. API-key users pay this amount.
 
 </details>
 
 <details>
-<summary>Can it break Claude Code?</summary>
+<summary>What does it send over the network?</summary>
 
-No. [Statuslines are a built-in Claude Code feature](https://code.claude.com/docs/en/statusline) — this provides the command Claude Code runs. All failures are handled silently and the statusline always renders.
-
-</details>
-
-<details>
-<summary>Does it expose my API keys / auth tokens?</summary>
-
-No. Your credentials never leave your machine. On the fast path no token is read at all — usage comes straight from the session data. Only on the fallback fetch is the OAuth token read locally (from `~/.claude/.credentials.json` or the macOS keychain), used solely to authenticate the request to Anthropic's own usage API — the same endpoint `/usage` uses. Nothing is sent to any third party, logged, or cached; only the resulting usage percentages are stored locally.
+- **Usage.** Only when the session data has no usage numbers, it calls Anthropic's usage API (the one `/usage` uses) with your local OAuth token. It caches only the percentages, never the token. API-key users skip this.
+- **Updates.** Every 3 days it asks the npm registry for the latest version number. When it installs an update, it downloads the script from GitHub. Neither request carries session data or credentials. `CTXLINE_DISABLE=update` turns both off.
 
 </details>
-
 
 ## Support
 
-If you find this project useful, consider supporting its development on [Ko-fi](https://ko-fi.com/mithunwijayasiri). Your donations help keep the project maintained, improve existing features, and fund new open-source tools.
-
-Thank you for your support! ❤️
+If ctxline is useful to you, you can support it on [Ko-fi](https://ko-fi.com/mithunwijayasiri).
 
 ## Credits
 
