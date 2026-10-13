@@ -25,8 +25,9 @@ function makeHome() {
 
 // Seed update-cache.json. `checkedAt` defaults to now (no registry child); pass a
 // `latest` to exercise the nudge, or an old `checkedAt`/`lastAttempt` for the TTL paths.
-function seedUpdateCache(home, { latest, checkedAt = Date.now(), lastAttempt } = {}) {
-  const entry = { checkedAt };
+// `extra` (updatedFrom/updatedTo/updatedShownAt) exercises the self-install row.
+function seedUpdateCache(home, { latest, checkedAt = Date.now(), lastAttempt, ...extra } = {}) {
+  const entry = { checkedAt, ...extra };
   if (latest != null) entry.latest = latest;
   if (lastAttempt != null) entry.lastAttempt = lastAttempt;
   fs.writeFileSync(path.join(home, '.claude', 'cache', 'update-cache.json'), JSON.stringify(entry));

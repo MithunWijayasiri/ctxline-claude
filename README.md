@@ -96,7 +96,9 @@ Note: the effort level only shows on a subagent row when that task has its own e
 npx ctxline-claude@latest
 ```
 
-Re-runs the installer with the latest published version. Restart Claude Code or start a new session for the update to take effect.
+ctxline updates itself: every 3 days it checks npm in the background and, when a newer release is out, installs it silently. The next render runs the new version and shows `⬆ ctxline updated <old> → <new>` for 5 seconds. To turn this off, add `autoupdate` to [`CTXLINE_DISABLE`](#configuration) — you'll get an upgrade notice instead.
+
+To update by hand, the command above re-runs the installer with the latest published version. Restart Claude Code or start a new session for the update to take effect.
 
 ## Uninstall
 
@@ -170,7 +172,7 @@ Remove with `claude plugin uninstall ctxline-desktop@ctxline`. The source is in 
 | **Model limit** | Weekly limit scoped to a single model, when your account has one — labelled by the model's initial (`F` = Fable) |
 | **Cost** | Running session cost in USD (e.g. `$0.42`) |
 | **Task** | The in-progress todo, when there is one |
-| **Update** | An extra row with the upgrade command when a newer release is on npm — checked once a week, in the background |
+| **Update** | An extra row for 5 seconds after ctxline updates itself, or, with auto-update off, the upgrade command when a newer release is on npm — checked every 3 days, in the background |
 
 > [!NOTE]
 > Usage bars change color automatically as you approach your limits.
@@ -186,6 +188,8 @@ Remove with `claude plugin uninstall ctxline-desktop@ctxline`. The source is in 
 The statusline is zero-config by default. To **hide segments you don't want**, set the `CTXLINE_DISABLE` environment variable to a comma-separated list of any of:
 
 `branch` · `effort` · `cost` · `task` · `update` · `usage` (5-hour + weekly + model-scoped)
+
+To **turn off auto-update**, add `autoupdate` — ctxline then only shows the upgrade notice. `update` turns off both the update check and the notice.
 
 Directory, model, and context always show; unknown names are ignored. Example below hides cost and the current task.
 

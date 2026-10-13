@@ -9,7 +9,7 @@ description: Change the statusline's visible design — layout, segment format, 
 
 | File | Where |
 |---|---|
-| `statusline.js` | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getLatestUpdate`, `renderUpdateLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
+| `statusline.js` | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getUpdateFacts`, `renderUpdateLine`, `renderUpdatedLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | label regexes (e.g. `/C\d+ /`, `/H\d+\b/`) |
 | `scripts/preview.js` | cache seed via `test/fixture.js`'s `seedUsageCache`; `render()` params (`columns`, `disable`) |
 | `docs/assets/preview.svg` | only 2 of 12 `<text>` elements generated (main statusline + subagent row); other 10 (window chrome, prompt lines, bullets) hand-authored |
@@ -30,6 +30,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 - `↑N↓M` is appended to the branch string (↑ green / ↓ red), not a separate segment. Zero side omitted.
 - `$<cost>` is dim, sits after usage and before task.
 - The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆ <version>`, dim `available ·`, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
+- Self-install variant of the same row: `renderUpdatedLine({ from, to })` — green `⬆ ctxline updated`, dim `<from> →`, bold `<to>`. Shown instead of the nudge when the cache's `updatedTo` equals `VERSION`, for `UPDATED_NOTICE_MS` (5s) from the first render that shows it (`updatedShownAt`, stamped by `getUpdateFacts`).
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
 
 ### Segment sources
@@ -61,7 +62,7 @@ Adding or moving a segment means picking its line in `renderStatusLine`, not jus
 
 ## Opt-out names are part of the visible contract
 
-`CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `task`, `update`, `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
+`CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `task`, `update`, `autoupdate` (self-install only; nudge stays), `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
 
 ## Colors (three schemes, kept separate on purpose)
 
@@ -95,7 +96,7 @@ Ahead/behind: both the site (`.ahead` green / `.behind` `#f85149`) and `statusli
 `test/fixture.js` backs both `test/render.test.js` and `scripts/preview.js`: fake-HOME construction, `usage-cache.json` seeding (through `statusline.js`'s exported `serializeUsageCache`, so the on-disk shape can't drift between writer and seed), diverged-repo building, spawn wrappers for both entry points. Dev-only, outside `package.json`'s `files` whitelist.
 
 - `run()` opts: `columns` (unset → single line), `disable` (→ `CTXLINE_DISABLE`).
-- `makeHome()` seeds a `latest`-less `update-cache.json` stamped now — keeps tests offline (no registry child spawns) and shows no nudge. `seedUpdateCache(home, { latest, checkedAt, lastAttempt })` overrides it; preview's `render()` takes `update: '<version>'` for the same thing.
+- `makeHome()` seeds a `latest`-less `update-cache.json` stamped now — keeps tests offline (no registry child spawns) and shows no nudge. `seedUpdateCache(home, { latest, checkedAt, lastAttempt, ...extra })` overrides it (`extra`: `updatedFrom`/`updatedTo`/`updatedShownAt` for the updated row); self-install never runs in tests — the spawned script isn't `~/.claude/hooks/statusline.js`; preview's `render()` takes `update: '<version>'` for the same thing.
 - Preview's `render()` takes the matching params — narrow scenario passes 40, opt-out scenario passes `usage,cost` — plus `models` (`[{ label, percentage, resetsInMin }]`) for the scoped-limit scenario.
 - Both clear `COLUMNS`/`CTXLINE_DISABLE` when unset, so a dev-env value can't skew output.
 - Git ahead/behind tests need real `git` (skipped if absent) and a fresh HOME per test, to isolate `git-cache.json`.

@@ -13,8 +13,9 @@ const VERSION = '1.7.5';
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
-// Segment opt-out: comma list. Recognized: branch, effort, cost, task, update, usage.
+// Segment opt-out: comma list. Recognized: branch, effort, cost, task, update, autoupdate, usage.
 // Disabling skips the work, not just the output; dir/model/context always render.
+// autoupdate: no self-install, the "available" row stays; update: no check at all.
 const DISABLED = new Set(
   (process.env.CTXLINE_DISABLE || '')
     .split(',')
@@ -47,11 +48,16 @@ const GIT_TIMEOUT_MS = 500;             // hard cap on the rev-list subprocess (
 
 // Update check: render only reads this cache; the registry fetch runs in a detached child.
 const UPDATE_CACHE_FILE = path.join(CACHE_DIR, 'update-cache.json');
-const UPDATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days between successful checks
-const UPDATE_RETRY_MS = 60 * 60 * 1000;         // 1h backoff after a failed/killed check
+const UPDATE_TTL_MS = 3 * 24 * 60 * 60 * 1000;  // 3 days between successful checks
+const UPDATE_RETRY_MS = 60 * 60 * 1000;         // 1h backoff after a failed/killed check or install
 const UPDATE_TIMEOUT_MS = 2000;                 // socket idle AND whole-request deadline
+const UPDATED_NOTICE_MS = 5000;                 // "updated" row lifetime, from its first render
 const REGISTRY_HOST = 'registry.npmjs.org';
+const RELEASE_HOST = 'raw.githubusercontent.com';
+const RELEASE_REPO = 'MithunWijayasiri/ctxline-claude';
 const PACKAGE_NAME = 'ctxline-claude';
+// Self-install only over the installed hook — never a working-tree copy under local testing.
+const HOOK_FILE = path.join(os.homedir(), '.claude', 'hooks', 'statusline.js');
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;       // releases only: a prerelease never nudges
 
 // Subagent mode reads only stdin (no fetch to race), so its read gets its own short cap.
@@ -472,11 +478,25 @@ function writeUpdateCache(obj) {
   } catch (e) {}
 }
 
-// Cached latest when strictly newer than VERSION, else ''. Cache-only: render never touches the network.
-function getLatestUpdate() {
+// Render-path read of the update cache: { update: newer cached latest or '', updated: {from, to}
+// or null }. A self-install that produced this VERSION wins; its row lives UPDATED_NOTICE_MS
+// from the first render that shows it, stamped here. Render never touches the network.
+function getUpdateFacts() {
   const cached = readUpdateCache();
-  if (!cached) return '';
-  return compareVersions(cached.latest, VERSION) === 1 ? String(cached.latest) : '';
+  if (!cached) return { update: '', updated: null };
+  if (cached.updatedTo === VERSION && SEMVER_RE.test(String(cached.updatedFrom ?? ''))) {
+    const now = Date.now();
+    let shownAt = cached.updatedShownAt;
+    if (!Number.isFinite(shownAt)) {
+      shownAt = now;
+      writeUpdateCache({ ...cached, updatedShownAt: now });
+    }
+    if (now - shownAt < UPDATED_NOTICE_MS) {
+      return { update: '', updated: { from: cached.updatedFrom, to: VERSION } };
+    }
+  }
+  const update = compareVersions(cached.latest, VERSION) === 1 ? String(cached.latest) : '';
+  return { update, updated: null };
 }
 
 // Spawn the check in a detached child — the render never waits on the registry. lastAttempt is
@@ -497,49 +517,90 @@ function refreshUpdateCheck() {
   } catch (e) {}
 }
 
-// Detached 'update-check' entry point: fetch, stamp cache, exit. A failed fetch leaves
-// checkedAt untouched, so the UPDATE_RETRY_MS backoff (not the weekly TTL) governs the next try.
-function runUpdateCheck() {
+// GET -> cb(body) on HTTP 200, cb(null) otherwise; cb fires exactly once.
+function httpsGet(hostname, urlPath, cb) {
   let settled = false;
   let deadline;
+  let req;
 
-  const done = (latest) => {
+  const done = (body) => {
     if (settled) return;
     settled = true;
     clearTimeout(deadline);
-    if (latest) writeUpdateCache({ ...(readUpdateCache() || {}), latest, checkedAt: Date.now() });
-    process.exit(0);
+    if (body === null && req) req.destroy();
+    cb(body);
   };
 
   try {
-    const req = https.request({
-      hostname: REGISTRY_HOST,
-      path: `/${PACKAGE_NAME}/latest`,
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-      timeout: UPDATE_TIMEOUT_MS
-    }, (res) => {
+    req = https.request({ hostname, path: urlPath, method: 'GET', timeout: UPDATE_TIMEOUT_MS }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume();
+        return done(null);
+      }
       let body = '';
+      res.setEncoding('utf8');
       res.on('data', chunk => body += chunk);
-      res.on('end', () => done(parseRegistryVersion(body)));
+      res.on('end', () => done(body));
+      res.on('error', () => done(null));
     });
-
     req.on('error', () => done(null));
-    req.on('timeout', () => {
-      req.destroy();
-      done(null);
-    });
-
+    req.on('timeout', () => done(null));
     // The timeout option is socket inactivity, not total — a trickling response needs this hard deadline.
-    deadline = setTimeout(() => {
-      req.destroy();
-      done(null);
-    }, UPDATE_TIMEOUT_MS);
-
+    deadline = setTimeout(() => done(null), UPDATE_TIMEOUT_MS);
     req.end();
   } catch (e) {
     done(null);
   }
+}
+
+// Downloaded statusline.js -> true only when it declares exactly `version`.
+function isReleaseBody(body, version) {
+  const match = typeof body === 'string' ? body.match(/const VERSION = '([^']+)'/) : null;
+  return !!match && match[1] === version;
+}
+
+function isInstalledHook() {
+  const self = path.resolve(__filename);
+  const hook = path.resolve(HOOK_FILE);
+  return process.platform === 'win32' ? self.toLowerCase() === hook.toLowerCase() : self === hook;
+}
+
+// Temp file + rename: a concurrent render reads the old file or the new one, never a mix.
+function installRelease(body) {
+  const tmp = `${__filename}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(tmp, body, { mode: 0o755 });
+    fs.renameSync(tmp, __filename);
+    return true;
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch (e2) {}
+    return false;
+  }
+}
+
+// Detached 'update-check' entry point: fetch latest, self-install when allowed, stamp cache, exit.
+// A failed fetch or install leaves checkedAt untouched, so the UPDATE_RETRY_MS backoff (not
+// UPDATE_TTL_MS) governs the next try; a failed install still caches latest for the nudge row.
+function runUpdateCheck() {
+  httpsGet(REGISTRY_HOST, `/${PACKAGE_NAME}/latest`, (registryBody) => {
+    const latest = parseRegistryVersion(registryBody);
+    if (!latest) return process.exit(0);
+
+    const stamp = (extra) => {
+      writeUpdateCache({ ...(readUpdateCache() || {}), latest, ...extra });
+      process.exit(0);
+    };
+
+    if (compareVersions(latest, VERSION) !== 1 || DISABLED.has('autoupdate') || !isInstalledHook()) {
+      return stamp({ checkedAt: Date.now() });
+    }
+    httpsGet(RELEASE_HOST, `/${RELEASE_REPO}/v${latest}/statusline.js`, (body) => {
+      const installed = isReleaseBody(body, latest) && installRelease(body);
+      stamp(installed
+        ? { checkedAt: Date.now(), updatedFrom: VERSION, updatedTo: latest, updatedShownAt: null }
+        : {});
+    });
+  });
 }
 
 function getCredentials() {
@@ -695,11 +756,11 @@ function collectFacts(data) {
     const sync = branch ? formatAheadBehind(getGitAheadBehind(dir)) : '';
     const sessionId = data?.session_id || '';
     const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
-    const update = DISABLED.has('update') ? '' : getLatestUpdate();
+    const { update, updated } = DISABLED.has('update') ? { update: '', updated: null } : getUpdateFacts();
     const cols = parseInt(process.env.COLUMNS, 10);
-    return { dirname, branch, sync, task, update, cols };
+    return { dirname, branch, sync, task, update, updated, cols };
   } catch (e) {
-    return { dirname: '~', branch: '', sync: '', task: '', update: '', cols: undefined };
+    return { dirname: '~', branch: '', sync: '', task: '', update: '', updated: null, cols: undefined };
   }
 }
 
@@ -709,6 +770,12 @@ function renderUpdateLine(latest) {
   return `${colors.green}⬆ ${latest}${colors.reset} `
     + `${colors.dim}available ·${colors.reset} `
     + `${colors.bold}npx ${PACKAGE_NAME}@latest${colors.reset}`;
+}
+
+function renderUpdatedLine({ from, to }) {
+  return `${colors.green}⬆ ctxline updated${colors.reset} `
+    + `${colors.dim}${from} →${colors.reset} `
+    + `${colors.bold}${to}${colors.reset}`;
 }
 
 // Pure: data + facts (see collectFacts) + usage bars -> rendered line(s); callable directly in tests.
@@ -736,6 +803,7 @@ function renderStatusLine(data, facts, usage) {
   if (facts.task) line2.push(`${colors.dim}${facts.task}${colors.reset}`);
 
   const body = layout(line1, line2, facts.cols);
+  if (facts.updated) return body + '\n' + renderUpdatedLine(facts.updated);
   return facts.update ? body + '\n' + renderUpdateLine(facts.update) : body;
 }
 
@@ -748,7 +816,7 @@ function outputStatus(data, facts, usage) {
 }
 
 function outputFallback(usage) {
-  const facts = { dirname: '~', branch: '', sync: '', task: '', update: '', cols: undefined };
+  const facts = { dirname: '~', branch: '', sync: '', task: '', update: '', updated: null, cols: undefined };
   process.stdout.write(renderStatusLine(null, facts, usage));
 }
 
@@ -889,5 +957,5 @@ if (require.main === module) {
     readStdinThen(timeoutMs, (input) => finish(parseInput(input)));
   }
 } else {
-  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion, VERSION };
+  module.exports = { parseScopedLimits, parseUsagePayload, serializeUsageCache, normalizePercentage, readStdinThen, renderStatusLine, renderSubagentTask, compareVersions, parseRegistryVersion, isReleaseBody, VERSION };
 }
