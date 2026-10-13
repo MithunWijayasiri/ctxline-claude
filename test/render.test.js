@@ -1033,6 +1033,7 @@ test('update nudge: CTXLINE_DISABLE=update hides it', () => {
 test('isReleaseBody: accepts only a file declaring exactly the requested version', () => {
   assert.strictEqual(isReleaseBody("#!/usr/bin/env node\nconst VERSION = '1.9.0';\n", '1.9.0'), true);
   assert.strictEqual(isReleaseBody("const VERSION = '1.8.0';", '1.9.0'), false);
+  assert.strictEqual(isReleaseBody("// const VERSION = '1.9.0';\nconst VERSION = '1.8.0';\n", '1.9.0'), false);
   assert.strictEqual(isReleaseBody('404: Not Found', '1.9.0'), false);
   assert.strictEqual(isReleaseBody(null, '1.9.0'), false);
 });

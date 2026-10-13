@@ -555,7 +555,7 @@ function httpsGet(hostname, urlPath, cb) {
 
 // Downloaded statusline.js -> true only when it declares exactly `version`.
 function isReleaseBody(body, version) {
-  const match = typeof body === 'string' ? body.match(/const VERSION = '([^']+)'/) : null;
+  const match = typeof body === 'string' ? body.match(/^const VERSION = '([^']+)';\r?$/m) : null;
   return !!match && match[1] === version;
 }
 
