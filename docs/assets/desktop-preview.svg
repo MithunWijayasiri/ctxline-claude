@@ -34,7 +34,7 @@
     <!-- ctxline-desktop band -->
     <rect x="40" y="236" width="1200" height="116" rx="10" fill="#202020"></rect>
     <text x="60" y="267"><tspan fill="#d97757" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
-    <text x="1220" y="267" text-anchor="end"><tspan fill="#8f8c84">cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
+    <text x="1220" y="267" text-anchor="end"><tspan fill="#22c55e">H12</tspan><tspan fill="#8f8c84"> 1h28m · </tspan><tspan fill="#22c55e">W25</tspan><tspan fill="#8f8c84"> 15h48m │ cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
     <text x="60" y="300" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#22c55e">C23</text>
     <rect x="96" y="287" width="12.6" height="16" fill="#a78bfa"></rect>
     <rect x="108.6" y="287" width="50.4" height="16" fill="#60a5fa"></rect>
@@ -62,7 +62,7 @@
       <path d="M114 409 l4 4 l4 -4" stroke="#8f8c84"></path>
     </g>
     <text x="140" y="416" fill="#c9c6be">Auto</text>
-    <text x="1196" y="416" text-anchor="end"><tspan fill="#22c55e">H12</tspan><tspan fill="#8f8c84"> ↺ 1h28m  │  </tspan><tspan fill="#22c55e">W25</tspan><tspan fill="#8f8c84"> ↺ 15h48m</tspan><tspan fill="#e8e6df" dx="26">Opus 5.5</tspan><tspan fill="#e8e6df" dx="22">Medium</tspan></text>
+    <text x="1196" y="416" text-anchor="end"><tspan fill="#e8e6df">Opus 5.5</tspan><tspan fill="#e8e6df" dx="22">Medium</tspan></text>
     <circle cx="1224" cy="411" r="7" fill="none" stroke="#2e2e2e" stroke-width="2"></circle>
     <path d="M1224 404 a7 7 0 0 1 7 7" fill="none" stroke="#8f8c84" stroke-width="2" stroke-linecap="round"></path>
     </g>

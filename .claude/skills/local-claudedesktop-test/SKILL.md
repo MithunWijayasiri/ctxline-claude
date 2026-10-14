@@ -43,7 +43,7 @@ Side effects of a local load (both gitignored, leave them): engine writes `deskt
 - After first response: full-width category bar + legend. A legend entry showing a full lowercased name (e.g. `new category`) = `/context` category missing from `CATEGORIES` → run `sync-context-labels`.
 - During a turn: spinner + tool + elapsed + `tool #N`; `⇣ compact` dim and unclickable.
 - Idle: `last turn <dur> · N tool(s)`; press `⇣ compact` → `compacting…` until it settles, repeat presses ignored; `/compact` bubble in chat is expected.
-- Footer (`SessionMode`): `H<pct> ↺ <reset> │ W<pct> ↺ <reset>`.
+- Top row right: `H<pct> <reset> · W<pct> <reset> │ cache <pct>% · $<cost>`; nothing from the plugin in the footer below the prompt.
 
 ## 3. Where errors surface
 

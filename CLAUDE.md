@@ -66,10 +66,9 @@ Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.
 Layout (Desktop already shows dir/branch/model/effort — omitted):
 
 ```text
-AbovePrompt  <activity>                                   cache <pct>% · $<cost>
+AbovePrompt  <activity>              H<pct> <reset> · W<pct> <reset> │ cache <pct>% · $<cost>
              C<used> <full-width category bar> <tokens> / <window> ↑N↓M │ ⇣ compact
                  ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
-SessionMode  H<pct> ↺ <reset> │ W<pct> ↺ <reset>
 ```
 
 No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; user enables per marketplace in `/plugin` → Marketplaces; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
@@ -84,7 +83,7 @@ Context bar: one segment per `/context` category from `$.session.usage({ breakdo
 
 Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD` via `$.process.run`; `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
-Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` width capped ~25 chars — footer holds only H/W; everything else in `AbovePrompt`. Desktop's own git/branch bar is not hookable. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
+Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. Desktop's own git/branch bar is not hookable. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
 
 Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
 
