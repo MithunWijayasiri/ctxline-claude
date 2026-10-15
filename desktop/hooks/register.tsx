@@ -244,6 +244,17 @@ export const register: Register = on => {
       live = <Text dimColor>ready · no turns yet</Text>
     }
 
+    const limitSegment = (label: string, limit: Limit) => (
+      <Text>
+        <Text color={usageColor(limit.percent)}>
+          {label}
+          {limit.percent}
+        </Text>
+        {limit.resetsAt && <Text dimColor> {countdown(limit.resetsAt, now)}</Text>}
+      </Text>
+    )
+    const limits = [s.fiveHour && limitSegment('H', s.fiveHour), s.sevenDay && limitSegment('W', s.sevenDay)].filter(Boolean)
+
     const c = await read($, cache)
     const stats = [
       c.total > 0 && (
@@ -267,21 +278,25 @@ export const register: Register = on => {
     const legend = s.segments.filter(g => g.kind !== 'free')
     const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
+    const groups = [limits, stats].filter(g => g.length > 0)
     return (
       <Box flexDirection="column" rowGap={1}>
-        {(live || stats.length > 0) && (
-          <Box justifyContent="space-between" columnGap={2}>
-            <Text wrap="truncate-end">{live}</Text>
-            <Text>
-              {stats.map((stat, i) => (
-                <Text key={String(i)}>
-                  {i > 0 && <Text dimColor> · </Text>}
-                  {stat}
-                </Text>
-              ))}
-            </Text>
-          </Box>
-        )}
+        <Box justifyContent="space-between" columnGap={2}>
+          <Text wrap="truncate-end">{live}</Text>
+          <Text>
+            {groups.map((group, gi) => (
+              <Text key={String(gi)}>
+                {gi > 0 && <Text dimColor> │ </Text>}
+                {group.map((item, i) => (
+                  <Text key={String(i)}>
+                    {i > 0 && <Text dimColor> · </Text>}
+                    {item}
+                  </Text>
+                ))}
+              </Text>
+            ))}
+          </Text>
+        </Box>
         <Box alignItems="center" columnGap={1}>
           <Text color={contextColor(s.contextUsed)}>{label}</Text>
           <Box flexGrow={1} height={1}>
@@ -323,39 +338,6 @@ export const register: Register = on => {
           </Box>
         )}
       </Box>
-    )
-  })
-
-  // Right side of the prompt footer, after the engine's own mode labels; Desktop caps its width.
-  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    if (e.surface !== 'desktop') return next(e)
-
-    const s = await read($, snap)
-    if (s === null) return next(e)
-
-    if (s.fiveHour === undefined && s.sevenDay === undefined) return next(e)
-
-    const now = await $.clock.now()
-    const { Text } = $.ui.resolve(e)
-    const sep = <Text dimColor> │ </Text>
-    const limitSegment = (label: string, limit: Limit) => (
-      <Text>
-        <Text color={usageColor(limit.percent)}>
-          {label}
-          {limit.percent}
-        </Text>
-        {limit.resetsAt && <Text dimColor> ↺ {countdown(limit.resetsAt, now)}</Text>}
-      </Text>
-    )
-
-    return (
-      <Text>
-        {e.props.modes.length > 0 && <Text dimColor>{e.props.modes.join(' & ')}</Text>}
-        {e.props.modes.length > 0 && sep}
-        {s.fiveHour && limitSegment('H', s.fiveHour)}
-        {s.fiveHour && s.sevenDay && sep}
-        {s.sevenDay && limitSegment('W', s.sevenDay)}
-      </Text>
     )
   })
 }
