@@ -61,18 +61,18 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`; state keys must match plugin name or validation fails).
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module) → `hooks/pet.ts` (pixel pet SVG frames); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`; state keys must match plugin name or validation fails).
 
 Layout (Desktop already shows model/effort — omitted; its own folder/branch/changes display is gone since its latest update, so the plugin draws them):
 
 ```text
-AbovePrompt  ╭ <folder> ⎇ <branch> ↑N↓M                                   +<added> -<removed> ╮
+AbovePrompt  ╭ <pet> <folder> ⎇ <branch> ↑N↓M                             +<added> -<removed> ╮
              <activity>              H<pct> <reset> · W<pct> <reset> │ cache <pct>% · $<cost>
              C<used> <full-width category bar> <tokens> / <window> │ ⇣ compact
                  ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 ```
 
-Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync.
+Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync. `<pet>`: pixel Claude (`Svg`, from the terminal logo) — hops while working, stands and blinks for 5 min after a turn, then sleeps (also before the first turn). Frames step on the `frame` atom, ticked every 250ms all session (also drives the spinner).
 
 No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; no enable-auto-update toggle in `/plugin` → Marketplaces (only a one-off Update, found by testing) — user sets `extraKnownMarketplaces.ctxline.autoUpdate: true` in `~/.claude/settings.json`; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
@@ -86,7 +86,7 @@ Context bar: one segment per `/context` category from `$.session.usage({ breakdo
 
 Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD`, `git branch --show-current`, `git diff HEAD --shortstat` via `$.process.run` (folder = basename of `$.session.cwd()`); `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
-Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
+Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `Svg isInteractive` (needed for SMIL) draws in a sandboxed frame that paints blank for a moment on each source change → visible flash; pet stays a plain image, animated by swapping frames. `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
 
 Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
 

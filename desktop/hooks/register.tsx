@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionContextBreakdown, Timer } from 'claude-code'
 
 import type { Activity, CacheTally, Limit, Segment, Snapshot } from '../types'
+import { PET_HEIGHT, PET_WIDTH, pet } from './pet'
 
 const IDLE: Activity = { isWorking: false, startedAt: 0, tools: 0, current: null, lastSeconds: null }
 const NO_CACHE: CacheTally = { read: 0, total: 0 }
@@ -165,6 +166,9 @@ export const register: Register = on => {
     ticker = $.clock.every(REFRESH_MS, () => {
       refresh($).catch((err: unknown) => $.ui.log(`refresh failed: ${String(err)}`, { to: 'debug' }))
     })
+    // Always on: steps the spinner while working and the pet's frames while idle.
+    spinner?.cancel()
+    spinner = $.clock.every(SPIN_MS, () => void update($, frame, n => n + 1))
 
     return started
   })
@@ -172,8 +176,6 @@ export const register: Register = on => {
   on('prompt.submit', async ($, e, next) => {
     const startedAt = await $.clock.now()
     await update($, activity, a => ({ ...a, isWorking: true, startedAt, tools: 0, current: null }))
-    spinner?.cancel()
-    spinner = $.clock.every(SPIN_MS, () => void update($, frame, n => (n + 1) % SPINNER.length))
 
     return next(e)
   })
@@ -200,8 +202,6 @@ export const register: Register = on => {
       const total = u.input_tokens + u.cache_read_input_tokens + u.cache_creation_input_tokens
       await update($, cache, c => ({ read: c.read + u.cache_read_input_tokens, total: c.total + total }))
     }
-    spinner?.cancel()
-    spinner = undefined
     const now = await $.clock.now()
     await update($, activity, a => ({
       ...a,
@@ -222,11 +222,13 @@ export const register: Register = on => {
 
     const a = await read($, activity)
     const now = await $.clock.now()
-    const { Box, Button, Text } = $.ui.resolve(e)
+    const { Box, Button, Svg, Text } = $.ui.resolve(e)
+    const isBusy = a.isWorking || e.props.isWorking
+    const tick = await read($, frame)
 
     let live = null
     if (a.isWorking) {
-      const spin = SPINNER.charAt(await read($, frame))
+      const spin = SPINNER.charAt(tick % SPINNER.length)
       const elapsed = duration(Math.round((now - a.startedAt) / 1000))
       live = (
         <Text>
@@ -287,25 +289,29 @@ export const register: Register = on => {
     const hasSync = s.ahead > 0 || s.behind > 0
     const groups = [limits, stats].filter(g => g.length > 0)
     const hasChanges = s.added > 0 || s.removed > 0
+    const mascot = pet(isBusy, a.lastSeconds === null ? null : a.startedAt + a.lastSeconds * 1000, now, tick)
     return (
       <Box flexDirection="column" rowGap={1}>
-        <Box justifyContent="space-between" columnGap={2} borderStyle="round" borderDimColor paddingX={1}>
-          <Text wrap="truncate-end">
-            <Text>{s.folder}</Text>
-            {s.branch && (
-              <Text>
-                <Text dimColor> ⎇ </Text>
-                {s.branch}
-              </Text>
-            )}
-            {hasSync && (
-              <Text>
-                {' '}
-                {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
-                {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
-              </Text>
-            )}
-          </Text>
+        <Box justifyContent="space-between" alignItems="center" columnGap={2} borderStyle="round" borderDimColor paddingX={1}>
+          <Box alignItems="center" columnGap={1} flexShrink={1} minWidth={0}>
+            <Svg {...mascot} width={PET_WIDTH} height={PET_HEIGHT} />
+            <Text wrap="truncate-end">
+              <Text>{s.folder}</Text>
+              {s.branch && (
+                <Text>
+                  <Text dimColor> ⎇ </Text>
+                  {s.branch}
+                </Text>
+              )}
+              {hasSync && (
+                <Text>
+                  {' '}
+                  {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
+                  {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
+                </Text>
+              )}
+            </Text>
+          </Box>
           {hasChanges && (
             <Text>
               <Text color={GREEN}>+{s.added.toLocaleString('en-US')}</Text>{' '}
@@ -344,7 +350,7 @@ export const register: Register = on => {
           <Text dimColor>│</Text>
           {isCompacting ? (
             <Text dimColor>compacting…</Text>
-          ) : a.isWorking || e.props.isWorking ? (
+          ) : isBusy ? (
             <Text dimColor>⇣ compact</Text>
           ) : (
             <Button key="compact" label="⇣ compact" plain dimColor onPress={() => void compact($)} />
