@@ -178,12 +178,9 @@
   .term.desk{max-width:760px;padding:16px;display:flex;flex-direction:column;gap:8px;
     font-family:var(--sans);font-size:clamp(11px,1.5vw,14px);color:var(--term-fg)}
   .desk .card{background:#1f1c15;border-radius:10px;padding:11px 16px;display:flex;flex-direction:column;gap:5px}
-  .desk .card.git{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap;color:#a7a191}
-  .desk .branch{font-family:var(--mono);font-size:.92em;color:var(--term-dim);margin-left:12px}
-  .desk .gitr{display:flex;align-items:center;gap:8px;flex:none}
-  .desk .pill{background:#2b271d;border-radius:6px;padding:3px 9px;font-weight:700}
-  .desk .commit{background:#3a3528;border-radius:6px;padding:4px 10px;color:var(--term-fg)}
   .desk .card.mine{box-shadow:inset 3px 0 0 var(--accent);gap:9px}
+  .desk .gitbox{border:1px solid #3a3528;border-radius:8px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap}
+  .desk .pet{width:2.4em;height:1.2em;vertical-align:-.25em;margin-right:6px}
   .desk .ctx{flex:1;display:flex;align-items:center;gap:8px}
   .desk .cbar{flex:1;display:flex;height:12px;border-radius:2px;overflow:hidden;background:#2e3240}
   .desk .cbar i{min-width:2px}
@@ -213,6 +210,10 @@
     .opt code,.opt .cmd code span{white-space:normal}
     .opt code,.opt .cmd code{overflow-wrap:anywhere}
   }
+
+  .notice{max-width:760px;margin:28px auto 0;background:#fbe9df;border:1px solid var(--accent);border-left-width:5px;border-radius:14px;padding:16px 20px;font-size:15px}
+  .notice code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;border:1px solid var(--line)}
+  .notice .kicker{display:block;margin-bottom:6px;color:var(--accent);font-weight:700}
 
   .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
   .cta-stack{flex-direction:column;align-items:center}
@@ -462,16 +463,13 @@
     <div class="sec-head">
       <span class="kicker">Claude desktop app</span>
       <h2>Also in the desktop app</h2>
-      <p>The Code tab doesn't run statusline scripts, so ctxline ships a plugin instead: live activity, a context breakdown, one-click compact, cost, Git sync, and usage limits.</p>
+      <p>The Code tab doesn't run statusline scripts, so ctxline ships a plugin instead: a pixel Claude pet, live activity, a context breakdown, one-click compact, cost, folder and branch, Git sync, uncommitted changes, and usage limits.</p>
     </div>
-    <div class="term desk" role="img" aria-label="Example Claude desktop app: activity, cache hit rate, cost, a context bar split by category, Git sync, 5-hour and weekly limits and a compact button above the prompt">
-      <div class="card git">
-        <span>my-project<span class="branch">feat/auth-fix</span></span>
-        <span class="gitr"><span class="pill"><span class="ahead">+1,632</span> <span class="behind">−26</span></span><span class="commit">Commit changes</span></span>
-      </div>
+    <div class="term desk" role="img" aria-label="Example Claude desktop app: folder, branch, Git sync and uncommitted changes, activity, cache hit rate, cost, a context bar split by category, 5-hour and weekly limits and a compact button above the prompt">
       <div class="card mine">
+        <div class="gitbox"><span><svg class="pet" viewBox="0 0 24 12" shape-rendering="crispEdges" aria-hidden="true"><g transform="translate(0 2)"><rect x="3" y="0" width="12" height="4" fill="#d97757"/><rect x="1" y="4" width="16" height="2" fill="#d97757"/><rect x="3" y="6" width="12" height="2" fill="#d97757"/><rect x="5" y="2" width="1" height="2" fill="#1f1a17"/><rect x="12" y="2" width="1" height="2" fill="#1f1a17"/><rect x="4" y="8" width="1" height="2" fill="#d97757"/><rect x="6" y="8" width="1" height="1" fill="#d97757"/><rect x="11" y="8" width="1" height="2" fill="#d97757"/><rect x="13" y="8" width="1" height="1" fill="#d97757"/></g></svg>ctxline<span class="dim">&nbsp;⎇&nbsp;</span>main&nbsp;<span class="ahead">↑2</span></span><span><span class="ahead">+1,594</span>&nbsp;<span class="behind">-21</span></span></div>
         <div class="row"><span><span style="color:var(--accent)">⠹&nbsp;</span>Bash<span class="dim">&nbsp;npm test · 14s · tool #5</span></span><span><span class="mine-t"><span class="val">H12</span><span class="dim">&nbsp;1h28m&nbsp;·&nbsp;</span><span class="val">W25</span><span class="dim">&nbsp;15h48m</span></span><span class="sep">│</span><span class="dim">cache&nbsp;</span><b>94%</b><span class="dim">&nbsp;·&nbsp;</span><b>$5.82</b></span></div>
-        <div class="row"><span class="ctx"><span class="val">C23</span><span class="cbar"><i style="flex:3;background:#a78bfa"></i><i style="flex:12;background:#60a5fa"></i><i style="flex:6;background:#f472b6"></i><i style="flex:1;background:#34d399"></i><i style="flex:2;background:#fde047"></i><i style="flex:4;background:#fb923c"></i><i style="flex:18;background:#22d3ee"></i><i style="flex:33;background:#4b5160"></i><i style="flex:121"></i></span></span><span><span class="dim">46k / 200k</span>&nbsp;&nbsp;<span class="ahead">↑1</span><span class="sep">│</span><span class="dim">⇣ compact</span></span></div>
+        <div class="row"><span class="ctx"><span class="val">C23</span><span class="cbar"><i style="flex:3;background:#a78bfa"></i><i style="flex:12;background:#60a5fa"></i><i style="flex:6;background:#f472b6"></i><i style="flex:1;background:#34d399"></i><i style="flex:2;background:#fde047"></i><i style="flex:4;background:#fb923c"></i><i style="flex:18;background:#22d3ee"></i><i style="flex:33;background:#4b5160"></i><i style="flex:121"></i></span></span><span><span class="dim">46k / 200k</span><span class="sep">│</span><span class="dim">⇣ compact</span></span></div>
         <div class="legend"><span><i style="color:#a78bfa">■</i>&nbsp;sys 3k</span><span><i style="color:#60a5fa">■</i>&nbsp;tools 12k</span><span><i style="color:#f472b6">■</i>&nbsp;mcp 6k</span><span><i style="color:#34d399">■</i>&nbsp;agents 1k</span><span><i style="color:#fde047">■</i>&nbsp;mem 2k</span><span><i style="color:#fb923c">■</i>&nbsp;skills 4k</span><span><i style="color:#22d3ee">■</i>&nbsp;msgs 18k</span><span><i style="color:#8b92a3">▨</i>&nbsp;buffer 33k</span></div>
       </div>
       <div class="prompt"><span>Type / for commands</span><span>↵</span></div>
@@ -481,6 +479,7 @@
       </div>
     </div>
     <p class="insp-hint">In the mock, the accent-edged card and dashed limits are ctxline. The rest is Desktop's own.</p>
+    <p class="insp-hint">+added -removed counts uncommitted lines only. New files git doesn't track yet aren't counted, and it hides after you commit.</p>
     <div class="opts">
       <div class="opt">
         <span class="kicker">In the app</span>
@@ -497,6 +496,14 @@
           <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop@ctxline')">Copy</button>
         </div>
       </div>
+    </div>
+    <div class="notice">
+      <span class="kicker">⚠ Turn on auto-update</span>
+      <p><b>Third-party plugins don't auto-update by default</b>, so you'll stay on the version you installed. The <b>Update</b> button in <b>/plugin</b> only updates once. To turn on auto-update, set <code>autoUpdate</code> in <code>~/.claude/settings.json</code> — paste this into Claude Code to do it for you:</p>
+    </div>
+    <div class="cmd" style="max-width:760px;margin-top:12px">
+      <code><span class="cm">Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline</span></code>
+      <button class="copy" onclick="copyCmd(this,'Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline')">Copy</button>
     </div>
   </section>
 
