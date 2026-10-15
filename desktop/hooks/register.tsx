@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionContextBreakdown, Timer } from 'claude-code'
 
 import type { Activity, CacheTally, Limit, Segment, Snapshot } from '../types'
-import { PET_HEIGHT, PET_WIDTH, pet } from './pet'
+import { PET_HEIGHT, PET_WIDTH, isAsleep, pet } from './pet'
 
 const IDLE: Activity = { isWorking: false, startedAt: 0, tools: 0, current: null, lastSeconds: null }
 const NO_CACHE: CacheTally = { read: 0, total: 0 }
@@ -12,11 +12,13 @@ const activity = atom({ plugin: 'ctxline-desktop', key: 'activity' } as const, I
 const frame = atom({ plugin: 'ctxline-desktop', key: 'frame' } as const, 0)
 const cache = atom({ plugin: 'ctxline-desktop', key: 'cache' } as const, NO_CACHE)
 const compacting = atom({ plugin: 'ctxline-desktop', key: 'compacting' } as const, false)
+const poke = atom({ plugin: 'ctxline-desktop', key: 'poke' } as const, null)
 
 const REFRESH_MS = 30000
 const SPIN_MS = 250
 const MAX_DETAIL_LEN = 40
 const BAR_SCALE = 1000 // flexGrow is capped at 10000
+const LEGEND_GAP = 2
 const SPINNER = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 const DETAIL_KEYS = ['command', 'file_path', 'pattern', 'url', 'query', 'description', 'skill'] as const
 const GREEN = 'green'
@@ -81,6 +83,24 @@ function segments(breakdown: SessionContextBreakdown | undefined): Segment[] {
     }
   }
   return out
+}
+
+function legendText(g: Segment): string {
+  return `${g.label} ${tokens(g.tokens)}`
+}
+
+function moreText(hidden: number): string {
+  return `+${hidden} more`
+}
+
+// How many legend items fit in `columns` cells, room kept for the `+N more` when some don't.
+function legendFit(legend: Segment[], columns: number): number {
+  const widths = legend.map(g => legendText(g).length + 2) // marker and space
+  const total = (n: number): number => widths.slice(0, n).reduce((sum, w) => sum + w, 0) + LEGEND_GAP * Math.max(0, n - 1)
+  if (total(legend.length) <= columns) return legend.length
+  let fit = legend.length - 1
+  while (fit > 0 && total(fit) + LEGEND_GAP + moreText(legend.length - fit).length > columns) fit--
+  return fit
 }
 
 function duration(seconds: number): string {
@@ -152,6 +172,15 @@ async function compact($: EngineInterface): Promise<void> {
   }
 }
 
+function idleSince(a: Activity): number | null {
+  return a.lastSeconds === null ? null : a.startedAt + a.lastSeconds * 1000
+}
+
+async function pokePet($: EngineInterface): Promise<void> {
+  const [a, p, now] = await Promise.all([read($, activity), read($, poke), $.clock.now()])
+  await update($, poke, () => ({ at: now, woke: isAsleep(idleSince(a), p, now) }))
+}
+
 export const register: Register = on => {
   let spinner: Timer | undefined
   let ticker: Timer | undefined
@@ -159,6 +188,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await update($, activity, () => IDLE)
+    await update($, poke, () => null)
     await update($, cache, () => NO_CACHE)
     await update($, compacting, () => false)
     await refresh($)
@@ -285,16 +315,26 @@ export const register: Register = on => {
           ]
     const barTotal = bar.reduce((sum, g) => sum + g.tokens, 0) || 1
     const legend = s.segments.filter(g => g.kind !== 'free')
+    const shown = legend.slice(0, legendFit(legend, e.props.bodyColumns - label.length - 1))
+    const hidden = legend.length - shown.length
     const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
     const groups = [limits, stats].filter(g => g.length > 0)
     const hasChanges = s.added > 0 || s.removed > 0
-    const mascot = pet(isBusy, a.lastSeconds === null ? null : a.startedAt + a.lastSeconds * 1000, now, tick)
+    const mascot = pet(isBusy, idleSince(a), await read($, poke), now, tick)
     return (
       <Box flexDirection="column" rowGap={1}>
         <Box justifyContent="space-between" alignItems="center" columnGap={2} borderStyle="round" borderDimColor paddingX={1}>
           <Box alignItems="center" columnGap={1} flexShrink={1} minWidth={0}>
-            <Svg {...mascot} width={PET_WIDTH} height={PET_HEIGHT} />
+            {/* Only a Button takes a click and it can't hold an Svg, so a blank one lies over the pet. */}
+            <Box position="relative" flexShrink={0}>
+              <Svg {...mascot} width={PET_WIDTH} height={PET_HEIGHT} />
+              {!isBusy && (
+                <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
+                  <Button key="pet" label={' '.repeat(6)} plain onPress={() => void pokePet($)} />
+                </Box>
+              )}
+            </Box>
             <Text wrap="truncate-end">
               <Text>{s.folder}</Text>
               {s.branch && (
@@ -356,17 +396,20 @@ export const register: Register = on => {
             <Button key="compact" label="⇣ compact" plain dimColor onPress={() => void compact($)} />
           )}
         </Box>
+        {/* Desktop wraps a Text despite truncate-end: items past the width estimate wrap onto a clipped second row. */}
         {legend.length > 0 && (
-          <Box flexWrap="wrap" columnGap={2} paddingLeft={label.length + 1}>
-            {legend.map((g, i) => (
-              <Text key={String(i)}>
-                <Text color={g.color}>{g.kind === 'buffer' ? '▨' : '■'}</Text>
-                <Text dimColor>
-                  {' '}
-                  {g.label} {tokens(g.tokens)}
-                </Text>
-              </Text>
-            ))}
+          <Box columnGap={LEGEND_GAP} paddingLeft={label.length + 1}>
+            <Box flexWrap="wrap" columnGap={LEGEND_GAP} flexShrink={1} minWidth={0} height={1} overflow="hidden">
+              {shown.map((g, i) => (
+                <Box key={String(i)} flexShrink={0}>
+                  <Text>
+                    <Text color={g.color}>{g.kind === 'buffer' ? '▨' : '■'}</Text>
+                    <Text dimColor> {legendText(g)}</Text>
+                  </Text>
+                </Box>
+              ))}
+            </Box>
+            {hidden > 0 && <Text dimColor>{moreText(hidden)}</Text>}
           </Box>
         )}
       </Box>

@@ -193,27 +193,26 @@
   .desk .mine-t{border-bottom:1px dashed var(--accent);padding-bottom:1px}
   .desk .gap{margin-left:18px}
 
-  /* desktop install: app steps and copy-paste commands side by side, equal weight */
-  .opts{display:grid;grid-template-columns:1fr 1.3fr;gap:16px;max-width:760px;margin:28px auto 0}
-  @media(max-width:640px){.opts{grid-template-columns:1fr}}
-  .opt{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column}
-  .opt .kicker{display:block;margin-bottom:14px;color:var(--accent);font-weight:700}
-  .opt ol{list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:10px;font-size:14.5px}
-  .opt li{counter-increment:s;position:relative;padding-left:22px}
+  /* desktop install: one column, same width as the mock — app steps, commands, auto-update notice */
+  .setup{max-width:760px;margin:28px auto 0;display:flex;flex-direction:column;gap:12px}
+  .opt,.notice{border-radius:16px;padding:18px 20px}
+  .opt{background:var(--card);border:1px solid var(--line)}
+  .opt .kicker,.notice .kicker{display:block;margin-bottom:12px;color:var(--accent);font-weight:700}
+  .opt .way{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:8px}
+  .opt .way~.way{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line)}
+  .opt ol{list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:8px;font-size:14.5px}
+  .opt li{counter-increment:s;position:relative;padding-left:20px}
   .opt li::before{content:counter(s);position:absolute;left:0;top:.2em;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent)}
-  .opt code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
-  .opt .cmd{margin:0;max-width:none;flex:1;padding:14px 14px 14px 16px;flex-direction:column;align-items:stretch;gap:12px}
-  .opt .cmd .copy{align-self:flex-end;margin-top:auto;min-width:84px;text-align:center}
-  .opt .cmd code{background:none;border:0;padding:0;font-size:13px;line-height:1.6;color:var(--term-fg);overflow-wrap:normal}
+  .opt li code,.notice p code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+  .setup .cmd{margin:0;max-width:none;padding:14px 14px 14px 18px}
+  .setup .cmd code{font-size:13px;line-height:1.7}
   .opt .cmd code span{white-space:nowrap}
+  .notice{background:#fbe9df;border:1px solid var(--accent);border-left-width:5px;font-size:15px}
+  .notice .cmd{margin-top:14px}
   @media(max-width:640px){
-    .opt code,.opt .cmd code span{white-space:normal}
-    .opt code,.opt .cmd code{overflow-wrap:anywhere}
+    .opt li code,.opt .cmd code span{white-space:normal}
+    .setup code{overflow-wrap:anywhere}
   }
-
-  .notice{max-width:760px;margin:28px auto 0;background:#fbe9df;border:1px solid var(--accent);border-left-width:5px;border-radius:14px;padding:16px 20px;font-size:15px}
-  .notice code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;border:1px solid var(--line)}
-  .notice .kicker{display:block;margin-bottom:6px;color:var(--accent);font-weight:700}
 
   .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
   .cta-stack{flex-direction:column;align-items:center}
@@ -341,6 +340,7 @@
   footer .r{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
   footer .r a{text-decoration:none;transition:color .15s}
   footer .r a:hover{color:var(--accent)}
+  @media(max-width:640px){footer{flex-direction:column;justify-content:center}}
 
   /* ---- animations ---- */
   [data-anim]{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
@@ -373,9 +373,7 @@
   <nav>
     <div class="brand"><span class="pulse"></span> <b>ctxline</b>&nbsp;· claude</div>
     <div class="links">
-      <a href="#features">Features</a>
       <a href="#desktop">Desktop</a>
-      <a href="#how">How it works</a>
       <a href="https://www.npmjs.com/package/ctxline-claude" target="_blank" rel="noopener">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
       <a class="kofi-btn" href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">❤ Ko-fi</a>
@@ -480,30 +478,29 @@
     </div>
     <p class="insp-hint">In the mock, the accent-edged card and dashed limits are ctxline. The rest is Desktop's own.</p>
     <p class="insp-hint">+added -removed counts uncommitted lines only. New files git doesn't track yet aren't counted, and it hides after you commit.</p>
-    <div class="opts">
+    <div class="setup">
       <div class="opt">
-        <span class="kicker">In the app</span>
+        <span class="kicker">Install the plugin</span>
+        <p class="way">In the app</p>
         <ol>
           <li>Open <b>Plugins</b> → <b>Add</b> → <b>Add Marketplace</b></li>
           <li>Enter <code>MithunWijayasiri/ctxline-claude</code></li>
           <li>Install <b>ctxline-desktop</b></li>
         </ol>
-      </div>
-      <div class="opt">
-        <span class="kicker">With commands</span>
+        <p class="way">Or with commands</p>
         <div class="cmd">
           <code>/plugin marketplace add <span>MithunWijayasiri/ctxline-claude</span><br>/plugin install <span>ctxline-desktop@ctxline</span></code>
           <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop@ctxline')">Copy</button>
         </div>
       </div>
-    </div>
-    <div class="notice">
-      <span class="kicker">⚠ Turn on auto-update</span>
-      <p><b>Third-party plugins don't auto-update by default</b>, so you'll stay on the version you installed. The <b>Update</b> button in <b>/plugin</b> only updates once. To turn on auto-update, set <code>autoUpdate</code> in <code>~/.claude/settings.json</code> — paste this into Claude Code to do it for you:</p>
-    </div>
-    <div class="cmd" style="max-width:760px;margin-top:12px">
-      <code><span class="cm">Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline</span></code>
-      <button class="copy" onclick="copyCmd(this,'Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline')">Copy</button>
+      <div class="notice">
+        <span class="kicker">⚠ Turn on auto-update</span>
+        <p><b>Third-party plugins don't auto-update by default</b>, so you'll stay on the version you installed. The <b>Update</b> button in <b>/plugin</b> only updates once. To turn on auto-update, set <code>autoUpdate</code> in <code>~/.claude/settings.json</code> — paste this into Claude Code to do it for you:</p>
+        <div class="cmd">
+          <code><span class="cm">Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline</span></code>
+          <button class="copy" onclick="copyCmd(this,'Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline')">Copy</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -549,11 +546,8 @@
   <footer>
     <div class="l">Built for <b>Claude Code</b> · MIT </div>
     <div class="r">
-      <a href="https://github.com/MithunWijayasiri/ctxline-claude#configuration">Config ↗</a>
-      <a href="https://github.com/MithunWijayasiri/ctxline-claude#faq">FAQ ↗</a>
       <a href="https://www.npmjs.com/package/ctxline-claude">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
-      <a href="https://github.com/MithunWijayasiri/ctxline-claude/issues">Issues ↗</a>
       <a href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">Ko-fi ↗</a>
     </div>
   </footer>
