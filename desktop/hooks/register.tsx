@@ -188,6 +188,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await update($, activity, () => IDLE)
+    await update($, poke, () => null)
     await update($, cache, () => NO_CACHE)
     await update($, compacting, () => false)
     await refresh($)
