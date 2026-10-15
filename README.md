@@ -176,10 +176,11 @@ Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/c
 /plugin install ctxline-desktop@ctxline
 ```
 
-The app already shows directory, branch, and model. The plugin adds:
+The plugin adds, above the prompt:
 
-- Above the prompt: what Claude is doing now (tool, elapsed time, tool count), 5-hour and weekly limits with reset countdowns, cache hit rate, and session cost.
-- A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts, commits ahead / behind, and a `⇣ compact` button.
+- A top row with the folder, branch, commits ahead / behind, and uncommitted changes (`+added -removed`).
+- What Claude is doing now (tool, elapsed time, tool count), 5-hour and weekly limits with reset countdowns, cache hit rate, and session cost.
+- A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts and a `⇣ compact` button.
 
 Third-party plugins don't auto-update by default. To turn it on, run `/plugin`, open **Marketplaces**, select `ctxline`, and choose **Enable auto-update**. To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove it, run `claude plugin uninstall ctxline-desktop@ctxline`. Source is in [`desktop/`](desktop/).
 

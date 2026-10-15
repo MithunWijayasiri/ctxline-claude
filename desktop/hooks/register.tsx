@@ -105,16 +105,23 @@ async function git($: EngineInterface, cwd: string, args: string[]): Promise<str
 
 async function refresh($: EngineInterface): Promise<void> {
   const cwd = await $.session.cwd()
-  const [usage, counts] = await Promise.all([
+  const [usage, counts, branch, shortstat] = await Promise.all([
     $.session.usage({ breakdown: 'summary' }),
     git($, cwd, ['rev-list', '--left-right', '--count', '@{u}...HEAD']),
+    git($, cwd, ['branch', '--show-current']),
+    git($, cwd, ['diff', 'HEAD', '--shortstat']),
   ])
   const [behind = 0, ahead = 0] = (counts ?? '').split(/\s+/).map(n => parseInt(n, 10) || 0)
+  const stat = (re: RegExp): number => parseInt(re.exec(shortstat ?? '')?.[1] ?? '0', 10)
   const limit = (kind: string): Limit | undefined => {
     const found = usage.rateLimits.find(r => r.kind === kind)
     return found && { percent: Math.round(found.percentUsed), resetsAt: found.resetsAt }
   }
   const next: Snapshot = {
+    folder: cwd.split(/[\\/]/).filter(Boolean).pop() ?? cwd,
+    branch: branch || undefined, // empty when HEAD is detached
+    added: stat(/(\d+) insertion/),
+    removed: stat(/(\d+) deletion/),
     ahead,
     behind,
     contextUsed: Math.max(0, Math.min(100, Math.round(usage.context.percent ?? 0))),
@@ -279,8 +286,33 @@ export const register: Register = on => {
     const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
     const groups = [limits, stats].filter(g => g.length > 0)
+    const hasChanges = s.added > 0 || s.removed > 0
     return (
       <Box flexDirection="column" rowGap={1}>
+        <Box justifyContent="space-between" columnGap={2} borderStyle="round" borderDimColor paddingX={1}>
+          <Text wrap="truncate-end">
+            <Text>{s.folder}</Text>
+            {s.branch && (
+              <Text>
+                <Text dimColor> ⎇ </Text>
+                {s.branch}
+              </Text>
+            )}
+            {hasSync && (
+              <Text>
+                {' '}
+                {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
+                {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
+              </Text>
+            )}
+          </Text>
+          {hasChanges && (
+            <Text>
+              <Text color={GREEN}>+{s.added.toLocaleString('en-US')}</Text>{' '}
+              <Text color={RED}>-{s.removed.toLocaleString('en-US')}</Text>
+            </Text>
+          )}
+        </Box>
         <Box justifyContent="space-between" columnGap={2}>
           <Text wrap="truncate-end">{live}</Text>
           <Text>
@@ -307,12 +339,6 @@ export const register: Register = on => {
           {s.contextTokens !== undefined && (
             <Text dimColor>
               {tokens(s.contextTokens)} / {tokens(s.contextWindow)}
-            </Text>
-          )}
-          {hasSync && (
-            <Text>
-              {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
-              {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
             </Text>
           )}
           <Text dimColor>│</Text>

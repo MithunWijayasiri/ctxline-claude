@@ -63,13 +63,16 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 Files: `hooks/hooks.json` → `hooks/register.tsx` (the module); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`; state keys must match plugin name or validation fails).
 
-Layout (Desktop already shows dir/branch/model/effort — omitted):
+Layout (Desktop already shows model/effort — omitted; its own folder/branch/changes display is gone since its latest update, so the plugin draws them):
 
 ```text
-AbovePrompt  <activity>              H<pct> <reset> · W<pct> <reset> │ cache <pct>% · $<cost>
-             C<used> <full-width category bar> <tokens> / <window> ↑N↓M │ ⇣ compact
+AbovePrompt  ╭ <folder> ⎇ <branch> ↑N↓M                                   +<added> -<removed> ╮
+             <activity>              H<pct> <reset> · W<pct> <reset> │ cache <pct>% · $<cost>
+             C<used> <full-width category bar> <tokens> / <window> │ ⇣ compact
                  ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 ```
+
+Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync.
 
 No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; user enables per marketplace in `/plugin` → Marketplaces; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
@@ -81,9 +84,9 @@ Context bar: one segment per `/context` category from `$.session.usage({ breakdo
 
 `⇣ compact`: `Button` → `$.command.run({ command: 'compact' })` — Desktop sessions are headless: `$.session.compact()` throws there, and `$.prompt.submit` refuses `/`-prefixed text (both found by testing). `command.run` queues every call → `compacting` atom locks presses (shows `compacting…`) until the run settles; dim unclickable text while a turn runs (`activity` or `e.props.isWorking`); failure → toast. Neither `isWorking` flag covers a compaction (found by testing).
 
-Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD` via `$.process.run`; `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
+Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD`, `git branch --show-current`, `git diff HEAD --shortstat` via `$.process.run` (folder = basename of `$.session.cwd()`); `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
-Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. Desktop's own git/branch bar is not hookable. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
+Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
 
 Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
 

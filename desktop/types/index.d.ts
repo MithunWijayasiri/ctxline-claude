@@ -4,6 +4,10 @@ export type Limit = { percent: number; resetsAt?: string }
 export type Segment = { kind: 'used' | 'buffer' | 'free'; label: string; tokens: number; color: string }
 
 export type Snapshot = {
+  folder: string
+  branch?: string
+  added: number
+  removed: number
   ahead: number
   behind: number
   contextUsed: number
