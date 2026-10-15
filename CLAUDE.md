@@ -74,7 +74,7 @@ AbovePrompt  ╭ <folder> ⎇ <branch> ↑N↓M                                 
 
 Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync.
 
-No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; user enables per marketplace in `/plugin` → Marketplaces; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
+No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; no enable-auto-update toggle in `/plugin` → Marketplaces (only a one-off Update, found by testing) — user sets `extraKnownMarketplaces.ctxline.autoUpdate: true` in `~/.claude/settings.json`; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
 `displayName` (`plugin.json`) is the UI name; `name` must stay kebab-case (no spaces). Marketplace `name` is the "from <name>" label and the `@` suffix in install ids; no spaces allowed. `icon` in `plugin.json` is read only by Anthropic's directory — Desktop ignores it, not set.
 

@@ -210,6 +210,10 @@
     .opt code,.opt .cmd code{overflow-wrap:anywhere}
   }
 
+  .notice{max-width:760px;margin:28px auto 0;background:#fbe9df;border:1px solid var(--accent);border-left-width:5px;border-radius:14px;padding:16px 20px;font-size:15px}
+  .notice code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;border:1px solid var(--line)}
+  .notice .kicker{display:block;margin-bottom:6px;color:var(--accent);font-weight:700}
+
   .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:40px}
   .cta-stack{flex-direction:column;align-items:center}
   .btn{
@@ -491,6 +495,14 @@
           <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop@ctxline')">Copy</button>
         </div>
       </div>
+    </div>
+    <div class="notice">
+      <span class="kicker">⚠ Turn on auto-update</span>
+      <p><b>Third-party plugins don't auto-update by default</b>, so you'll stay on the version you installed. The <b>Update</b> button in <b>/plugin</b> only updates once. To turn on auto-update, set <code>autoUpdate</code> in <code>~/.claude/settings.json</code> — paste this into Claude Code to do it for you:</p>
+    </div>
+    <div class="cmd" style="max-width:760px;margin-top:12px">
+      <code><span class="cm">Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline</span></code>
+      <button class="copy" onclick="copyCmd(this,'Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline')">Copy</button>
     </div>
   </section>
 
