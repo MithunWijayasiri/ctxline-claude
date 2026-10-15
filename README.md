@@ -178,7 +178,7 @@ Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/c
 
 The plugin adds, above the prompt:
 
-- A top row with a pixel Claude pet (hops while working, sleeps when idle), the folder, branch, commits ahead / behind, and uncommitted changes (`+added -removed`).
+- A top row with a pixel Claude pet (hops while working, sleeps when idle — click it to wake it or make it hop), the folder, branch, commits ahead / behind, and uncommitted changes (`+added -removed`).
 - What Claude is doing now (tool, elapsed time, tool count), 5-hour and weekly limits with reset countdowns, cache hit rate, and session cost.
 - A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts and a `⇣ compact` button.
 

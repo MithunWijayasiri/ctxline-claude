@@ -61,7 +61,7 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module) → `hooks/pet.ts` (pixel pet SVG frames); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`; state keys must match plugin name or validation fails).
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module) → `hooks/pet.ts` (pixel pet SVG frames); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`, `poke`; state keys must match plugin name or validation fails).
 
 Layout (Desktop already shows model/effort — omitted; its own folder/branch/changes display is gone since its latest update, so the plugin draws them):
 
@@ -72,7 +72,7 @@ AbovePrompt  ╭ <pet> <folder> ⎇ <branch> ↑N↓M                           
                  ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 ```
 
-Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync. `<pet>`: pixel Claude (`Svg`, from the terminal logo) — hops while working, stands and blinks for 5 min after a turn, then sleeps (also before the first turn). Frames step on the `frame` atom, ticked every 250ms all session (also drives the spinner).
+Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync. `<pet>`: pixel Claude (`Svg`, from the terminal logo) — hops while working, stands and blinks for 5 min after a turn, then sleeps (also before the first turn). Click (blank `Button` laid over the `Svg` — only a Button is pressable, and it can't hold an `Svg`): asleep → wakes with a start (`!`), resets the sleep timer; awake → happy hop + heart. Frames step on the `frame` atom, ticked every 250ms all session (also drives the spinner).
 
 No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; no enable-auto-update toggle in `/plugin` → Marketplaces (only a one-off Update, found by testing) — user sets `extraKnownMarketplaces.ctxline.autoUpdate: true` in `~/.claude/settings.json`; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
@@ -80,7 +80,7 @@ No in-plugin update check. Updates come from Claude Code's marketplace auto-upda
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 
-Context bar: one segment per `/context` category from `$.session.usage({ breakdown: 'summary' })` (local estimate, no API call); deferred rows skipped, `free`/`buffer` by `kind`. Short labels + colors come from `CATEGORIES`, keyed by `/context` category name (checked against Claude Code 2.1.289); an unknown name falls back to its lowercased name + theme color — add it to `CATEGORIES` when one shows up. No breakdown → two-segment bar from `contextUsed`, no legend.
+Context bar: one segment per `/context` category from `$.session.usage({ breakdown: 'summary' })` (local estimate, no API call); deferred rows skipped, `free`/`buffer` by `kind`. Short labels + colors come from `CATEGORIES`, keyed by `/context` category name (checked against Claude Code 2.1.289); an unknown name falls back to its lowercased name + theme color — add it to `CATEGORIES` when one shows up. Legend stays one line: items fitted to `e.props.bodyColumns`, the rest counted as `+N more`; a wrapping second row is clipped (Desktop ignores `truncate-end` on it). No breakdown → two-segment bar from `contextUsed`, no legend.
 
 `⇣ compact`: `Button` → `$.command.run({ command: 'compact' })` — Desktop sessions are headless: `$.session.compact()` throws there, and `$.prompt.submit` refuses `/`-prefixed text (both found by testing). `command.run` queues every call → `compacting` atom locks presses (shows `compacting…`) until the run settles; dim unclickable text while a turn runs (`activity` or `e.props.isWorking`); failure → toast. Neither `isWorking` flag covers a compaction (found by testing).
 

@@ -29,6 +29,9 @@ export type Activity = {
   lastSeconds: number | null
 }
 
+// The last click on the pet, and whether it woke it.
+export type Poke = { at: number; woke: boolean }
+
 // Main-loop input tokens this session: served from the prompt cache vs all.
 export type CacheTally = { read: number; total: number }
 
@@ -40,6 +43,7 @@ declare module 'claude-code' {
       frame: number
       cache: CacheTally
       compacting: boolean
+      poke: Poke | null
     }
   }
 }
