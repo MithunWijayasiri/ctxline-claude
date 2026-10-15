@@ -24,7 +24,8 @@
     <!-- ctxline-desktop band -->
     <rect x="40" y="176" width="1200" height="176" rx="10" fill="#202020"></rect>
     <rect x="60.500" y="188.500" width="1159" height="39" rx="10" fill="none" stroke="#3a3a3a"></rect>
-    <text x="80" y="213"><tspan fill="#e8e6df">ctxline</tspan><tspan fill="#8f8c84"> ⎇ </tspan><tspan fill="#e8e6df">main</tspan><tspan fill="#22c55e" dx="8">↑2</tspan></text>
+    <svg x="76" y="199" width="36" height="18" viewBox="0 0 24 12" shape-rendering="crispEdges"><g transform="translate(0 2)"><rect x="3" y="0" width="12" height="4" fill="#d97757"/><rect x="1" y="4" width="16" height="2" fill="#d97757"/><rect x="3" y="6" width="12" height="2" fill="#d97757"/><rect x="5" y="2" width="1" height="2" fill="#1f1a17"/><rect x="12" y="2" width="1" height="2" fill="#1f1a17"/><rect x="4" y="8" width="1" height="2" fill="#d97757"/><rect x="6" y="8" width="1" height="1" fill="#d97757"/><rect x="11" y="8" width="1" height="2" fill="#d97757"/><rect x="13" y="8" width="1" height="1" fill="#d97757"/></g></svg>
+    <text x="120" y="213"><tspan fill="#e8e6df">ctxline</tspan><tspan fill="#8f8c84"> ⎇ </tspan><tspan fill="#e8e6df">main</tspan><tspan fill="#22c55e" dx="8">↑2</tspan></text>
     <text x="1200" y="213" text-anchor="end"><tspan fill="#22c55e">+1,594</tspan><tspan fill="#f43f5e" dx="8">-21</tspan></text>
     <text x="60" y="267"><tspan fill="#d97757" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
     <text x="1220" y="267" text-anchor="end"><tspan fill="#22c55e">H12</tspan><tspan fill="#8f8c84"> 1h28m · </tspan><tspan fill="#22c55e">W25</tspan><tspan fill="#8f8c84"> 15h48m │ cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
