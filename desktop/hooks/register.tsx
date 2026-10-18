@@ -28,6 +28,10 @@ const RED = 'red'
 const ACCENT = '#d97757'
 const BUFFER_COLOR = '#4b5160'
 const FREE_COLOR = '#2e3240'
+const LETTER_COLOR = '#e8e6df'
+const RING_SIZE = 18
+// An Svg takes CSS colors, where green and yellow are far darker than the theme's.
+const SVG_COLORS = { [GREEN]: '#22c55e', [YELLOW]: '#eab308', [ORANGE]: ORANGE, [RED]: '#f43f5e' }
 
 // Keyed by /context's category names (Claude Code 2.1.289); an unknown name falls back to its own name and theme color.
 const CATEGORIES: Record<string, { label: string; color: string }> = {
@@ -41,7 +45,7 @@ const CATEGORIES: Record<string, { label: string; color: string }> = {
   Messages: { label: 'msgs', color: '#22d3ee' },
 }
 
-function usageColor(percent: number): string {
+function usageColor(percent: number): keyof typeof SVG_COLORS {
   if (percent < 60) return GREEN
   if (percent < 80) return YELLOW
   if (percent < 90) return ORANGE
@@ -55,13 +59,12 @@ function contextColor(used: number): string {
   return RED
 }
 
-function countdown(resetsAt: string, now: number): string {
-  const mins = Math.max(0, Math.floor((Date.parse(resetsAt) - now) / 60000))
-  const days = Math.floor(mins / 1440)
-  const hours = Math.floor((mins % 1440) / 60)
-  if (days > 0) return `${days}d${hours}h`
-  if (hours > 0) return `${hours}h${mins % 60}m`
-  return `${mins}m`
+// The share left as an arc over a dim track, clockwise from 12 o'clock, the limit's letter inside.
+function ring(left: number, color: string, letter: string): string {
+  const circle = (attrs: string): string => `<circle cx="9" cy="9" r="8" fill="none" stroke-width="1.5" ${attrs}/>`
+  const arc = left > 0 ? circle(`stroke="${color}" stroke-linecap="round" pathLength="100" stroke-dasharray="${left} 100" transform="rotate(-90 9 9)"`) : ''
+  const text = `<text x="9" y="9.5" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" fill="${LETTER_COLOR}">${letter}</text>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">${circle(`stroke="${FREE_COLOR}"`)}${arc}${text}</svg>`
 }
 
 function tokens(n: number): string {
@@ -136,7 +139,7 @@ async function refresh($: EngineInterface): Promise<void> {
   const stat = (re: RegExp): number => parseInt(re.exec(shortstat ?? '')?.[1] ?? '0', 10)
   const limit = (kind: string): Limit | undefined => {
     const found = usage.rateLimits.find(r => r.kind === kind)
-    return found && { percent: Math.round(found.percentUsed), resetsAt: found.resetsAt }
+    return found && { percent: Math.round(found.percentUsed) }
   }
   const next: Snapshot = {
     folder: cwd.split(/[\\/]/).filter(Boolean).pop() ?? cwd,
@@ -283,16 +286,16 @@ export const register: Register = on => {
       live = <Text dimColor>ready · no turns yet</Text>
     }
 
-    const limitSegment = (label: string, limit: Limit) => (
-      <Text>
-        <Text color={usageColor(limit.percent)}>
-          {label}
-          {limit.percent}
-        </Text>
-        {limit.resetsAt && <Text dimColor> {countdown(limit.resetsAt, now)}</Text>}
-      </Text>
-    )
-    const limits = [s.fiveHour && limitSegment('H', s.fiveHour), s.sevenDay && limitSegment('W', s.sevenDay)].filter(Boolean)
+    const limitItem = (label: string, limit: Limit) => {
+      const left = Math.max(0, 100 - limit.percent)
+      const color = usageColor(limit.percent)
+      return (
+        <Box alignItems="center" columnGap={1}>
+          <Svg source={ring(left, SVG_COLORS[color], label)} alt={`${label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
+          <Text color={color}>{left}%</Text>
+        </Box>
+      )
+    }
 
     const c = await read($, cache)
     const stats = [
@@ -319,7 +322,6 @@ export const register: Register = on => {
     const hidden = legend.length - shown.length
     const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
-    const groups = [limits, stats].filter(g => g.length > 0)
     const hasChanges = s.added > 0 || s.removed > 0
     const mascot = pet(isBusy, idleSince(a), await read($, poke), now, tick)
     return (
@@ -361,19 +363,22 @@ export const register: Register = on => {
         </Box>
         <Box justifyContent="space-between" columnGap={2}>
           <Text wrap="truncate-end">{live}</Text>
-          <Text>
-            {groups.map((group, gi) => (
-              <Text key={String(gi)}>
-                {gi > 0 && <Text dimColor> │ </Text>}
-                {group.map((item, i) => (
+          <Box alignItems="center" columnGap={1} flexShrink={0}>
+            {s.fiveHour && limitItem('H', s.fiveHour)}
+            {s.fiveHour && s.sevenDay && <Text dimColor>·</Text>}
+            {s.sevenDay && limitItem('W', s.sevenDay)}
+            {(s.fiveHour || s.sevenDay) && stats.length > 0 && <Text dimColor>│</Text>}
+            {stats.length > 0 && (
+              <Text>
+                {stats.map((item, i) => (
                   <Text key={String(i)}>
                     {i > 0 && <Text dimColor> · </Text>}
                     {item}
                   </Text>
                 ))}
               </Text>
-            ))}
-          </Text>
+            )}
+          </Box>
         </Box>
         <Box alignItems="center" columnGap={1}>
           <Text color={contextColor(s.contextUsed)}>{label}</Text>
