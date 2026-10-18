@@ -28,7 +28,12 @@
     <text x="120" y="213"><tspan fill="#e8e6df">ctxline</tspan><tspan fill="#8f8c84"> ⎇ </tspan><tspan fill="#e8e6df">main</tspan><tspan fill="#22c55e" dx="8">↑2</tspan></text>
     <text x="1200" y="213" text-anchor="end"><tspan fill="#22c55e">+1,594</tspan><tspan fill="#f43f5e" dx="8">-21</tspan></text>
     <text x="60" y="267"><tspan fill="#d97757" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s · tool #5</tspan></text>
-    <text x="1220" y="267" text-anchor="end"><tspan fill="#22c55e">H12</tspan><tspan fill="#8f8c84"> 1h28m · </tspan><tspan fill="#22c55e">W25</tspan><tspan fill="#8f8c84"> 15h48m │ cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
+    <svg x="951.5" y="253" width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="none" stroke-width="1.5" stroke="#2e3240"/><circle cx="9" cy="9" r="8" fill="none" stroke-width="1.5" stroke="#22c55e" stroke-linecap="round" pathLength="100" stroke-dasharray="88 100" transform="rotate(-90 9 9)"/><text x="9" y="9.5" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#e8e6df">H</text></svg>
+    <text x="975.5" y="267" fill="#22c55e">88%</text>
+    <text x="1011.5" y="267" fill="#8f8c84">·</text>
+    <svg x="1022" y="253" width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" fill="none" stroke-width="1.5" stroke="#2e3240"/><circle cx="9" cy="9" r="8" fill="none" stroke-width="1.5" stroke="#22c55e" stroke-linecap="round" pathLength="100" stroke-dasharray="75 100" transform="rotate(-90 9 9)"/><text x="9" y="9.5" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" fill="#e8e6df">W</text></svg>
+    <text x="1046" y="267" fill="#22c55e">75%</text>
+    <text x="1220" y="267" text-anchor="end"><tspan fill="#8f8c84">│ cache </tspan><tspan fill="#e8e6df" font-weight="600">94%</tspan><tspan fill="#8f8c84"> · </tspan><tspan fill="#e8e6df" font-weight="600">$5.82</tspan></text>
     <text x="60" y="300" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" fill="#22c55e">C23</text>
     <rect x="96" y="287" width="12.6" height="16" fill="#a78bfa"></rect>
     <rect x="108.6" y="287" width="50.4" height="16" fill="#60a5fa"></rect>

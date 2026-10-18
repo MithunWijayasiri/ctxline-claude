@@ -1,4 +1,4 @@
-export type Limit = { percent: number; resetsAt?: string }
+export type Limit = { percent: number }
 
 // One slice of the context bar: a /context category, the autocompact buffer, or free space.
 export type Segment = { kind: 'used' | 'buffer' | 'free'; label: string; tokens: number; color: string }

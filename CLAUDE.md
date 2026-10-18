@@ -67,7 +67,7 @@ Layout (Desktop already shows model/effort — omitted; its own folder/branch/ch
 
 ```text
 AbovePrompt  ╭ <pet> <folder> ⎇ <branch> ↑N↓M                             +<added> -<removed> ╮
-             <activity>              H<pct> <reset> · W<pct> <reset> │ cache <pct>% · $<cost>
+             <activity>                          (H) <left>% · (W) <left>% │ cache <pct>% · $<cost>
              C<used> <full-width category bar> <tokens> / <window> │ ⇣ compact
                  ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 ```
@@ -77,6 +77,8 @@ Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a 
 No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; no enable-auto-update toggle in `/plugin` → Marketplaces (only a one-off Update, found by testing) — user sets `extraKnownMarketplaces.ctxline.autoUpdate: true` in `~/.claude/settings.json`; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
 `displayName` (`plugin.json`) is the UI name; `name` must stay kebab-case (no spaces). Marketplace `name` is the "from <name>" label and the `@` suffix in install ids; no spaces allowed. `icon` in `plugin.json` is read only by Anthropic's directory — Desktop ignores it, not set.
+
+Limits: percent left (100 − used), no reset time; `(H)`/`(W)` is an `Svg` donut of the share left with the limit's letter inside, arc colored by `usageColor` through `SVG_COLORS` (an `Svg` takes CSS colors, not the theme's named ones).
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 
@@ -104,7 +106,7 @@ Validate: `claude plugin validate .` (marketplace) and `claude plugin validate .
 | `docs/index.html` | hero mock + subagent rows | byte-compared by `test/docs-drift.test.js` → drift fails `npm test` |
 | `CLAUDE.md` | format diagram + legend (top), timing/TTL numbers, stdin fields, export list | the Invariants block hard-codes constants — grep it for any number you change |
 | `package.json` | `version` ↔ the `VERSION` constant | test-enforced; a stale `VERSION` nudges forever (or never) |
-| `desktop/hooks/register.tsx` | usage/context color thresholds, countdown format | hand-copied, no test — `usageColor`/`contextColor` drift silently |
+| `desktop/hooks/register.tsx` | usage/context color thresholds | hand-copied, no test — `usageColor`/`contextColor` drift silently |
 
 Desktop plugin mirrors (hand-authored, not drift-tested) — update when `desktop/` layout changes: `docs/assets/desktop-preview.svg` (README), `docs/index.html` `#desktop` mock, README "Claude desktop app" section.
 
