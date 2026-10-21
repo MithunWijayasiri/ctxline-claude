@@ -183,5 +183,14 @@ function runUninstall() {
     } catch (e) {}
   }
 
+  // 4. Clear the per-transcript token counts (best-effort)
+  const tokensDir = path.join(claudeDir, 'cache', 'tokens');
+  if (fs.existsSync(tokensDir)) {
+    try {
+      fs.rmSync(tokensDir, { recursive: true, force: true });
+      console.log(`${green}✓ Cleared token cache${reset}`);
+    } catch (e) {}
+  }
+
   console.log(`\n${green}Uninstall complete.${reset} Restart Claude Code or start a new session.\n`);
 }

@@ -38,6 +38,7 @@ function reply(id, { input = 0, read = 0, write = 0, output, sidechain = false }
   return JSON.stringify(record) + '\n';
 }
 
+// The child's env: the fake HOME, no usage fetch, no COLUMNS, and CTXLINE_DISABLE only when given.
 function env(home, disable) {
   const e = { ...process.env, HOME: home, USERPROFILE: home, ANTHROPIC_API_KEY: 'test' };
   delete e.COLUMNS;
@@ -46,6 +47,7 @@ function env(home, disable) {
   return e;
 }
 
+// The main line, ANSI stripped, rendered for a payload whose transcript_path is `transcript`.
 function mainLine(home, transcript, disable) {
   const input = JSON.stringify({
     model: { display_name: 'Opus 5.5' },
@@ -59,6 +61,7 @@ function mainLine(home, transcript, disable) {
   return clean(res.stdout || '');
 }
 
+// The subagent rows ({ id, content }, content ANSI stripped) for `tasks` in that session.
 function subagentRows(home, transcript, tasks, disable) {
   const res = spawnSubagent(JSON.stringify({ session_id: 'session', transcript_path: transcript, tasks }), env(home, disable));
   assert.strictEqual(res.status, 0);
@@ -66,6 +69,7 @@ function subagentRows(home, transcript, tasks, disable) {
   return raw ? raw.split('\n').map(l => JSON.parse(l)).map(r => ({ id: r.id, content: clean(r.content) })) : [];
 }
 
+// The tokens segment of a rendered line, or '' when it has none.
 const tokensOf = (line) => line.split(' │ ').find(s => /^R\S+ I\S+ O\S+/.test(s)) || '';
 
 // ── format and placement (pure) ──
@@ -190,4 +194,36 @@ test('tokens: CTXLINE_DISABLE=tokens leaves subagent rows as before', () => {
   fs.writeFileSync(path.join(subagents, 'agent-a1.jsonl'), reply('x1', { read: 2000, output: 30 }));
   const rows = subagentRows(home, transcript, [{ id: 'a1', name: 'reviewer' }], 'tokens');
   assert.strictEqual(rows[0].content, 'reviewer');
+});
+
+// ── cache lifetime ──
+
+test('tokens: a new state file clears others not written for 30 days, and keeps recent ones', () => {
+  const { home, transcript } = setup();
+  const dir = path.join(home, '.claude', 'cache', 'tokens');
+  fs.mkdirSync(dir, { recursive: true });
+  const old = path.join(dir, 'old.json');
+  const recent = path.join(dir, 'recent.json');
+  fs.writeFileSync(old, '{}');
+  fs.writeFileSync(recent, '{}');
+  const longAgo = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+  fs.utimesSync(old, longAgo, longAgo);
+  fs.utimesSync(recent, new Date(Date.now() - 29 * 24 * 60 * 60 * 1000), new Date(Date.now() - 29 * 24 * 60 * 60 * 1000));
+  fs.writeFileSync(transcript, reply('m1', { read: 1000, output: 10 }));
+  assert.strictEqual(tokensOf(mainLine(home, transcript)), 'R1.0k I0 O10');
+  assert.ok(!fs.existsSync(old), 'a state file untouched for 31 days is deleted');
+  assert.ok(fs.existsSync(recent), 'one written 29 days ago stays');
+  assert.strictEqual(fs.readdirSync(dir).length, 2, "the transcript's own state file and the recent one");
+});
+
+test('tokens: uninstall removes the token cache', () => {
+  const { home } = setup();
+  const dir = path.join(home, '.claude', 'cache', 'tokens');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'state.json'), '{}');
+  const res = require('node:child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'install.js'), 'uninstall'], {
+    encoding: 'utf8', timeout: 10000, env: env(home)
+  });
+  assert.strictEqual(res.status, 0, res.stderr);
+  assert.ok(!fs.existsSync(dir), 'cache/tokens is gone');
 });

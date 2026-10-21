@@ -153,12 +153,14 @@ Remove the `statusLine` and `subagentStatusLine` blocks from `~/.claude/settings
 # macOS / Linux
 rm ~/.claude/hooks/statusline.js
 rm -f ~/.claude/cache/usage-cache.json
+rm -rf ~/.claude/cache/tokens
 ```
 
 ```powershell
 # Windows (PowerShell)
 Remove-Item "$env:USERPROFILE\.claude\hooks\statusline.js"
 Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction SilentlyContinue
+Remove-Item "$env:USERPROFILE\.claude\cache\tokens" -Recurse -ErrorAction SilentlyContinue
 ```
 
 </details>

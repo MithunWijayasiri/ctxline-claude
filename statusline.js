@@ -73,6 +73,9 @@ const TOKENS_MAX_READ = 16 * 1024 * 1024;
 // One reply is logged several times while it streams, the last record's usage the one that
 // counts: the latest message ids are kept so a later record replaces an earlier one's count.
 const TOKENS_RECENT_IDS = 64;
+// A state file untouched this long belongs to a transcript no longer written to; it is deleted
+// when a new one is created (the only time the directory grows), so it never piles up.
+const TOKENS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 // ANSI color codes
 const colors = {
@@ -740,8 +743,22 @@ function getCurrentTask(sessionId) {
   return '';
 }
 
+// A transcript's state file: ~/.claude/cache/tokens/<sha1 of its path>.json.
 function tokensCacheFile(file) {
   return path.join(TOKENS_CACHE_DIR, crypto.createHash('sha1').update(file).digest('hex') + '.json');
+}
+
+// Delete state files (and stray temp files) not written for TOKENS_MAX_AGE_MS. Best-effort: a
+// file another render is writing, or one already gone, is skipped.
+function pruneTokenStates(now = Date.now()) {
+  try {
+    for (const name of fs.readdirSync(TOKENS_CACHE_DIR)) {
+      const file = path.join(TOKENS_CACHE_DIR, name);
+      try {
+        if (now - fs.statSync(file).mtimeMs > TOKENS_MAX_AGE_MS) fs.unlinkSync(file);
+      } catch (e) {}
+    }
+  } catch (e) {}
 }
 
 // One transcript line into the running state: assistant records only, each message id once.
@@ -804,9 +821,11 @@ function readTokenTotals(file, mainThread) {
         for (const line of buf.toString('utf8', 0, end).split('\n')) addTokenLine(state, line, mainThread);
         state.offset += end + 1;
         fs.mkdirSync(TOKENS_CACHE_DIR, { recursive: true });
+        const isNew = !fs.existsSync(cacheFile);
         const tmp = `${cacheFile}.${process.pid}.tmp`;
         fs.writeFileSync(tmp, JSON.stringify(state));
         fs.renameSync(tmp, cacheFile);
+        if (isNew) pruneTokenStates();
       }
     }
     const [input, read, write, output] = state.totals;
