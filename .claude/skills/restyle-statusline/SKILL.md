@@ -9,7 +9,7 @@ description: Change the statusline's visible design — layout, segment format, 
 
 | File | Where |
 |---|---|
-| `statusline.js` | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `getUpdateFacts`, `renderUpdateLine`, `renderUpdatedLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
+| `statusline.js` | `renderContextBar`, `getContextBar`, `renderSubagentTask`, `buildUsageBar`, `buildUsageBars`, `formatAheadBehind`, `getCostSegment`, `renderTokens`, `formatTokenCount`, `readTokenTotals`, `subagentTranscript`, `getUpdateFacts`, `renderUpdateLine`, `renderUpdatedLine`, `layout`, `collectFacts`, `renderStatusLine`, `outputStatus`, `outputFallback` |
 | `test/render.test.js` | label regexes (e.g. `/C\d+ /`, `/H\d+\b/`) |
 | `scripts/preview.js` | cache seed via `test/fixture.js`'s `seedUsageCache`; `render()` params (`columns`, `disable`) |
 | `docs/assets/preview.svg` | only 2 of 12 `<text>` elements generated (main statusline + subagent row); other 10 (window chrome, prompt lines, bullets) hand-authored |
@@ -29,6 +29,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 - Labels live INSIDE the builder functions (`renderContextBar`/`buildUsageBar`), not as prefixes in `renderStatusLine`. `renderStatusLine` pushes segments verbatim; `outputStatus`/`outputFallback` are thin writers that call it.
 - `↑N↓M` is appended to the branch string (↑ green / ↓ red), not a separate segment. Zero side omitted.
 - `$<cost>` is dim, sits after usage and before task.
+- Tokens (`R<n> I<n> O<n>`, letters dim) sit after cost and before task; on subagent rows, last.
 - The `⬆` row is **not a segment**. `renderUpdateLine(latest)` builds it and `renderStatusLine` appends it after `layout()`, so it never affects wrap math. Green `⬆ <version>`, dim `available ·`, bold command. Conditional and rare — only when `update-cache.json` holds a `latest` strictly newer than `VERSION`. Cache-only on the render path; the fetch runs in the detached `update-check` entry point.
 - Self-install variant of the same row: `renderUpdatedLine({ from, to })` — green `⬆ ctxline updated`, dim `<from> →`, bold `<to>`. Shown instead of the nudge when the cache's `updatedTo` equals `VERSION`, for `UPDATED_NOTICE_MS` (5s) from the first render that shows it (`updatedShownAt`, stamped by `getUpdateFacts`).
 - Consts: `BAR_WIDTH` 6 (bar cells), `SEGMENT_SEP` `' │ '`, `MAX_BRANCH_LEN` 24, `WIDTH_MARGIN` 0.
@@ -45,6 +46,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C45 ███░░░ │ H14 �
 | `H` / `W` | stdin `rate_limits` via `buildUsageFromStdin`, else the OAuth `/usage` API via `usage-cache.json` |
 | scoped weekly | `/usage` API only — never stdin |
 | `$` | stdin `cost.total_cost_usd`, no network/cache |
+| tokens | the transcript at stdin `transcript_path` (subagent rows: `subagents/agent-<id>.jsonl` beside it), read incrementally via `~/.claude/cache/tokens/` |
 | task | newest `~/.claude/todos/<sessionId>*-agent-*.json`, `activeForm` of the `in_progress` todo |
 | `⬆` row | `update-cache.json` only — the render path never fetches |
 
@@ -62,7 +64,7 @@ Adding or moving a segment means picking its line in `renderStatusLine`, not jus
 
 ## Opt-out names are part of the visible contract
 
-`CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `task`, `update`, `autoupdate` (self-install only; nudge stays), `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
+`CTXLINE_DISABLE` recognizes `branch`, `effort`, `cost`, `tokens`, `task`, `update`, `autoupdate` (self-install only; nudge stays), `usage` (H+W). Renaming a segment → update the `DISABLED` checks, the test `disable` opt, preview's opt-out scenario (passes `usage,cost`), and the docs. `dir`/`model`/`context` are never disableable.
 
 ## Colors (three schemes, kept separate on purpose)
 
