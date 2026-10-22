@@ -23,7 +23,7 @@
   <img src="docs/assets/preview.svg" alt="Claude Code Statusline">
 </p>
 
-Shows your directory, git branch, model, context window, 5-hour and weekly usage limits, and session cost in one line under the Claude Code prompt.
+Shows your directory, git branch, model, context window, 5-hour and weekly usage limits, session cost, and token counts in one line under the Claude Code prompt.
 
 ## Contents
 
@@ -92,6 +92,7 @@ Then add both entries to `~/.claude/settings.json`. The second one draws a row p
 | `W` Weekly | Weekly usage limit and reset countdown |
 | Model limit | Weekly limit for one model, if your account has one, labeled by the model's initial (`F` = Fable) |
 | `$` Cost | Session cost in USD |
+| Tokens | Tokens the main agent has used: `R` cache reads, `I` input not read from the cache (new input and cache writes), `O` output. Each subagent row shows its own |
 | Task | The in-progress todo |
 
 Segments past model and context appear only when there is data for them. Usage limits show for Pro/Max subscriptions only. Bars change color as you near a limit. On a narrow terminal the line wraps to two (needs Claude Code v2.1.153+).
@@ -105,6 +106,7 @@ To hide segments, set `CTXLINE_DISABLE` to a comma-separated list of:
 | `branch` | Branch and ahead / behind |
 | `effort` | Effort level |
 | `cost` | Session cost |
+| `tokens` | Token counts, on the main line and subagent rows |
 | `task` | Current task |
 | `usage` | 5-hour, weekly, and model limits |
 | `autoupdate` | Auto-update. You get an upgrade notice instead |
@@ -151,12 +153,14 @@ Remove the `statusLine` and `subagentStatusLine` blocks from `~/.claude/settings
 # macOS / Linux
 rm ~/.claude/hooks/statusline.js
 rm -f ~/.claude/cache/usage-cache.json
+rm -rf ~/.claude/cache/tokens
 ```
 
 ```powershell
 # Windows (PowerShell)
 Remove-Item "$env:USERPROFILE\.claude\hooks\statusline.js"
 Remove-Item "$env:USERPROFILE\.claude\cache\usage-cache.json" -ErrorAction SilentlyContinue
+Remove-Item "$env:USERPROFILE\.claude\cache\tokens" -Recurse -ErrorAction SilentlyContinue
 ```
 
 </details>
@@ -222,6 +226,13 @@ No. Most renders read a local cache. Usage comes from the session data Claude Co
 <summary>Is the cost my actual bill?</summary>
 
 No, if you're on Pro or Max. It's what the session would cost at API prices, as Claude Code computes it. API-key users pay this amount.
+
+</details>
+
+<details>
+<summary>Where do the token counts come from?</summary>
+
+From the transcript Claude Code keeps for the session (and one per subagent), read on your machine only. Each render reads just the lines added since the last one. The counts are what Claude Code logged, which can differ from its own cost estimate: `O` can be lower than what was really generated, because Claude Code sometimes logs a reply before it finishes, and the estimate also counts model calls that aren't in the transcript. `R` and `I` are known when a reply starts, so they're exact.
 
 </details>
 

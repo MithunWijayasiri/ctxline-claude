@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Claude Code statusline: dir │ model │ context │ usage │ cost │ task
+// Claude Code statusline: dir │ model │ context │ usage │ cost │ tokens │ task
 // https://github.com/MithunWijayasiri/ctxline-claude
 
 const fs = require('fs');
@@ -7,13 +7,14 @@ const path = require('path');
 const os = require('os');
 const https = require('https');
 const { execSync, execFileSync, spawn } = require('child_process');
+const crypto = require('crypto');
 
 // Lives here, not package.json: this file ships standalone to ~/.claude/hooks/. Must match package.json.
 const VERSION = '1.7.5';
 
 const IS_API_KEY = !!process.env.ANTHROPIC_API_KEY;
 
-// Segment opt-out: comma list. Recognized: branch, effort, cost, task, update, autoupdate, usage.
+// Segment opt-out: comma list. Recognized: branch, effort, cost, tokens, task, update, autoupdate, usage.
 // Disabling skips the work, not just the output; dir/model/context always render.
 // autoupdate: no self-install, the "available" row stays; update: no check at all.
 const DISABLED = new Set(
@@ -62,6 +63,19 @@ const SEMVER_RE = /^\d+\.\d+\.\d+$/;       // releases only: a prerelease never 
 
 // Subagent mode reads only stdin (no fetch to race), so its read gets its own short cap.
 const SUBAGENT_TIMEOUT_MS = 500;
+
+// Token totals per agent, from Claude Code's transcripts (stdin transcript_path; a subagent's
+// is <session>/subagents/agent-<id>.jsonl). Read from where the last render stopped, the
+// offset and running totals kept per file; at most TOKENS_MAX_READ per render, so a first
+// read of a long transcript never stalls the line (it catches up over a few renders).
+const TOKENS_CACHE_DIR = path.join(CACHE_DIR, 'tokens');
+const TOKENS_MAX_READ = 16 * 1024 * 1024;
+// One reply is logged several times while it streams, the last record's usage the one that
+// counts: the latest message ids are kept so a later record replaces an earlier one's count.
+const TOKENS_RECENT_IDS = 64;
+// A state file untouched this long belongs to a transcript no longer written to; it is deleted
+// when a new one is created (the only time the directory grows), so it never piles up.
+const TOKENS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 // ANSI color codes
 const colors = {
@@ -729,6 +743,150 @@ function getCurrentTask(sessionId) {
   return '';
 }
 
+// A transcript's state file: ~/.claude/cache/tokens/<sha1 of its path>.json.
+function tokensCacheFile(file) {
+  return path.join(TOKENS_CACHE_DIR, crypto.createHash('sha1').update(file).digest('hex') + '.json');
+}
+
+// Delete state files (and stray temp files) not written for TOKENS_MAX_AGE_MS. Best-effort: a
+// file another render is writing, or one already gone, is skipped.
+function pruneTokenStates(now = Date.now()) {
+  try {
+    for (const name of fs.readdirSync(TOKENS_CACHE_DIR)) {
+      const file = path.join(TOKENS_CACHE_DIR, name);
+      try {
+        if (now - fs.statSync(file).mtimeMs > TOKENS_MAX_AGE_MS) fs.unlinkSync(file);
+      } catch (e) {}
+    }
+  } catch (e) {}
+}
+
+// One transcript line into the running state: assistant records only, each message id once.
+function addTokenLine(state, line, mainThread) {
+  if (!line.includes('"usage"') || !line.includes('"assistant"')) return;
+  let d;
+  try {
+    d = JSON.parse(line);
+  } catch (e) {
+    return;
+  }
+  const usage = d?.message?.usage;
+  if (d.type !== 'assistant' || !usage) return;
+  // Older Claude Code versions logged subagents inside the session's own transcript.
+  if (mainThread && d.isSidechain) return;
+  const id = d.message.id || d.requestId || d.uuid;
+  const now = [
+    usage.input_tokens || 0,
+    usage.cache_read_input_tokens || 0,
+    usage.cache_creation_input_tokens || 0,
+    usage.output_tokens || 0
+  ];
+  const seen = state.recent.find(r => r[0] === id);
+  const before = seen ? seen.slice(1) : [0, 0, 0, 0];
+  for (let k = 0; k < 4; k++) state.totals[k] += now[k] - before[k];
+  if (seen) {
+    seen.splice(1, 4, ...now);
+  } else {
+    state.recent.push([id, ...now]);
+    if (state.recent.length > TOKENS_RECENT_IDS) state.recent.shift();
+  }
+}
+
+// { read, input, output, partial } for one transcript, or null. read = cache reads; input =
+// uncached input + cache writes (what the model read for the first time); output = output,
+// thinking included. Reads only what was appended since the last render; partial while a
+// long transcript is still being caught up on.
+function readTokenTotals(file, mainThread) {
+  if (typeof file !== 'string' || !file) return null;
+  let fd;
+  try {
+    const stat = fs.statSync(file);
+    const cacheFile = tokensCacheFile(file);
+    let state = null;
+    try {
+      state = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    } catch (e) {}
+    // A replaced or truncated transcript is counted again from its start.
+    if (!state || state.ino !== stat.ino || !(state.offset <= stat.size) || !Array.isArray(state.totals) || !Array.isArray(state.recent)) {
+      state = { ino: stat.ino, offset: 0, totals: [0, 0, 0, 0], recent: [] };
+    }
+    if (state.offset < stat.size) {
+      fd = fs.openSync(file, 'r');
+      const length = Math.min(stat.size - state.offset, TOKENS_MAX_READ);
+      const buf = Buffer.alloc(length);
+      const got = fs.readSync(fd, buf, 0, length, state.offset);
+      // Whole lines only: the session may be mid-write on the last one.
+      const end = got > 0 ? buf.lastIndexOf(10, got - 1) : -1;
+      if (end >= 0) {
+        for (const line of buf.toString('utf8', 0, end).split('\n')) addTokenLine(state, line, mainThread);
+        state.offset += end + 1;
+        fs.mkdirSync(TOKENS_CACHE_DIR, { recursive: true });
+        const isNew = !fs.existsSync(cacheFile);
+        const tmp = `${cacheFile}.${process.pid}.tmp`;
+        fs.writeFileSync(tmp, JSON.stringify(state));
+        fs.renameSync(tmp, cacheFile);
+        if (isNew) pruneTokenStates();
+      }
+    }
+    const [input, read, write, output] = state.totals;
+    return { read, input: input + write, output, partial: stat.size - state.offset > TOKENS_MAX_READ / 64 };
+  } catch (e) {
+    return null;
+  } finally {
+    if (fd !== undefined) {
+      try { fs.closeSync(fd); } catch (e) {}
+    }
+  }
+}
+
+// A subagent row's transcript: agent-<task id>.jsonl beside the session's transcript, else the
+// most recent subagent whose .meta.json has the task's description; '' when none.
+function subagentTranscript(transcriptPath, task) {
+  if (typeof transcriptPath !== 'string' || !transcriptPath || !task) return '';
+  try {
+    const dir = path.join(transcriptPath.replace(/\.jsonl$/, ''), 'subagents');
+    const direct = path.join(dir, `agent-${task.id}.jsonl`);
+    if (fs.existsSync(direct)) return direct;
+    if (!task.description) return '';
+    let best = '';
+    let bestTime = -1;
+    for (const name of fs.readdirSync(dir)) {
+      if (!name.endsWith('.meta.json')) continue;
+      try {
+        const meta = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
+        if (meta?.description !== task.description) continue;
+        const file = path.join(dir, name.replace(/\.meta\.json$/, '.jsonl'));
+        const time = fs.statSync(file).mtimeMs;
+        if (time > bestTime) {
+          best = file;
+          bestTime = time;
+        }
+      } catch (e) {}
+    }
+    return best;
+  } catch (e) {
+    return '';
+  }
+}
+
+// 999 -> "999", 1530 -> "1.5k", 12345 -> "12k", 2.41e9 -> "2.4B".
+function formatTokenCount(n) {
+  const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'k']];
+  for (const [size, unit] of units) {
+    if (n >= size) return (n / size).toFixed(n >= size * 10 ? 0 : 1) + unit;
+  }
+  return String(Math.round(n));
+}
+
+// "R617M I7.0M O1.5M": cache reads, input not from the cache, output (labels dim); "…" while
+// still catching up; '' when absent or zero.
+function renderTokens(totals) {
+  if (!totals || !(totals.read + totals.input + totals.output > 0)) return '';
+  const part = (label, n) => `${colors.dim}${label}${colors.reset}${formatTokenCount(n)}`;
+  const body = [part('R', totals.read), part('I', totals.input), part('O', totals.output)].join(' ');
+  return totals.partial ? `${body}${colors.dim}…${colors.reset}` : body;
+}
+
 // Visible (printable) width of a segment string: strip ANSI color codes, count code points.
 function visibleWidth(str) {
   return [...str.replace(/\x1b\[[0-9;]*m/g, '')].length;
@@ -746,8 +904,8 @@ function layout(line1Parts, line2Parts, cols) {
 }
 
 // Everything the render needs that touches fs/child_process/env (git, todos, update cache,
-// COLUMNS), so renderStatusLine stays pure. Own try/catch: called outside outputStatus's, and
-// a malformed current_dir must still degrade to a renderable fallback.
+// transcript tokens, COLUMNS), so renderStatusLine stays pure. Own try/catch: called outside
+// outputStatus's, and a malformed current_dir must still degrade to a renderable fallback.
 function collectFacts(data) {
   try {
     const dir = data?.workspace?.current_dir || process.cwd();
@@ -758,9 +916,10 @@ function collectFacts(data) {
     const task = DISABLED.has('task') ? '' : getCurrentTask(sessionId);
     const { update, updated } = DISABLED.has('update') ? { update: '', updated: null } : getUpdateFacts();
     const cols = parseInt(process.env.COLUMNS, 10);
-    return { dirname, branch, sync, task, update, updated, cols };
+    const tokens = DISABLED.has('tokens') ? null : readTokenTotals(data?.transcript_path, true);
+    return { dirname, branch, sync, task, update, updated, cols, tokens };
   } catch (e) {
-    return { dirname: '~', branch: '', sync: '', task: '', update: '', updated: null, cols: undefined };
+    return { dirname: '~', branch: '', sync: '', task: '', update: '', updated: null, cols: undefined, tokens: null };
   }
 }
 
@@ -800,6 +959,8 @@ function renderStatusLine(data, facts, usage) {
   if (usage?.weekly) line2.push(usage.weekly);
   if (usage?.models?.length) line2.push(...usage.models);
   if (cost) line2.push(cost);
+  const tokens = renderTokens(facts.tokens);
+  if (tokens) line2.push(tokens);
   if (facts.task) line2.push(`${colors.dim}${facts.task}${colors.reset}`);
 
   const body = layout(line1, line2, facts.cols);
@@ -897,9 +1058,10 @@ function formatElapsed(startTime) {
   return `${secs}s`;
 }
 
-// One subagentStatusLine row: "name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed>".
-// Every segment past name is conditional on its source being present/finite.
-function renderSubagentTask(t) {
+// One subagentStatusLine row: "name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed> │ tokens".
+// Every segment past name is conditional on its source being present/finite. `tokens` is the
+// subagent's readTokenTotals(), read by emitSubagent; absent -> no tokens segment.
+function renderSubagentTask(t, tokens) {
   const parts = [t.label || t.name || t.description || 'agent'];
 
   const model = shortenModelId(t.model);
@@ -919,17 +1081,22 @@ function renderSubagentTask(t) {
   const elapsed = formatElapsed(t.startTime);
   if (elapsed) parts.push(`${colors.dim}⏱ ${elapsed}${colors.reset}`);
 
+  const tokenSegment = renderTokens(tokens);
+  if (tokenSegment) parts.push(tokenSegment);
+
   return parts.join(SEGMENT_SEP);
 }
 
-// subagentStatusLine mode: one {id, content} JSON line per task. No usage/git/todos/cache
-// work. Bad payload or a task that fails to render -> emit nothing (default rendering stays).
+// subagentStatusLine mode: one {id, content} JSON line per task. No usage/git/todos work; the
+// one file read is each subagent's transcript for its tokens (skipped with CTXLINE_DISABLE=tokens).
+// Bad payload or a task that fails to render -> emit nothing (default rendering stays).
 function emitSubagent(data) {
   try {
     const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+    const tokensOf = t => (DISABLED.has('tokens') ? null : readTokenTotals(subagentTranscript(data?.transcript_path, t), false));
     const out = tasks
       .filter(t => t && t.id)
-      .map(t => JSON.stringify({ id: t.id, content: renderSubagentTask(t) }))
+      .map(t => JSON.stringify({ id: t.id, content: renderSubagentTask(t, tokensOf(t)) }))
       .join('\n');
     if (out) {
       // Exit from the write callback: process.exit() would drop output queued behind backpressure.
