@@ -1,20 +1,23 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, SessionContextBreakdown, Timer } from 'claude-code'
 
-import type { Activity, CacheTally, Limit, Segment, Snapshot } from '../types'
-import { PET_HEIGHT, PET_WIDTH, isAsleep, pet } from './pet'
+import type { Activity, CacheTally, Limit, ModelLimit, ModelLimits, Segment, Snapshot } from '../types'
+import { PET_HEIGHT, PET_WIDTH, pet } from './pet'
 
 const IDLE: Activity = { isWorking: false, startedAt: 0, tools: 0, current: null, lastSeconds: null }
 const NO_CACHE: CacheTally = { read: 0, total: 0 }
+const NO_MODELS: ModelLimits = { limits: [], at: 0 }
 
 const snap = atom({ plugin: 'ctxline-desktop', key: 'snap' } as const, null)
 const activity = atom({ plugin: 'ctxline-desktop', key: 'activity' } as const, IDLE)
 const frame = atom({ plugin: 'ctxline-desktop', key: 'frame' } as const, 0)
 const cache = atom({ plugin: 'ctxline-desktop', key: 'cache' } as const, NO_CACHE)
 const compacting = atom({ plugin: 'ctxline-desktop', key: 'compacting' } as const, false)
-const poke = atom({ plugin: 'ctxline-desktop', key: 'poke' } as const, null)
+const models = atom({ plugin: 'ctxline-desktop', key: 'models' } as const, NO_MODELS)
 
 const REFRESH_MS = 30000
+const MODELS_KEEP_MS = 10 * 60 * 1000 // last good reading shown through failed fetches
+const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const SPIN_MS = 250
 const MAX_DETAIL_LEN = 40
 const BAR_SCALE = 1000 // flexGrow is capped at 10000
@@ -50,6 +53,11 @@ function usageColor(percent: number): keyof typeof SVG_COLORS {
   if (percent < 80) return YELLOW
   if (percent < 90) return ORANGE
   return RED
+}
+
+// Same as the CLI's model bars: flat orange sets them apart from H/W, red flags a nearly spent cap.
+function modelColor(percent: number): keyof typeof SVG_COLORS {
+  return percent >= 90 ? RED : ORANGE
 }
 
 function contextColor(used: number): string {
@@ -133,7 +141,8 @@ async function refresh($: EngineInterface): Promise<void> {
     $.session.usage({ breakdown: 'summary' }),
     git($, cwd, ['rev-list', '--left-right', '--count', '@{u}...HEAD']),
     git($, cwd, ['branch', '--show-current']),
-    git($, cwd, ['diff', 'HEAD', '--shortstat']),
+    // Committed branch diff vs the default branch's merge-base — the Desktop Changes panel's PR numbers.
+    git($, cwd, ['diff', 'origin/HEAD...HEAD', '--shortstat']),
   ])
   const [behind = 0, ahead = 0] = (counts ?? '').split(/\s+/).map(n => parseInt(n, 10) || 0)
   const stat = (re: RegExp): number => parseInt(re.exec(shortstat ?? '')?.[1] ?? '0', 10)
@@ -159,6 +168,28 @@ async function refresh($: EngineInterface): Promise<void> {
   await update($, snap, () => next)
 }
 
+// Model-scoped weekly limits (`limits[]` entries of kind weekly_scoped), labeled by the model's initial: Fable -> F.
+function scopedLimits(payload: { limits?: unknown }): ModelLimit[] {
+  if (!Array.isArray(payload.limits)) return []
+  return payload.limits.flatMap(entry => {
+    const name: unknown = entry?.scope?.model?.display_name
+    const percent: unknown = entry?.percent
+    if (entry?.kind !== 'weekly_scoped' || typeof name !== 'string' || !name.trim() || typeof percent !== 'number' || !Number.isFinite(percent)) return []
+    return [{ letter: name.trim().charAt(0).toUpperCase(), percent: Math.max(0, Math.min(100, Math.round(percent))) }]
+  })
+}
+
+// Only the OAuth usage API has them; none without a subscription login.
+async function refreshModels($: EngineInterface): Promise<void> {
+  const auth = await $.session.authorize()
+  if (auth?.kind !== 'bearer') return
+  const res = await $.http.fetch(USAGE_URL, { auth: auth.handle, headers: { 'anthropic-beta': 'oauth-2025-04-20' } })
+  if (!res.ok) throw new Error(`usage API ${res.status}`)
+  const limits = scopedLimits(JSON.parse(res.text))
+  const at = await $.clock.now()
+  await update($, models, () => ({ limits, at }))
+}
+
 /*
  * Desktop sessions are headless, where $.session.compact() is unavailable; /compact runs as a command instead.
  * command.run queues every call, so presses are locked out until the running compaction settles.
@@ -175,13 +206,9 @@ async function compact($: EngineInterface): Promise<void> {
   }
 }
 
-function idleSince(a: Activity): number | null {
-  return a.lastSeconds === null ? null : a.startedAt + a.lastSeconds * 1000
-}
-
-async function pokePet($: EngineInterface): Promise<void> {
-  const [a, p, now] = await Promise.all([read($, activity), read($, poke), $.clock.now()])
-  await update($, poke, () => ({ at: now, woke: isAsleep(idleSince(a), p, now) }))
+// Before the first turn, startedAt is the session start.
+function idleSince(a: Activity): number {
+  return a.startedAt + (a.lastSeconds ?? 0) * 1000
 }
 
 export const register: Register = on => {
@@ -190,14 +217,19 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    await update($, activity, () => IDLE)
-    await update($, poke, () => null)
+    const now = await $.clock.now()
+    await update($, activity, () => ({ ...IDLE, startedAt: now }))
     await update($, cache, () => NO_CACHE)
     await update($, compacting, () => false)
+    const fetchModels = (): void => {
+      refreshModels($).catch((err: unknown) => $.ui.log(`model limits failed: ${String(err)}`, { to: 'debug' }))
+    }
+    fetchModels()
     await refresh($)
     ticker?.cancel()
     ticker = $.clock.every(REFRESH_MS, () => {
       refresh($).catch((err: unknown) => $.ui.log(`refresh failed: ${String(err)}`, { to: 'debug' }))
+      fetchModels()
     })
     // Always on: steps the spinner while working and the pet's frames while idle.
     spinner?.cancel()
@@ -286,16 +318,12 @@ export const register: Register = on => {
       live = <Text dimColor>ready · no turns yet</Text>
     }
 
-    const limitItem = (label: string, limit: Limit) => {
-      const left = Math.max(0, 100 - limit.percent)
-      const color = usageColor(limit.percent)
-      return (
-        <Box alignItems="center" columnGap={1}>
-          <Svg source={ring(left, SVG_COLORS[color], label)} alt={`${label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
-          <Text color={color}>{left}%</Text>
-        </Box>
-      )
-    }
+    const m = await read($, models)
+    const rings: { label: string; percent: number; color: keyof typeof SVG_COLORS }[] = [
+      ...(s.fiveHour ? [{ label: 'H', percent: s.fiveHour.percent, color: usageColor(s.fiveHour.percent) }] : []),
+      ...(s.sevenDay ? [{ label: 'W', percent: s.sevenDay.percent, color: usageColor(s.sevenDay.percent) }] : []),
+      ...(now - m.at < MODELS_KEEP_MS ? m.limits : []).map(l => ({ label: l.letter, percent: l.percent, color: modelColor(l.percent) })),
+    ]
 
     const c = await read($, cache)
     const stats = [
@@ -323,19 +351,13 @@ export const register: Register = on => {
     const isCompacting = await read($, compacting)
     const hasSync = s.ahead > 0 || s.behind > 0
     const hasChanges = s.added > 0 || s.removed > 0
-    const mascot = pet(isBusy, idleSince(a), await read($, poke), now, tick)
+    const mascot = pet(isBusy, a.current?.name ?? null, idleSince(a), now, tick)
     return (
       <Box flexDirection="column" rowGap={1}>
         <Box justifyContent="space-between" alignItems="center" columnGap={2} borderStyle="round" borderDimColor paddingX={1}>
           <Box alignItems="center" columnGap={1} flexShrink={1} minWidth={0}>
-            {/* Only a Button takes a click and it can't hold an Svg, so a blank one lies over the pet. */}
-            <Box position="relative" flexShrink={0}>
+            <Box flexShrink={0}>
               <Svg {...mascot} width={PET_WIDTH} height={PET_HEIGHT} />
-              {!isBusy && (
-                <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
-                  <Button key="pet" label={' '.repeat(6)} plain onPress={() => void pokePet($)} />
-                </Box>
-              )}
             </Box>
             <Text wrap="truncate-end">
               <Text>{s.folder}</Text>
@@ -364,10 +386,17 @@ export const register: Register = on => {
         <Box justifyContent="space-between" columnGap={2}>
           <Text wrap="truncate-end">{live}</Text>
           <Box alignItems="center" columnGap={1} flexShrink={0}>
-            {s.fiveHour && limitItem('H', s.fiveHour)}
-            {s.fiveHour && s.sevenDay && <Text dimColor>·</Text>}
-            {s.sevenDay && limitItem('W', s.sevenDay)}
-            {(s.fiveHour || s.sevenDay) && stats.length > 0 && <Text dimColor>│</Text>}
+            {rings.map((r, i) => {
+              const left = Math.max(0, 100 - r.percent)
+              return (
+                <Box key={r.label} alignItems="center" columnGap={1}>
+                  {i > 0 && <Text dimColor>·</Text>}
+                  <Svg source={ring(left, SVG_COLORS[r.color], r.label)} alt={`${r.label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
+                  <Text color={r.color}>{left}%</Text>
+                </Box>
+              )
+            })}
+            {rings.length > 0 && stats.length > 0 && <Text dimColor>│</Text>}
             {stats.length > 0 && (
               <Text>
                 {stats.map((item, i) => (

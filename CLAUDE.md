@@ -61,24 +61,24 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module) → `hooks/pet.ts` (pixel pet SVG frames); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`, `poke`; state keys must match plugin name or validation fails).
+Files: `hooks/hooks.json` → `hooks/register.tsx` (the module) → `hooks/pet.ts` (pixel pet SVG frames); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `compacting`, `models`; state keys must match plugin name or validation fails).
 
 Layout (Desktop already shows model/effort — omitted; its own folder/branch/changes display is gone since its latest update, so the plugin draws them):
 
 ```text
 AbovePrompt  ╭ <pet> <folder> ⎇ <branch> ↑N↓M                             +<added> -<removed> ╮
-             <activity>                          (H) <left>% · (W) <left>% │ cache <pct>% · $<cost>
+             <activity>                          (H) <left>% · (W) <left>% · (F) <left>% │ cache <pct>% · $<cost>
              C<used> <full-width category bar> <tokens> / <window> │ ⇣ compact
                  ■ sys 4k  ■ tools 34k  ■ mcp 17k  … ▨ buffer 33k
 ```
 
-Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero; `↑N↓M` hidden when in sync. `<pet>`: pixel Claude (`Svg`, from the terminal logo) — hops while working, stands and blinks for 5 min after a turn, then sleeps (also before the first turn). Click (blank `Button` laid over the `Svg` — only a Button is pressable, and it can't hold an `Svg`): asleep → wakes with a start (`!`), resets the sleep timer; awake → happy hop + heart. Frames step on the `frame` atom, ticked every 250ms all session (also drives the spinner).
+Top row: rounded dim-bordered `Box` inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Branch hidden on detached HEAD; `+added -removed` (green/red) hidden when zero, counts the committed branch diff vs the default branch (`git diff origin/HEAD...HEAD --shortstat`, same numbers as Desktop's Changes panel for a PR; hidden without `origin/HEAD`); `↑N↓M` hidden when in sync. `<pet>`: pixel Claude (`Svg`, from the terminal logo) — not interactive. While working, acts out the running tool: types (Edit/MultiEdit/Write/NotebookEdit), looks around (Read/Grep/Glob/WebFetch/WebSearch), thinks (`...`, between tools), hops (any other tool). Idle: stands and blinks, sleeps 59 min after the last turn ends (or session start, before the first turn). Frames step on the `frame` atom, ticked every 250ms all session (also drives the spinner).
 
 No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; no enable-auto-update toggle in `/plugin` → Marketplaces (only a one-off Update, found by testing) — user sets `extraKnownMarketplaces.ctxline.autoUpdate: true` in `~/.claude/settings.json`; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
 
 `displayName` (`plugin.json`) is the UI name; `name` must stay kebab-case (no spaces). Marketplace `name` is the "from <name>" label and the `@` suffix in install ids; no spaces allowed. `icon` in `plugin.json` is read only by Anthropic's directory — Desktop ignores it, not set.
 
-Limits: percent left (100 − used), no reset time; `(H)`/`(W)` is an `Svg` donut of the share left with the limit's letter inside, arc colored by `usageColor` through `SVG_COLORS` (an `Svg` takes CSS colors, not the theme's named ones).
+Limits: percent left (100 − used), no reset time; `(H)`/`(W)` is an `Svg` donut of the share left with the limit's letter inside, arc colored by `usageColor` through `SVG_COLORS` (an `Svg` takes CSS colors, not the theme's named ones). Model-scoped weekly limits (`(F)` for Fable, one ring per `weekly_scoped` entry, labeled by the model's initial) follow W, colored by `modelColor` (flat orange, red ≥90 — the CLI's `getScopedColor`); fetched from `/api/oauth/usage` via `$.http.fetch` with the `$.session.authorize()` handle (bearer only — none on an API key) on session start + every 30s, not after turns; last good reading kept `MODELS_KEEP_MS` 10m through failed fetches, then hidden.
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed> · tool #N` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 
@@ -86,11 +86,11 @@ Context bar: one segment per `/context` category from `$.session.usage({ breakdo
 
 `⇣ compact`: `Button` → `$.command.run({ command: 'compact' })` — Desktop sessions are headless: `$.session.compact()` throws there, and `$.prompt.submit` refuses `/`-prefixed text (both found by testing). `command.run` queues every call → `compacting` atom locks presses (shows `compacting…`) until the run settles; dim unclickable text while a turn runs (`activity` or `e.props.isWorking`); failure → toast. Neither `isWorking` flag covers a compaction (found by testing).
 
-Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD`, `git branch --show-current`, `git diff HEAD --shortstat` via `$.process.run` (folder = basename of `$.session.cwd()`); `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
+Sources: `$.session.usage()` (context, `five_hour`/`seven_day`, cost) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD`, `git branch --show-current`, `git diff origin/HEAD...HEAD --shortstat` via `$.process.run` (folder = basename of `$.session.cwd()`); `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
 Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. `Box flexGrow` must be finite ≤ 10000 (bar slices scaled per-mille). `Svg isInteractive` (needed for SMIL) draws in a sandboxed frame that paints blank for a moment on each source change → visible flash; pet stays a plain image, animated by swapping frames. `$.command.run` echoes `/compact` as a user bubble in the chat — not removable (`session.append` only rewrites content; Desktop draws its own transcript).
 
-Not available in the plugin: model-scoped weekly bars, task (need OAuth usage cache / files the mod doesn't read).
+Not available in the plugin: task (needs files the mod doesn't read).
 
 Validate: `claude plugin validate .` (marketplace) and `claude plugin validate ./desktop`. No tsconfig in `desktop/` → editor shows "Cannot find module 'claude-code'"; editor-only.
 
@@ -106,7 +106,7 @@ Validate: `claude plugin validate .` (marketplace) and `claude plugin validate .
 | `docs/index.html` | hero mock + subagent rows | byte-compared by `test/docs-drift.test.js` → drift fails `npm test` |
 | `CLAUDE.md` | format diagram + legend (top), timing/TTL numbers, stdin fields, export list | the Invariants block hard-codes constants — grep it for any number you change |
 | `package.json` | `version` ↔ the `VERSION` constant | test-enforced; a stale `VERSION` nudges forever (or never) |
-| `desktop/hooks/register.tsx` | usage/context color thresholds | hand-copied, no test — `usageColor`/`contextColor` drift silently |
+| `desktop/hooks/register.tsx` | usage/context/scoped color thresholds, `parseScopedLimits` | hand-copied, no test — `usageColor`/`contextColor`/`modelColor`/`scopedLimits` drift silently |
 
 Desktop plugin mirrors (hand-authored, not drift-tested) — update when `desktop/` layout changes: `docs/assets/desktop-preview.svg` (README), `docs/index.html` `#desktop` mock, README "Claude desktop app" section.
 

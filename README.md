@@ -178,8 +178,8 @@ Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/c
 
 The plugin adds, above the prompt:
 
-- A top row with a pixel Claude pet (hops while working, sleeps when idle — click it to wake it or make it hop), the folder, branch, commits ahead / behind, and uncommitted changes (`+added -removed`).
-- What Claude is doing now (tool, elapsed time, tool count), how much of the 5-hour and weekly limits is left (as rings), cache hit rate, and session cost.
+- A top row with a pixel Claude pet (acts out what Claude is doing — typing, looking around, thinking — and falls asleep after an hour idle), the folder, branch, commits ahead / behind, and the branch's committed changes against the default branch (`+added -removed`, same as the PR diff).
+- What Claude is doing now (tool, elapsed time, tool count), how much of the 5-hour, weekly and model-specific limits (e.g. Fable, on plans that have one) is left (as rings), cache hit rate, and session cost.
 - A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts and a `⇣ compact` button.
 
 > [!IMPORTANT]
@@ -229,6 +229,7 @@ No, if you're on Pro or Max. It's what the session would cost at API prices, as 
 <summary>What does it send over the network?</summary>
 
 - **Usage.** Only when the session data has no usage numbers, it calls Anthropic's usage API (the one `/usage` uses) with your local OAuth token. It caches only the percentages, never the token. API-key users skip this.
+- **Desktop plugin.** When a session starts and every 30 seconds, it calls the same usage API for model-specific limits (like Fable) through Claude's own login, so the plugin never sees the token. It keeps only the percentages, showing the last one for up to 10 minutes if a call fails. API-key users skip this.
 - **Updates.** Every 3 days it asks the npm registry for the latest version number. When it installs an update, it downloads the script from GitHub. Neither request carries session data or credentials. `CTXLINE_DISABLE=update` turns both off.
 
 </details>
