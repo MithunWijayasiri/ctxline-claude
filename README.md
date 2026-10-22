@@ -178,7 +178,7 @@ Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/c
 
 The plugin adds, above the prompt:
 
-- A top row with a pixel Claude pet (acts out what Claude is doing — typing, looking around, thinking — and falls asleep after an hour idle), the folder, branch, commits ahead / behind, and uncommitted changes (`+added -removed`, new untracked files included).
+- A top row with a pixel Claude pet (acts out what Claude is doing — typing, looking around, thinking — and falls asleep after an hour idle), the folder, branch, commits ahead / behind, and the branch's committed changes against the default branch (`+added -removed`, same as the PR diff).
 - What Claude is doing now (tool, elapsed time, tool count), how much of the 5-hour, weekly and model-specific limits (e.g. Fable, on plans that have one) is left (as rings), cache hit rate, and session cost.
 - A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts and a `⇣ compact` button.
 

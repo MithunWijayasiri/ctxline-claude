@@ -135,29 +135,14 @@ async function git($: EngineInterface, cwd: string, args: string[]): Promise<str
   return exitCode === 0 ? stdout.trim() : undefined
 }
 
-// Lines in the repo's untracked, non-ignored files, as git diff would count them once added; binary and unreadable files count 0.
-async function untrackedLines($: EngineInterface, cwd: string): Promise<number> {
-  const listed = await git($, cwd, ['ls-files', '--others', '--exclude-standard', '-z', ':/'])
-  const files = (listed ?? '').split('\0').filter(Boolean)
-  const counts = await Promise.all(
-    files.map(f =>
-      $.fs.read(f).then(
-        text => (text.includes('\0') || text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)),
-        () => 0,
-      ),
-    ),
-  )
-  return counts.reduce((sum, n) => sum + n, 0)
-}
-
 async function refresh($: EngineInterface): Promise<void> {
   const cwd = await $.session.cwd()
-  const [usage, counts, branch, shortstat, untracked] = await Promise.all([
+  const [usage, counts, branch, shortstat] = await Promise.all([
     $.session.usage({ breakdown: 'summary' }),
     git($, cwd, ['rev-list', '--left-right', '--count', '@{u}...HEAD']),
     git($, cwd, ['branch', '--show-current']),
-    git($, cwd, ['diff', 'HEAD', '--shortstat']),
-    untrackedLines($, cwd),
+    // Committed branch diff vs the default branch's merge-base — the Desktop Changes panel's PR numbers.
+    git($, cwd, ['diff', 'origin/HEAD...HEAD', '--shortstat']),
   ])
   const [behind = 0, ahead = 0] = (counts ?? '').split(/\s+/).map(n => parseInt(n, 10) || 0)
   const stat = (re: RegExp): number => parseInt(re.exec(shortstat ?? '')?.[1] ?? '0', 10)
@@ -168,7 +153,7 @@ async function refresh($: EngineInterface): Promise<void> {
   const next: Snapshot = {
     folder: cwd.split(/[\\/]/).filter(Boolean).pop() ?? cwd,
     branch: branch || undefined, // empty when HEAD is detached
-    added: stat(/(\d+) insertion/) + untracked,
+    added: stat(/(\d+) insertion/),
     removed: stat(/(\d+) deletion/),
     ahead,
     behind,
