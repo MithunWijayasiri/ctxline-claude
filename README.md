@@ -229,6 +229,7 @@ No, if you're on Pro or Max. It's what the session would cost at API prices, as 
 <summary>What does it send over the network?</summary>
 
 - **Usage.** Only when the session data has no usage numbers, it calls Anthropic's usage API (the one `/usage` uses) with your local OAuth token. It caches only the percentages, never the token. API-key users skip this.
+- **Desktop plugin.** When a session starts and every 30 seconds, it calls the same usage API for model-specific limits (like Fable) through Claude's own login, so the plugin never sees the token. It keeps only the percentages, showing the last one for up to 10 minutes if a call fails. API-key users skip this.
 - **Updates.** Every 3 days it asks the npm registry for the latest version number. When it installs an update, it downloads the script from GitHub. Neither request carries session data or credentials. `CTXLINE_DISABLE=update` turns both off.
 
 </details>
