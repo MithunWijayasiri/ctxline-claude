@@ -19,6 +19,12 @@ export type Snapshot = {
   costUsd?: number
 }
 
+// A model-scoped weekly limit, labeled by the model's initial.
+export type ModelLimit = { letter: string; percent: number }
+
+// The last good read of the model limits and when it landed.
+export type ModelLimits = { limits: ModelLimit[]; at: number }
+
 export type RunningTool = { id: string; name: string; detail: string }
 
 export type Activity = {
@@ -28,9 +34,6 @@ export type Activity = {
   current: RunningTool | null
   lastSeconds: number | null
 }
-
-// The last click on the pet, and whether it woke it.
-export type Poke = { at: number; woke: boolean }
 
 // Main-loop input tokens this session: served from the prompt cache vs all.
 export type CacheTally = { read: number; total: number }
@@ -43,7 +46,7 @@ declare module 'claude-code' {
       frame: number
       cache: CacheTally
       compacting: boolean
-      poke: Poke | null
+      models: ModelLimits
     }
   }
 }
