@@ -279,42 +279,54 @@ export const register: Register = on => {
             <Box flexShrink={0}>
               <Svg {...mascot} width={PET_WIDTH} height={PET_HEIGHT} />
             </Box>
-            <Text wrap="truncate-end">
-              <Text>{s.folder}</Text>
-              {s.branch && (
-                <Text>
-                  <Text dimColor> ⎇ </Text>
-                  {s.branch}
-                </Text>
-              )}
-              {hasSync && (
-                <Text>
-                  {' '}
-                  {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
-                  {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
-                </Text>
-              )}
-              <Text dimColor> │ </Text>
-              {live}
-            </Text>
+            <Box flexShrink={1} minWidth={0}>
+              <Text wrap="truncate-end">
+                <Text>{s.folder}</Text>
+                {s.branch && (
+                  <Text>
+                    <Text dimColor> ⎇ </Text>
+                    {s.branch}
+                  </Text>
+                )}
+                {hasSync && (
+                  <Text>
+                    {' '}
+                    {s.ahead > 0 && <Text color={GREEN}>↑{s.ahead}</Text>}
+                    {s.behind > 0 && <Text color={RED}>↓{s.behind}</Text>}
+                  </Text>
+                )}
+              </Text>
+            </Box>
+            <Box flexShrink={1} minWidth={0}>
+              <Text wrap="truncate-end">
+                <Text dimColor>│ </Text>
+                {live}
+              </Text>
+            </Box>
           </Box>
-          <Box flexShrink={0}>
-            <Text>
-              {stats.map((item, i) => (
-                <Text key={`s${i}`}>
-                  {i > 0 && <Text dimColor> · </Text>}
-                  {item}
-                </Text>
-              ))}
-              {stats.length > 0 && limits.length > 0 && <Text dimColor> │ </Text>}
-              {limits.map((l, i) => (
-                <Text key={l.label}>
-                  {i > 0 && <Text dimColor> · </Text>}
-                  <Text dimColor>{l.label} </Text>
-                  <Text color={l.color}>{l.text}</Text>
-                </Text>
-              ))}
-            </Text>
+          <Box flexShrink={1} minWidth={0}>
+            <Box flexShrink={1} minWidth={0}>
+              <Text wrap="truncate-end">
+                {stats.map((item, i) => (
+                  <Text key={`s${i}`}>
+                    {i > 0 && <Text dimColor> · </Text>}
+                    {item}
+                  </Text>
+                ))}
+                {stats.length > 0 && limits.length > 0 && <Text dimColor> │ </Text>}
+              </Text>
+            </Box>
+            <Box flexShrink={0}>
+              <Text>
+                {limits.map((l, i) => (
+                  <Text key={l.label}>
+                    {i > 0 && <Text dimColor> · </Text>}
+                    <Text dimColor>{l.label} </Text>
+                    <Text color={l.color}>{l.text}</Text>
+                  </Text>
+                ))}
+              </Text>
+            </Box>
           </Box>
         </Box>
         <Svg source={contextLine(s.contextUsed)} alt={`context ${s.contextUsed}% used`} height={LINE_HEIGHT} />

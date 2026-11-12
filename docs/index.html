@@ -174,11 +174,11 @@
   .hero .term::after{content:"";position:absolute;top:0;right:0;bottom:0;width:34px;pointer-events:none;
     background:linear-gradient(to right,transparent,var(--term-bg))}
 
-  /* desktop app mock: Desktop's own bars plain, ctxline's row edged in accent */
+  /* desktop app mock: ctxline's row + context line above Desktop's prompt */
   .term.desk{max-width:760px;padding:16px;display:flex;flex-direction:column;gap:8px;
     font-family:var(--sans);font-size:clamp(11px,1.5vw,14px);color:var(--term-fg)}
   .desk .card{background:#1f1c15;border-radius:10px;padding:11px 16px;display:flex;flex-direction:column;gap:5px}
-  .desk .card.mine{box-shadow:inset 3px 0 0 var(--accent);gap:9px}
+  .desk .card.mine{background:none;padding:4px 16px;gap:9px}
   .desk .ctxline{height:3px;border-radius:1.5px;background:#2e3240}
   .desk .ctxline i{display:block;height:100%;border-radius:1.5px;background:#22c55e}
   .desk .pet{width:2.4em;height:1.2em;vertical-align:-.25em;margin-right:6px}
@@ -469,7 +469,7 @@
         <span><span class="gap">Opus&nbsp;5.5</span><span class="gap">Medium</span></span>
       </div>
     </div>
-    <p class="insp-hint">In the mock, the accent-edged card is ctxline. The rest is Desktop's own.</p>
+    <p class="insp-hint">In the mock, the row and thin line above the prompt are ctxline. The rest is Desktop's own.</p>
     <p class="insp-hint">H and W show how much of the 5-hour and weekly limits is used; a model-specific limit (like F for Fable) joins them on plans that have one.</p>
     <div class="setup">
       <div class="opt">
