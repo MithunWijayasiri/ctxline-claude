@@ -178,9 +178,9 @@ Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/c
 
 The plugin adds, above the prompt:
 
-- A top row with a pixel Claude pet (acts out what Claude is doing — typing, looking around, thinking — and falls asleep after an hour idle), the folder, branch, commits ahead / behind, and the branch's committed changes against the default branch (`+added -removed`, same as the PR diff).
-- What Claude is doing now (tool, elapsed time, tool count), how much of the 5-hour, weekly and model-specific limits (e.g. Fable, on plans that have one) is left (as rings), cache hit rate, and session cost.
-- A context bar split by category (system prompt, tools, MCP, memory, messages, and so on), with token counts and a `⇣ compact` button.
+- A pixel Claude pet (acts out what Claude is doing — typing, looking around, thinking — and falls asleep after an hour idle), then the folder, branch, commits ahead / behind, and what Claude is doing now (tool and elapsed time, or the last turn's length and tool count).
+- On the right, cache hit rate, context tokens used out of the window, and how much of the 5-hour and weekly limits (and a model-specific one, e.g. Fable, on plans that have one) is used.
+- A thin line under the row that fills as the context window does, going from green to red.
 
 > [!IMPORTANT]
 > **Third-party plugins don't auto-update by default**, so you'll stay on the version you installed. The **Update** button in `/plugin` only updates once. To turn on auto-update, set `autoUpdate` in `~/.claude/settings.json`:
@@ -229,7 +229,7 @@ No, if you're on Pro or Max. It's what the session would cost at API prices, as 
 <summary>What does it send over the network?</summary>
 
 - **Usage.** Only when the session data has no usage numbers, it calls Anthropic's usage API (the one `/usage` uses) with your local OAuth token. It caches only the percentages, never the token. API-key users skip this.
-- **Desktop plugin.** When a session starts and every 30 seconds, it calls the same usage API for model-specific limits (like Fable) through Claude's own login, so the plugin never sees the token. It keeps only the percentages, showing the last one for up to 10 minutes if a call fails. API-key users skip this.
+- **Desktop plugin.** When a session starts and every 30 seconds, it calls the same usage API for model-specific limits (like Fable) through Claude's own login, so the plugin never sees the token. It keeps only the percentages. API-key users skip this.
 - **Updates.** Every 3 days it asks the npm registry for the latest version number. When it installs an update, it downloads the script from GitHub. Neither request carries session data or credentials. `CTXLINE_DISABLE=update` turns both off.
 
 </details>

@@ -39,17 +39,19 @@ Side effects of a local load (both gitignored, leave them): engine writes `deskt
 
 ## 2. Test
 
-- Before the first turn (new or resumed session): activity reads `ready · no turns yet`; context bar is the fallback two-segment used/free bar, no legend.
-- After first response: full-width category bar + legend. A legend entry showing a full lowercased name (e.g. `new category`) = `/context` category missing from `CATEGORIES` → run `sync-context-labels`.
-- During a turn: spinner + tool + elapsed + `tool #N`; `⇣ compact` dim and unclickable.
-- Idle: `last turn <dur> · N tool(s)`; press `⇣ compact` → `compacting…` until it settles, repeat presses ignored; `/compact` bubble in chat is expected.
-- Activity row right: `(H) <left>% · (W) <left>% │ cache <pct>% · $<cost>`; `(H)`/`(W)` = ring with the letter inside, arc = share left, same color as the percent; nothing from the plugin in the footer below the prompt.
+- Before the first turn (new or resumed session): activity reads `ready · no turns yet`; no `cache` item yet.
+- During a turn: spinner + tool + detail + elapsed (no `tool #N`); pet acts out the tool.
+- Idle: `last turn <dur> · N tool(s)`.
+- Right side: `cache <pct>% · <tokens> / <window> │ H <used>% · W <used>%`; `H`/`W` plain colored text (percent used), no rings.
+- Model limit (e.g. `F <used>%`) only with a subscription login; none on an API key.
+- 3px line under the row: stretches full width, fills to context % used, green → red; no category bar, legend, or compact button.
+- Nothing from the plugin in the footer below the prompt.
 
 ## 3. Where errors surface
 
 - Dim transcript line: `ctxline-desktop: ui.render (AbovePrompt) refused: <reason>; the engine drew its own`.
 - Toasts from `$.ui.toast`; thrown HooksErrors include host hints.
-- Known runtime constraints (flexGrow cap, headless `compact()`, `command.run` queuing, no `Button` `disabled`, etc.): `CLAUDE.md` → Desktop plugin.
+- Known runtime constraints (`Svg isInteractive` flash, `PromptHint` not drawn, etc.): `CLAUDE.md` → Desktop plugin.
 
 ## 4. Revert
 
