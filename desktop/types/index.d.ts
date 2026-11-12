@@ -1,22 +1,15 @@
 export type Limit = { percent: number }
 
-// One slice of the context bar: a /context category, the autocompact buffer, or free space.
-export type Segment = { kind: 'used' | 'buffer' | 'free'; label: string; tokens: number; color: string }
-
 export type Snapshot = {
   folder: string
   branch?: string
-  added: number
-  removed: number
   ahead: number
   behind: number
   contextUsed: number
   contextTokens?: number
   contextWindow: number
-  segments: Segment[]
   fiveHour?: Limit
   sevenDay?: Limit
-  costUsd?: number
 }
 
 // A model-scoped weekly limit, labeled by the model's initial.
@@ -45,7 +38,6 @@ declare module 'claude-code' {
       activity: Activity
       frame: number
       cache: CacheTally
-      compacting: boolean
       models: ModelLimits
     }
   }
