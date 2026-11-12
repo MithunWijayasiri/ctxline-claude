@@ -38,7 +38,6 @@ const WIDTH_MARGIN = 0;
 const CACHE_DIR = path.join(os.homedir(), '.claude', 'cache');
 const USAGE_CACHE_FILE = path.join(CACHE_DIR, 'usage-cache.json');
 const FRESH_TTL_MS = 30000;            // fresh: render cache, skip API
-const STALE_TTL_MS = 10 * 60 * 1000;   // stale: fallback only when a live call fails
 
 // Single-entry ahead/behind cache: throttles the one git subprocess to once per render burst.
 const GIT_CACHE_FILE = path.join(CACHE_DIR, 'git-cache.json');
@@ -269,12 +268,26 @@ const LEGACY_MODEL_WEEKLY_KEYS = [
 ];
 
 // Raw { fiveHour, weekly, models } -> rendered segments; scoped bars use getScopedColor.
+// An `unavailable` entry (no fresh reading) renders dim.
 function buildUsageBars(raw) {
   const { fiveHour, weekly, models } = raw || {};
+  const bar = (label, e, color) => e.unavailable
+    ? buildUsageBar(label, '00', null, colors.dim)
+    : buildUsageBar(label, e.percentage, e.resetsAt, color);
   return {
-    current: fiveHour ? buildUsageBar('H', fiveHour.percentage, fiveHour.resetsAt) : null,
-    weekly: weekly ? buildUsageBar('W', weekly.percentage, weekly.resetsAt) : null,
-    models: (models || []).map(m => buildUsageBar(m.label, m.percentage, m.resetsAt, getScopedColor(m.percentage)))
+    current: fiveHour ? bar('H', fiveHour) : null,
+    weekly: weekly ? bar('W', weekly) : null,
+    models: (models || []).map(m => bar(m.label, m, getScopedColor(m.percentage)))
+  };
+}
+
+// No fresh reading: zeroed entries; model labels come from the last cached payload (no values).
+function unavailableUsage(cached) {
+  const off = { percentage: 0, resetsAt: null, unavailable: true };
+  return {
+    fiveHour: off,
+    weekly: off,
+    models: (cached?.data.models || []).map(m => ({ ...off, label: m.label }))
   };
 }
 
@@ -680,22 +693,17 @@ function getRawUsage(callback) {
     return callback(cached.data);
   }
 
-  // Refresh attempted (even failed) within FRESH_TTL_MS -> cooldown: serve stale up to STALE_TTL_MS (issue #41).
+  // No fresh reading: dim 00 placeholders, but only once usage has worked before (a cache exists).
+  const unavailable = () => cached ? unavailableUsage(cached) : null;
+
+  // Refresh attempted (even failed) within FRESH_TTL_MS -> cooldown.
   const attemptAge = getLastAttemptAge();
   if (attemptAge != null && attemptAge < FRESH_TTL_MS) {
-    return callback(cached && cached.age < STALE_TTL_MS ? cached.data : null);
+    return callback(unavailable());
   }
 
   recordUsageAttempt();
-  getApiUsage((fresh) => {
-    if (fresh) {
-      callback(fresh);
-    } else if (cached && cached.age < STALE_TTL_MS) {
-      callback(cached.data);
-    } else {
-      callback(null);
-    }
-  });
+  getApiUsage((fresh) => callback(fresh || unavailable()));
 }
 
 // "$0.00" (dim) from stdin cost.total_cost_usd — client-side estimate, no network; '' when absent.

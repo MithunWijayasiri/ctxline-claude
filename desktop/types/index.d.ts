@@ -22,8 +22,8 @@ export type Snapshot = {
 // A model-scoped weekly limit, labeled by the model's initial.
 export type ModelLimit = { letter: string; percent: number }
 
-// The last good read of the model limits and when it landed.
-export type ModelLimits = { limits: ModelLimit[]; at: number }
+// The last model limits fetched; `ok` is false while the latest fetch failed (letters kept, values not shown).
+export type ModelLimits = { limits: ModelLimit[]; ok: boolean }
 
 export type RunningTool = { id: string; name: string; detail: string }
 
