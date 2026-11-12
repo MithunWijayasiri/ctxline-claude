@@ -6,7 +6,7 @@ import { PET_HEIGHT, PET_WIDTH, pet } from './pet'
 
 const IDLE: Activity = { isWorking: false, startedAt: 0, tools: 0, current: null, lastSeconds: null }
 const NO_CACHE: CacheTally = { read: 0, total: 0 }
-const NO_MODELS: ModelLimits = { limits: [], at: 0 }
+const NO_MODELS: ModelLimits = { limits: [], ok: true }
 
 const snap = atom({ plugin: 'ctxline-desktop', key: 'snap' } as const, null)
 const activity = atom({ plugin: 'ctxline-desktop', key: 'activity' } as const, IDLE)
@@ -16,7 +16,6 @@ const compacting = atom({ plugin: 'ctxline-desktop', key: 'compacting' } as cons
 const models = atom({ plugin: 'ctxline-desktop', key: 'models' } as const, NO_MODELS)
 
 const REFRESH_MS = 30000
-const MODELS_KEEP_MS = 10 * 60 * 1000 // last good reading shown through failed fetches
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const SPIN_MS = 250
 const MAX_DETAIL_LEN = 40
@@ -28,13 +27,14 @@ const GREEN = 'green'
 const YELLOW = 'yellow'
 const ORANGE = '#ff8700'
 const RED = 'red'
+const GREY = '#6b7280'
 const ACCENT = '#d97757'
 const BUFFER_COLOR = '#4b5160'
 const FREE_COLOR = '#2e3240'
 const LETTER_COLOR = '#e8e6df'
 const RING_SIZE = 18
 // An Svg takes CSS colors, where green and yellow are far darker than the theme's.
-const SVG_COLORS = { [GREEN]: '#22c55e', [YELLOW]: '#eab308', [ORANGE]: ORANGE, [RED]: '#f43f5e' }
+const SVG_COLORS = { [GREEN]: '#22c55e', [YELLOW]: '#eab308', [ORANGE]: ORANGE, [RED]: '#f43f5e', [GREY]: GREY }
 
 // Keyed by /context's category names (Claude Code 2.1.289); an unknown name falls back to its own name and theme color.
 const CATEGORIES: Record<string, { label: string; color: string }> = {
@@ -186,8 +186,7 @@ async function refreshModels($: EngineInterface): Promise<void> {
   const res = await $.http.fetch(USAGE_URL, { auth: auth.handle, headers: { 'anthropic-beta': 'oauth-2025-04-20' } })
   if (!res.ok) throw new Error(`usage API ${res.status}`)
   const limits = scopedLimits(JSON.parse(res.text))
-  const at = await $.clock.now()
-  await update($, models, () => ({ limits, at }))
+  await update($, models, () => ({ limits, ok: true }))
 }
 
 /*
@@ -222,7 +221,10 @@ export const register: Register = on => {
     await update($, cache, () => NO_CACHE)
     await update($, compacting, () => false)
     const fetchModels = (): void => {
-      refreshModels($).catch((err: unknown) => $.ui.log(`model limits failed: ${String(err)}`, { to: 'debug' }))
+      refreshModels($).catch(async (err: unknown) => {
+        $.ui.log(`model limits failed: ${String(err)}`, { to: 'debug' })
+        await update($, models, m => ({ ...m, ok: false }))
+      })
     }
     fetchModels()
     await refresh($)
@@ -319,11 +321,14 @@ export const register: Register = on => {
     }
 
     const m = await read($, models)
-    const rings: { label: string; percent: number; color: keyof typeof SVG_COLORS }[] = [
-      ...(s.fiveHour ? [{ label: 'H', percent: s.fiveHour.percent, color: usageColor(s.fiveHour.percent) }] : []),
-      ...(s.sevenDay ? [{ label: 'W', percent: s.sevenDay.percent, color: usageColor(s.sevenDay.percent) }] : []),
-      ...(now - m.at < MODELS_KEEP_MS ? m.limits : []).map(l => ({ label: l.letter, percent: l.percent, color: modelColor(l.percent) })),
-    ]
+    // A failed model fetch keeps the letters only: grey, 00%.
+    type Ring = { label: string; percent: number; color: keyof typeof SVG_COLORS; off?: boolean }
+    const rings: Ring[] = []
+    if (s.fiveHour) rings.push({ label: 'H', percent: s.fiveHour.percent, color: usageColor(s.fiveHour.percent) })
+    if (s.sevenDay) rings.push({ label: 'W', percent: s.sevenDay.percent, color: usageColor(s.sevenDay.percent) })
+    for (const l of m.limits) {
+      rings.push(m.ok ? { label: l.letter, percent: l.percent, color: modelColor(l.percent) } : { label: l.letter, percent: 100, color: GREY, off: true })
+    }
 
     const c = await read($, cache)
     const stats = [
@@ -391,8 +396,8 @@ export const register: Register = on => {
               return (
                 <Box key={r.label} alignItems="center" columnGap={1}>
                   {i > 0 && <Text dimColor>·</Text>}
-                  <Svg source={ring(left, SVG_COLORS[r.color], r.label)} alt={`${r.label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
-                  <Text color={r.color}>{left}%</Text>
+                  <Svg source={ring(left, SVG_COLORS[r.color], r.label)} alt={r.off ? `${r.label} unavailable` : `${r.label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
+                  <Text color={r.color}>{r.off ? '00' : left}%</Text>
                 </Box>
               )
             })}

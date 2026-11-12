@@ -53,7 +53,7 @@ function run(input, opts = {}) {
 
 // Build a throwaway HOME containing a tokenless credentials file (so getApiUsage
 // bails out before any network/keychain call) and optionally a seeded usage cache
-// of a given age. Lets us exercise the cache-first / stale-fallback logic offline.
+// of a given age. Lets us exercise the cache-first / placeholder logic offline.
 function seedHome({ cacheAgeMs, percentage = 42, weeklyPercentage = 31 } = {}) {
   const home = makeHome();
   seedCredentials(home); // no accessToken -> API skipped
@@ -358,8 +358,7 @@ test('malformed workspace.current_dir (non-string) -> no crash, exit 0', () => {
   assert.match(clean, /C\d+ /);
 });
 
-// Usage bar: cache-first behavior and the stale fallback that fixes the
-// "usage section disappears mid-session" bug.
+// Usage bar: cache-first behavior; with no fresh reading, dim 00 placeholders instead of old values.
 
 test('fresh cache -> current + weekly rendered from cache (no API call)', () => {
   const home = seedHome({ cacheAgeMs: 5000, percentage: 42, weeklyPercentage: 31 }); // < FRESH_TTL (30s)
@@ -370,19 +369,22 @@ test('fresh cache -> current + weekly rendered from cache (no API call)', () => 
   assert.match(clean, /W31 ↺ 2d\d{1,2}h/);                    // day-aware reset countdown (Xd Yh)
 });
 
-test('stale cache + failing API -> usage stays visible (does not disappear)', () => {
-  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH, < STALE
-  const { clean } = run(fixture(40), { home, usage: true });
-  assert.match(clean, /H57\b/);
+test('old cache + failing API -> dim H00/W00 placeholders, last reading not shown', () => {
+  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57, weeklyPercentage: 31 }); // > FRESH_TTL
+  const { code, raw, clean } = run(fixture(40), { home, usage: true });
+  assert.strictEqual(code, 0);
+  assert.match(clean, /C\d+ /, 'expected the normal line to still render');
+  assert.ok(raw.includes(`${DIM}H00`), 'H placeholder is dim');
+  assert.ok(raw.includes(`${DIM}W00`), 'W placeholder is dim');
+  assert.ok(!clean.includes('H57') && !clean.includes('W31'), 'the old reading must not be shown');
+  assert.ok(!clean.includes('↺'), 'placeholders carry no reset countdown');
 });
 
-test('expired cache + failing API -> usage omitted', () => {
-  const home = seedHome({ cacheAgeMs: 20 * 60 * 1000, percentage: 57 }); // > STALE_TTL (10m)
+test('no cache + failing API -> usage omitted (no placeholders before usage ever worked)', () => {
+  const home = seedHome({});
   const { code, clean } = run(fixture(40), { home, usage: true });
-  assert.strictEqual(code, 0);                                  // ran successfully
-  assert.match(clean, /C\d+ /, 'expected the normal line to still render');
-  assert.ok(!clean.includes('↺'), 'usage (and its reset glyph) should be omitted once cache is too old');
-  assert.ok(!clean.includes('H57'), 'current usage should be omitted once cache is too old');
+  assert.strictEqual(code, 0);
+  assert.ok(!/\bH\d+/.test(clean) && !/\bW\d+/.test(clean));
 });
 
 // #41: a failed/timed-out refresh must still respect FRESH_TTL_MS before retrying, the same
@@ -402,18 +404,18 @@ test('#41: cold cache + failing API -> repeated renders make at most one attempt
   assert.strictEqual(second.lastAttempt, first.lastAttempt, 'render within FRESH_TTL_MS should not re-attempt');
 });
 
-test('#41: stale cache + failing API -> repeated renders make at most one attempt per cooldown', () => {
-  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH, < STALE
+test('#41: old cache + failing API -> repeated renders make at most one attempt per cooldown', () => {
+  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH_TTL
   const cacheFile = path.join(home, '.claude', 'cache', 'usage-cache.json');
 
   const first = run(fixture(40), { home, usage: true });
-  assert.match(first.clean, /H57\b/, 'stale cache still served while the refresh fails');
+  assert.match(first.clean, /H00\b/, 'placeholder shown while the refresh fails');
   const afterFirst = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   assert.ok(Date.now() - afterFirst.lastAttempt < 5000, 'the failed refresh should stamp lastAttempt to now');
   assert.strictEqual(afterFirst.data.fiveHour.percentage, 57, 'recording the attempt must not clobber the cached data');
 
   const second = run(fixture(40), { home, usage: true }); // immediately after -> still in cooldown
-  assert.match(second.clean, /H57\b/, 'still served from stale cache, no crash');
+  assert.match(second.clean, /H00\b/, 'placeholder again during cooldown, no crash');
   const afterSecond = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   assert.strictEqual(afterSecond.lastAttempt, afterFirst.lastAttempt, 'render within FRESH_TTL_MS should not re-attempt');
 });
@@ -660,18 +662,19 @@ test('CTXLINE_DISABLE=usage also hides the scoped bars', () => {
 });
 
 test('#41: stdin path respects the same cooldown for the scoped-models refresh', () => {
-  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH, < STALE
+  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: 57 }); // > FRESH_TTL
   seedScopedCache(home, [{ label: 'F', percentage: 86 }]);
   const cacheFile = path.join(home, '.claude', 'cache', 'usage-cache.json');
 
   const first = run(fixtureWithRateLimits(40), { home, usage: true });
   assert.match(first.clean, /H24\b/, 'H/W come from stdin regardless of cooldown');
-  assert.match(first.clean, /F86\b/, 'scoped bar still comes from the stale cache while the refresh fails');
+  assert.ok(first.raw.includes(`${DIM}F00`), 'scoped label stays as a dim 00 while the refresh fails');
+  assert.ok(!first.clean.includes('F86'), 'the old scoped reading must not be shown');
   const afterFirst = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   assert.ok(Date.now() - afterFirst.lastAttempt < 5000, 'the failed refresh should stamp lastAttempt to now');
 
   const second = run(fixtureWithRateLimits(40), { home, usage: true }); // immediately after -> still in cooldown
-  assert.match(second.clean, /F86\b/, 'still served from the stale cache on the next render');
+  assert.match(second.clean, /F00\b/, 'dim placeholder again on the next render');
   const afterSecond = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   assert.strictEqual(afterSecond.lastAttempt, afterFirst.lastAttempt, 'render within FRESH_TTL_MS should not re-attempt');
 });
