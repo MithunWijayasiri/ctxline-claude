@@ -68,10 +68,10 @@ function contextColor(used: number): string {
 }
 
 // The share left as an arc over a dim track, clockwise from 12 o'clock, the limit's letter inside.
-function ring(left: number, color: string, letter: string): string {
+function ring(left: number, color: string, letter: string, off = false): string {
   const circle = (attrs: string): string => `<circle cx="9" cy="9" r="8" fill="none" stroke-width="1.5" ${attrs}/>`
   const arc = left > 0 ? circle(`stroke="${color}" stroke-linecap="round" pathLength="100" stroke-dasharray="${left} 100" transform="rotate(-90 9 9)"`) : ''
-  const text = `<text x="9" y="9.5" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" fill="${LETTER_COLOR}">${letter}</text>`
+  const text = `<text x="9" y="9.5" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" fill="${off ? GREY : LETTER_COLOR}">${letter}</text>`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">${circle(`stroke="${FREE_COLOR}"`)}${arc}${text}</svg>`
 }
 
@@ -396,7 +396,7 @@ export const register: Register = on => {
               return (
                 <Box key={r.label} alignItems="center" columnGap={1}>
                   {i > 0 && <Text dimColor>·</Text>}
-                  <Svg source={ring(left, SVG_COLORS[r.color], r.label)} alt={r.off ? `${r.label} unavailable` : `${r.label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
+                  <Svg source={ring(left, SVG_COLORS[r.color], r.label, r.off)} alt={r.off ? `${r.label} unavailable` : `${r.label} ${left}% left`} width={RING_SIZE} height={RING_SIZE} />
                   <Text color={r.color}>{r.off ? '00' : left}%</Text>
                 </Box>
               )
