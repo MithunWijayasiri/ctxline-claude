@@ -249,11 +249,10 @@ export const register: Register = on => {
     // A failed model fetch keeps the letters only: grey, 00%.
     type Usage = { label: string; text: string; color: string }
     const limits: Usage[] = []
-    const left = (percent: number): string => `${Math.max(0, 100 - percent)}%`
-    if (s.fiveHour) limits.push({ label: 'H', text: left(s.fiveHour.percent), color: usageColor(s.fiveHour.percent) })
-    if (s.sevenDay) limits.push({ label: 'W', text: left(s.sevenDay.percent), color: usageColor(s.sevenDay.percent) })
+    if (s.fiveHour) limits.push({ label: 'H', text: `${s.fiveHour.percent}%`, color: usageColor(s.fiveHour.percent) })
+    if (s.sevenDay) limits.push({ label: 'W', text: `${s.sevenDay.percent}%`, color: usageColor(s.sevenDay.percent) })
     for (const l of m.limits) {
-      limits.push(m.ok ? { label: l.letter, text: left(l.percent), color: modelColor(l.percent) } : { label: l.letter, text: '00%', color: GREY })
+      limits.push(m.ok ? { label: l.letter, text: `${l.percent}%`, color: modelColor(l.percent) } : { label: l.letter, text: '00%', color: GREY })
     }
 
     const c = await read($, cache)
