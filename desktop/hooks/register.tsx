@@ -273,7 +273,7 @@ export const register: Register = on => {
     const hasSync = s.ahead > 0 || s.behind > 0
     const mascot = pet(isBusy, a.current?.name ?? null, idleSince(a), now, tick)
     return (
-      <Box flexDirection="column" rowGap="xs">
+      <Box flexDirection="column" rowGap={1}>
         <Box justifyContent="space-between" alignItems="center" columnGap={2}>
           <Box alignItems="center" columnGap={1} flexShrink={1} minWidth={0}>
             <Box flexShrink={0}>
