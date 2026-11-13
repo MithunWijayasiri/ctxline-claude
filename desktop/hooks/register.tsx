@@ -18,6 +18,8 @@ const REFRESH_MS = 30000
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const SPIN_MS = 250
 const MAX_DETAIL_LEN = 40
+const MAX_FOLDER_LEN = 24
+const MAX_BRANCH_LEN = 32
 const LINE_HEIGHT = 3 // CSS pixels
 const SPINNER = '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
 const DETAIL_KEYS = ['command', 'file_path', 'pattern', 'url', 'query', 'description', 'skill'] as const
@@ -74,9 +76,14 @@ function toolDetail(args: object): string {
     const value = (args as Record<string, unknown>)[key]
     if (typeof value !== 'string') continue
     const text = key === 'file_path' ? (value.split(/[\\/]/).pop() ?? value) : (value.split('\n')[0] ?? '')
-    return text.length > MAX_DETAIL_LEN ? text.slice(0, MAX_DETAIL_LEN - 1) + '…' : text
+    return clip(text, MAX_DETAIL_LEN)
   }
   return ''
+}
+
+// Desktop wraps a long Text instead of truncating it, so long strings are cut here.
+function clip(text: string, max: number): string {
+  return text.length > max ? text.slice(0, max - 1) + '…' : text
 }
 
 async function git($: EngineInterface, cwd: string, args: string[]): Promise<string | undefined> {
@@ -277,11 +284,11 @@ export const register: Register = on => {
         <Box justifyContent="space-between" alignItems="center" columnGap={2}>
           <Box flexShrink={1} minWidth={0}>
             <Text wrap="truncate-end">
-              <Text>{s.folder}</Text>
+              <Text>{clip(s.folder, MAX_FOLDER_LEN)}</Text>
               {s.branch && (
                 <Text>
                   <Text dimColor> ⎇ </Text>
-                  {s.branch}
+                  {clip(s.branch, MAX_BRANCH_LEN)}
                 </Text>
               )}
               {hasSync && (

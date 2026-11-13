@@ -43,8 +43,9 @@ Side effects of a local load (both gitignored, leave them): engine writes `deskt
 - During a turn: spinner + tool + detail + elapsed (no `tool #N`); pet acts out the tool.
 - Idle: `last turn <dur> · N tool(s)`.
 - Row 1: `<folder> ⎇ <branch> ↑N↓M` left, `H <used>% · W <used>%` right; `H`/`W` plain colored text (percent used), no rings.
+  - Conditional: no `⎇ <branch>` on detached HEAD; no `↑N↓M` when in sync; `H`/`W` each only when its limit is available.
 - Row 2: pet + activity left, `cache <pct>% · <tokens> / <window>` right.
-- Long branch / tool detail: stays on one line, numbers on the right stay whole.
+- Long folder (>24) / branch (>32) / tool detail (>40): cut with `…`, stays on one line; numbers on the right stay whole.
 - Model limit (e.g. `F <used>%`) only with a subscription login; none on an API key.
 - 3px line under the row: stretches full width, fills to context % used, green → red; no category bar, legend, or compact button.
 - Nothing from the plugin in the footer below the prompt.
