@@ -8,6 +8,10 @@ import type { StyleId } from './looks'
 
 const STILL = '@media (prefers-reduced-motion: reduce){*{animation:none!important}}'
 
+// How strongly each scene's moving art (coals, map lines, the black hole,
+// ribbons) shows over its background; kept low so it doesn't pull the eye.
+const ART_OPACITY = 0.5
+
 // Seeded so a scene is the same text every load (a changed source makes the
 // app redraw the frame).
 function seeded(seed: number): () => number {
@@ -19,7 +23,7 @@ function seeded(seed: number): () => number {
 const f = (n: number): string => n.toFixed(1).replace(/\.0$/, '')
 
 function svg(aspect: string, style: string, body: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="${aspect}"><style>${style}${STILL}</style>${body}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="${aspect}"><style>.art{opacity:${ART_OPACITY}}${style}${STILL}</style>${body}</svg>`
 }
 
 // ---------- Ember: breathing coals, pulsing cracks, a rising haze ----------
@@ -76,10 +80,10 @@ function ember(): string {
       '<filter id="heat" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      '<rect width="1600" height="1000" fill="url(#glow)"/>' +
+      '<g class="art"><rect width="1600" height="1000" fill="url(#glow)"/>' +
       '<ellipse class="haze" cx="800" cy="900" rx="1000" ry="460" fill="url(#hz)"/>' +
       coals +
-      `<g filter="url(#heat)" transform="translate(0 200) scale(1.3334)">${cracks}</g>`,
+      `<g filter="url(#heat)" transform="translate(0 200) scale(1.3334)">${cracks}</g></g>`,
   )
 }
 
@@ -121,7 +125,7 @@ function contour(): string {
       masks +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      `<g class="map"><path class="minor" d="${MINOR}"/><path class="major" d="${MAJOR}"/><g filter="url(#bloom)">${glows}</g></g>`,
+      `<g class="art"><g class="map"><path class="minor" d="${MINOR}"/><path class="major" d="${MAJOR}"/><g filter="url(#bloom)">${glows}</g></g></g>`,
   )
 }
 
@@ -227,14 +231,14 @@ function phoenix(): string {
       '<filter id="bloom" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '</defs>' +
       '<rect class="bg" width="1600" height="1000"/>' +
-      `<g class="dust">${dust}</g>${stars}` +
+      `<g class="art"><g class="dust">${dust}</g>${stars}` +
       `<circle cx="${BH_X}" cy="${BH_Y}" r="900" fill="url(#haze)"/>` +
       `<circle cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 90}" fill="none" stroke="url(#hg)" stroke-width="170" opacity=".28" filter="url(#soft)"/>` +
-      `<g class="halo" filter="url(#bloom)">${halo}</g>${swirl}` +
+      `<g class="halo" filter="url(#bloom)">${halo}</g>${swirl}</g>` +
       `<circle class="hole" cx="${BH_X}" cy="${BH_Y}" r="${HOLE}"/>` +
-      `<circle class="ring pulse" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 5}"/>` +
+      `<g class="art"><circle class="ring pulse" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 5}"/>` +
       `<g ${plane}><ellipse rx="1200" ry="${f(1200 * FLAT * 0.9)}" cy="${f(1200 * FLAT * 0.35)}" fill="url(#dg)" opacity=".18" filter="url(#soft)"/></g>` +
-      `<g ${plane} mask="url(#edge)"><g class="disk" filter="url(#bloom)">${disk}</g>${flow}</g>`,
+      `<g ${plane} mask="url(#edge)"><g class="disk" filter="url(#bloom)">${disk}</g>${flow}</g></g>`,
   )
 }
 
@@ -263,12 +267,12 @@ function dusk(): string {
       '<filter id="soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="30"/></filter>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      '<g class="ribbons" filter="url(#soft)">' +
+      '<g class="art"><g class="ribbons" filter="url(#soft)">' +
       '<path d="M-70 333 C 267 200, 560 433, 867 283 S 1400 183, 1680 317" stroke="url(#r1)" stroke-width="110" fill="none"/>' +
       '<path d="M-70 483 C 347 383, 627 550, 1013 433 S 1440 383, 1680 467" stroke="url(#r2)" stroke-width="70" fill="none"/>' +
-      '</g>' +
+      '</g></g>' +
       '<path class="h1" d="M0 783 C 240 717, 453 758, 693 717 S 1173 667, 1600 733 V1000 H0Z"/>' +
-      '<path class="rim" d="M0 783 C 240 717, 453 758, 693 717 S 1173 667, 1600 733"/>' +
+      '<path class="rim art" d="M0 783 C 240 717, 453 758, 693 717 S 1173 667, 1600 733"/>' +
       '<path class="h2" d="M0 858 C 293 817, 560 867, 853 825 S 1307 800, 1600 842 V1000 H0Z"/>' +
       '<path class="h3" d="M0 933 C 347 908, 640 942, 960 917 S 1360 900, 1600 925 V1000 H0Z"/>',
   )
