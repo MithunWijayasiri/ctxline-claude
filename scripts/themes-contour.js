@@ -105,6 +105,18 @@ function simplify(pts, tol) {
   let at = 0
   const [x1, y1] = pts[0]
   const [x2, y2] = pts[pts.length - 1]
+  if (x1 === x2 && y1 === y2) {
+    // A closed ring: its chord is a single point, so every distance below would
+    // be 0 and the ring would collapse. Split it at the point farthest from the
+    // start and simplify each half; the halves share that point and the start.
+    let far = 1
+    let best = -1
+    for (let n = 1; n < pts.length - 1; n++) {
+      const d = Math.hypot(pts[n][0] - x1, pts[n][1] - y1)
+      if (d > best) { best = d; far = n }
+    }
+    return simplify(pts.slice(0, far + 1), tol).slice(0, -1).concat(simplify(pts.slice(far), tol))
+  }
   const len = Math.hypot(x2 - x1, y2 - y1) || 1
   for (let n = 1; n < pts.length - 1; n++) {
     const [x, y] = pts[n]

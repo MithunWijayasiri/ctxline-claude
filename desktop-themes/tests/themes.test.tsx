@@ -9,7 +9,7 @@ const START = { cwd: '/', surface: 'desktop', isInteractive: true } as const
 
 type Engine = { sets: any[]; clears: () => number; store: Map<string, unknown> }
 
-function engine(on: any, opts: { store?: boolean } = {}): Engine {
+function engine(on: any, opts: { store?: boolean; notDrawn?: string } = {}): Engine {
   const sets: any[] = []
   const store = new Map<string, unknown>()
   let clears = 0
@@ -19,7 +19,9 @@ function engine(on: any, opts: { store?: boolean } = {}): Engine {
   on('theme.set', (_: unknown, e: any) => {
     sets.push(e)
 
-    return { value: { isDrawn: true, requestId: 'r1' } }
+    return opts.notDrawn === undefined
+      ? { value: { isDrawn: true, requestId: 'r1' } }
+      : { value: { isDrawn: false, reason: opts.notDrawn } }
   })
   on('theme.clear', () => {
     clears++
@@ -85,6 +87,19 @@ test('/ctxtheme switches, remembers, lists and turns off', async ($, on) => {
   const before = sets.length
   await $.session.start(START)
   expect(sets.length).toBe(before)
+})
+
+test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
+  // No client that draws themes is attached, as in a terminal-only session.
+  const { store } = engine(on, { notDrawn: 'no desktop client attached' })
+  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
+
+  await $.session.start(START)
+
+  const ran = await run('corona')
+  expect(ran.text).toContain('Switched to Corona, but nothing shows it here yet')
+  expect(ran.text).toContain('no desktop client attached')
+  expect(store.get('style')).toBe('corona')
 })
 
 test('the backdrop draws each scene and leaves other plugins alone', async ($, on) => {

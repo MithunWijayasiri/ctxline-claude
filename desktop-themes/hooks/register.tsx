@@ -23,16 +23,22 @@ async function savedChoice($: EngineInterface): Promise<Choice> {
   return value === OFF || isStyleId(value) ? value : DEFAULT_STYLE
 }
 
-async function apply($: EngineInterface, id: StyleId): Promise<void> {
+// Resolves why nothing draws the theme right now, or undefined when it's drawn.
+// Not drawn isn't a failure: the theme still stands for the session and a
+// surface that attaches later (the desktop app) draws it.
+async function apply($: EngineInterface, id: StyleId): Promise<string | undefined> {
   const look = LOOKS[id]
   const set = await $.theme.set({
     colors: look.colors,
     backdrop: { scene: id, glass: look.glass },
   })
 
-  if (!set.isDrawn) {
-    $.ui.log(`${id}: not drawn: ${set.reason}`, { to: 'debug' })
+  if (set.isDrawn) {
+    return undefined
   }
+  $.ui.log(`${id}: not drawn: ${set.reason}`, { to: 'debug' })
+
+  return set.reason
 }
 
 function listing(current: Choice): string {
@@ -91,9 +97,17 @@ export const register: Register = on => {
     }
 
     await $.store.set(STORE_KEY, arg)
-    await apply($, arg)
+    const notDrawn = await apply($, arg)
+    const name = LOOKS[arg].name
 
-    return { text: `Switched to ${LOOKS[arg].name}. It stays on for new sessions.`, isTextDisplayOnly: true }
+    if (notDrawn !== undefined) {
+      return {
+        text: `Switched to ${name}, but nothing shows it here yet: ${notDrawn}. It appears in the Claude desktop app and stays on for new sessions.`,
+        isTextDisplayOnly: true,
+      }
+    }
+
+    return { text: `Switched to ${name}. It stays on for new sessions.`, isTextDisplayOnly: true }
   }).catch(() => ({ text: 'ctxline themes could not switch the theme. Try again.', isTextDisplayOnly: true }))
 
   // Draws the backdrop scene this plugin set; another plugin's is left alone.
