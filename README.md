@@ -204,10 +204,10 @@ To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove
 
 ### Themes
 
-A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks built around Claude orange. Each one has a light version that the app picks when it's in light mode, and an animated background behind the conversation.
+A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks: three built around Claude orange and one around gold. Each one has a light version that the app picks when it's in light mode, and an animated background behind the conversation.
 
 <p align="center">
-  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes in dark mode: Dusk, Ember, Contour and Corona">
+  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes in dark mode: Dusk, Ember, Contour and Phoenix">
 </p>
 
 The preview shows dark mode, with each background caught at one moment. See them move at [ctxline.js.org](https://ctxline.js.org/#themes).
@@ -221,7 +221,7 @@ The preview shows dark mode, with each background caught at one moment. See them
 | `dusk` (default) | deep plum | orange and violet light ribbons sway over layered hills |
 | `ember` | warm charcoal | coals along the bottom brighten and dim, cracks of heat pulse |
 | `contour` | blue-slate | orange map lines drift; bands of them light up and fade |
-| `corona` | near-black | an eclipse in the top corner with turning flares, twinkling stars |
+| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left |
 
 Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look. The backgrounds hold still when your system asks for reduced motion.
 

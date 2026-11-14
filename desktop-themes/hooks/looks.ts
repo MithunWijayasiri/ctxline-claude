@@ -6,7 +6,7 @@ import { makeColors } from './make-colors.js'
 // both modes (makeColors turns a few anchors and role seeds into the app's ~100
 // colors) plus an animated backdrop scene of the same id (scenes.ts).
 
-export const STYLE_IDS = ['ember', 'contour', 'corona', 'dusk'] as const
+export const STYLE_IDS = ['ember', 'contour', 'phoenix', 'dusk'] as const
 export type StyleId = (typeof STYLE_IDS)[number]
 
 export const DEFAULT_STYLE: StyleId = 'dusk'
@@ -101,38 +101,39 @@ export const LOOKS: Record<StyleId, Look> = {
     },
   }),
 
-  corona: look('Corona', 'near-black, an eclipse with turning flares, twinkling stars', { blur: 16, opacity: 0.6 }, {
-    label: 'ctxline Corona',
-    id: 'ctxline-corona',
-    roles: { accent: '#e8845f', danger: '#f2665b', success: '#7fc78c', warning: '#f0b64b', pro: '#c99df2' },
+  phoenix: look('Phoenix', 'warm black, a large gold black hole with a striped disk', { blur: 16, opacity: 0.6 }, {
+    label: 'ctxline Phoenix',
+    id: 'ctxline-phoenix',
+    // Gold instead of Claude orange, to match the black hole.
+    roles: { accent: '#e8b05a', danger: '#f06a5b', success: '#8fca8a', warning: '#e9c46a', pro: '#c9a0f0' },
     dark: {
       gray: {
         anchors: {
-          'surface-0': '#0b0a0a',
-          'surface-1': '#131211',
-          'surface-2': '#1a1817',
-          'surface-3': '#211e1c',
-          'text-primary': '#f6f2ee',
-          'text-secondary': '#cbc4bd',
-          'text-muted': '#9c948c',
+          'surface-0': '#0c0a08',
+          'surface-1': '#141110',
+          'surface-2': '#1b1714',
+          'surface-3': '#221d19',
+          'text-primary': '#f7f1e8',
+          'text-secondary': '#cdc3b5',
+          'text-muted': '#9f9484',
         },
       },
-      git: { added: '#7fc78c', removed: '#f2665b' },
+      git: { added: '#8fca8a', removed: '#f06a5b' },
     },
     light: {
       gray: {
         anchors: {
-          'surface-0': '#ebe8e5',
-          'surface-1': '#f3f1ef',
-          'surface-2': '#fbfaf9',
-          'surface-3': '#fbfaf9',
-          'text-primary': '#141210',
-          'text-secondary': '#45403b',
-          'text-muted': '#6b645d',
+          'surface-0': '#ece6dc',
+          'surface-1': '#f4efe8',
+          'surface-2': '#fbf9f5',
+          'surface-3': '#fbf9f5',
+          'text-primary': '#17130e',
+          'text-secondary': '#4a4238',
+          'text-muted': '#6e6457',
         },
       },
-      roles: { accent: '#d2693f', danger: '#c93f35', success: '#3f8a4c', warning: '#a8730d', pro: '#8452c4' },
-      git: { added: '#3f8a4c', removed: '#c93f35' },
+      roles: { accent: '#a8701c', danger: '#c4402f', success: '#3d8546', warning: '#8f6a00', pro: '#7f52c0' },
+      git: { added: '#3d8546', removed: '#c4402f' },
     },
   }),
 

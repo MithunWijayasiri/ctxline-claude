@@ -4,7 +4,7 @@ import { DEFAULT_STYLE, isStyleId, LOOKS, STYLE_IDS } from './looks'
 import type { StyleId } from './looks'
 import { SCENE_ALT, SCENES } from './scenes'
 
-// ctxline-desktop-themes: four dark + Claude-orange looks for the Claude desktop
+// ctxline-desktop-themes: four dark looks (three Claude orange, one gold) for the Claude desktop
 // app, each with a light version and an animated backdrop. `/ctxtheme <style>`
 // switches; the pick is kept in $.store and set again at every session start
 // (a theme is display-only: --resume brings none back).
@@ -61,8 +61,8 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: COMMAND,
-      description: 'Switch the ctxline desktop theme (ember, contour, corona, dusk, off)',
-      argumentHint: '[ember|contour|corona|dusk|off]',
+      description: 'Switch the ctxline desktop theme (ember, contour, phoenix, dusk, off)',
+      argumentHint: '[ember|contour|phoenix|dusk|off]',
       immediate: true,
     })
 

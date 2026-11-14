@@ -96,10 +96,10 @@ test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
 
   await $.session.start(START)
 
-  const ran = await run('corona')
-  expect(ran.text).toContain('Switched to Corona, but nothing shows it here yet')
+  const ran = await run('phoenix')
+  expect(ran.text).toContain('Switched to Phoenix, but nothing shows it here yet')
   expect(ran.text).toContain('no desktop client attached')
-  expect(store.get('style')).toBe('corona')
+  expect(store.get('style')).toBe('phoenix')
 })
 
 test('the backdrop draws each scene and leaves other plugins alone', async ($, on) => {
@@ -109,7 +109,7 @@ test('the backdrop draws each scene and leaves other plugins alone', async ($, o
     return <Text>engine</Text>
   })
 
-  for (const scene of ['ember', 'contour', 'corona', 'dusk']) {
+  for (const scene of ['ember', 'contour', 'phoenix', 'dusk']) {
     const ui = await $.ui.mount({
       plugin: PLUGIN,
       surface: 'desktop',

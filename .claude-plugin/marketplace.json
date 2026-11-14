@@ -11,7 +11,7 @@
     {
       "name": "ctxline-desktop-themes",
       "source": "./desktop-themes",
-      "description": "Four dark looks in Claude orange for the Claude desktop app (Ember, Contour, Corona, Dusk), each with a light version and an animated background. Switch with /ctxtheme. Learn more at ctxline.js.org"
+      "description": "Four dark looks for the Claude desktop app, three in Claude orange (Dusk, Ember, Contour) and one in gold (Phoenix), each with a light version and an animated background. Switch with /ctxtheme. Learn more at ctxline.js.org"
     }
   ]
 }

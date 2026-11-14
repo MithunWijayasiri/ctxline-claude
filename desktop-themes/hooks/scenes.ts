@@ -125,67 +125,116 @@ function contour(): string {
   )
 }
 
-// ---------- Corona: an eclipse in the top corner, turning flares, stars ----------
+// ---------- Phoenix: a large gold black hole, its disk streaming out left ----------
 
-// The eclipse's centre sits just off the top-right corner; the scene pins that
-// corner (xMaxYMin) so a narrow or tall window crops the other sides instead.
-const SUN_X = 1520
-const SUN_Y = -16
+// The hole sits on the right edge; the scene pins that side (xMaxYMid) so a
+// narrow or tall window crops the left instead. The halo is the far side of
+// the disk, bent round the hole, so no back half of the disk is drawn, and the
+// disk's rings start outside the halo so nothing crosses it.
+const BH_X = 1480
+const BH_Y = 400
+const HOLE = 190
+const HALO = HOLE + 214
+const TILT = -7
+const FLAT = 0.09 // disk ry = rx * FLAT
 
-function corona(): string {
-  const rnd = seeded(23)
+function phoenix(): string {
+  const rnd = seeded(41)
+
   let dust = ''
-  for (let i = 0; i < 70; i++) {
-    dust += `<circle cx="${f(rnd() * 1600)}" cy="${f(rnd() * 1000)}" r="${f(0.5 + rnd() * 0.8)}"/>`
+  for (let i = 0; i < 90; i++) {
+    dust += `<circle cx="${f(rnd() * 1600)}" cy="${f(rnd() * 1000)}" r="${f(0.4 + rnd() * 0.8)}"/>`
   }
   let stars = ''
-  for (let i = 0; i < 26; i++) {
-    stars += `<circle class="star" cx="${f(rnd() * 1600)}" cy="${f(rnd() * 1000)}" r="${f(0.9 + rnd() * 0.9)}" style="animation-duration:${f(2.5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 5)}s"/>`
+  for (let i = 0; i < 24; i++) {
+    stars += `<circle class="star" cx="${f(rnd() * 1100)}" cy="${f(rnd() * 1000)}" r="${f(0.8 + rnd() * 0.9)}" style="animation-duration:${f(2.5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 5)}s"/>`
   }
-  const origin = `transform-origin:${SUN_X}px ${SUN_Y}px`
+
+  // The front half of a disk ring, right to left, below the centre line.
+  const front = (rx: number): string => `M${f(rx)} 0A${f(rx)} ${f(rx * FLAT)} 0 0 1 ${f(-rx)} 0`
+
+  // Striated disk: many thin rings, brighter and denser near the hole.
+  let disk = ''
+  const RINGS = 64
+  for (let i = 0; i < RINGS; i++) {
+    const t = i / (RINGS - 1)
+    const width = 1.5 + rnd() * 6
+    const opacity = Math.pow(1 - t, 0.7) * (0.35 + rnd() * 0.65)
+    disk += `<path d="${front(HALO + 8 + Math.pow(t, 1.15) * 1300)}" style="stroke-width:${f(width)};opacity:${opacity.toFixed(2)}"/>`
+  }
+
+  // Streaks flowing round the disk, inner ones faster.
+  let flow = ''
+  for (let i = 0; i < 12; i++) {
+    const dash = `${f(20 + rnd() * 70)} ${f(60 + rnd() * 160)}`
+    const period = dash.split(' ').reduce((a, b) => a + Number(b), 0)
+    flow += `<path class="flow" d="${front(HALO + 12 + Math.pow(i / 11, 1.2) * 650)}" style="stroke-width:${f(1 + rnd() * 2.5)};stroke-dasharray:${dash};--p:-${f(period * 4)}px;animation-duration:${f(5 + i * 1.6)}s"/>`
+  }
+
+  // Lensed halo rings, then a turning texture over them.
+  let halo = ''
+  const HALO_RINGS = 36
+  for (let j = 0; j < HALO_RINGS; j++) {
+    const t = j / (HALO_RINGS - 1)
+    const width = 1.5 + rnd() * 6
+    const opacity = Math.pow(1 - t, 1.4) * (0.4 + rnd() * 0.6)
+    halo += `<circle cx="${BH_X}" cy="${BH_Y}" r="${f(HOLE + 14 + Math.pow(t, 1.15) * 200)}" style="stroke-width:${f(width)};opacity:${opacity.toFixed(2)}"/>`
+  }
+  let swirl = ''
+  for (let k = 0; k < 6; k++) {
+    swirl += `<circle class="${k % 2 ? 'spinR' : 'spin'}" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 22 + k * 26}" style="stroke-width:${f(1.5 + rnd() * 2)};stroke-dasharray:${f(30 + rnd() * 90)} ${f(40 + rnd() * 140)};animation-duration:${f(60 + k * 18)}s"/>`
+  }
+
+  const plane = `transform="translate(${BH_X} ${BH_Y}) rotate(${TILT})"`
+  const origin = `transform-origin:${BH_X}px ${BH_Y}px`
 
   const style =
-    '.bg{fill:#0b0a0a}.disc{fill:#0b0a0a}' +
-    '.k0{stop-color:rgba(255,170,110,.95)}.k1{stop-color:rgba(232,132,95,.55)}.k2{stop-color:rgba(217,119,87,.18)}.k3{stop-color:rgba(217,119,87,0)}' +
-    '.o0{stop-color:rgba(217,119,87,0)}.o1{stop-color:rgba(217,119,87,.1)}' +
-    '.ring{fill:none;stroke:rgba(255,186,140,.9);stroke-width:3}' +
-    '.flare{fill:none;stroke:rgba(255,165,115,.75)}' +
-    '.dust{fill:rgba(255,236,222,.35)}.star{fill:#fff3ea;opacity:.2;animation:twinkle ease-in-out infinite}' +
-    `.sun{${origin};animation:breathe 5s ease-in-out infinite}` +
-    `.spin{${origin};animation:spin 26s linear infinite}` +
-    `.spin2{${origin};animation:spin 40s linear infinite reverse;opacity:.7}` +
-    '.shoot{opacity:0;animation:shoot 7s ease-in 1s infinite}' +
-    '@keyframes breathe{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.06);opacity:1}}' +
+    '.bg{fill:#0c0906}.hole{fill:#000}' +
+    '.h0{stop-color:rgba(255,214,150,.16)}.h1{stop-color:rgba(255,190,110,.05)}.h2{stop-color:rgba(255,190,110,0)}' +
+    // Disk colour by distance: cream near the hole, then gold, amber, bronze.
+    '.k0{stop-color:#fff6e2}.k1{stop-color:#fbd897}.k2{stop-color:#eeb05e}.k3{stop-color:#b8702f}.k4{stop-color:#5e3417}' +
+    // Halo: brighter on the left.
+    '.l0{stop-color:#ffe6b8}.l1{stop-color:#f2bd6a}.l2{stop-color:#b5762f}' +
+    '.disk path{fill:none;stroke:url(#dg)}.halo circle{fill:none;stroke:url(#hg)}' +
+    '.flow{fill:none;stroke:#fff1d6;stroke-linecap:round;opacity:.45;animation:flow linear infinite}' +
+    `.spin,.spinR{fill:none;stroke:#ffe4b0;opacity:.3;${origin};animation:spin linear infinite}.spinR{animation-direction:reverse}` +
+    '.ring{fill:none;stroke:#fff6e4;stroke-width:1.6}' +
+    `.pulse{${origin};animation:pulse 7s ease-in-out infinite}` +
+    '.dust{fill:rgba(255,240,220,.35)}.star{fill:#fff6ea;opacity:.2;animation:twinkle ease-in-out infinite}' +
+    '@keyframes flow{to{stroke-dashoffset:var(--p)}}' +
     '@keyframes spin{to{transform:rotate(360deg)}}' +
+    '@keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}' +
     '@keyframes twinkle{0%,100%{opacity:.12}50%{opacity:.95}}' +
-    '@keyframes shoot{0%{opacity:0;transform:translateX(0)}2%{opacity:1}9%,100%{opacity:0;transform:translateX(760px)}}' +
     '@media (prefers-color-scheme:light){' +
-    '.bg{fill:url(#day)}.disc{fill:#fbf8f5}' +
-    '.k0{stop-color:rgba(226,120,80,.85)}.k1{stop-color:rgba(232,140,100,.35)}.k2{stop-color:rgba(232,150,110,.12)}.k3{stop-color:rgba(232,150,110,0)}' +
-    '.o1{stop-color:rgba(217,119,87,.08)}' +
-    '.ring{stroke:rgba(214,108,66,.85)}.flare{stroke:rgba(226,120,80,.6)}' +
-    '.dust,.star,.shooter{display:none}}'
+    '.bg{fill:url(#day)}.hole{fill:#120d09}' +
+    '.h0{stop-color:rgba(214,150,70,.14)}.h1{stop-color:rgba(214,150,70,.04)}' +
+    '.k0{stop-color:#fff3dc}.k1{stop-color:#f1c172}.k2{stop-color:#d8913f}.k3{stop-color:#9a5a24}.k4{stop-color:#5e3417}' +
+    '.l0{stop-color:#ffeccc}.l1{stop-color:#e9b464}.l2{stop-color:#a8692e}' +
+    '.dust,.star{display:none}}'
 
   return svg(
-    'xMaxYMin slice',
+    'xMaxYMid slice',
     style,
     '<defs>' +
-      '<radialGradient id="day" cx=".9" cy="0" r="1"><stop offset="0" stop-color="#f7f3ef"/><stop offset=".7" stop-color="#ebe8e5"/></radialGradient>' +
-      '<radialGradient id="corona"><stop offset=".66" class="k0"/><stop offset=".71" class="k1"/><stop offset=".8" class="k2"/><stop offset="1" class="k3"/></radialGradient>' +
-      '<radialGradient id="halo"><stop offset=".6" class="o0"/><stop offset=".72" class="o1"/><stop offset="1" class="o0"/></radialGradient>' +
-      '<linearGradient id="trail"><stop offset="0" stop-color="#ffd9c2" stop-opacity="0"/><stop offset="1" stop-color="#ffd9c2"/></linearGradient>' +
-      '<filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>' +
-      '<filter id="edge"><feGaussianBlur stdDeviation="1"/></filter>' +
+      '<radialGradient id="day" cx=".85" cy=".4" r="1"><stop offset="0" stop-color="#f6efe4"/><stop offset=".75" stop-color="#ece5da"/></radialGradient>' +
+      '<radialGradient id="haze"><stop offset="0" class="h0"/><stop offset=".5" class="h1"/><stop offset="1" class="h2"/></radialGradient>' +
+      '<radialGradient id="dg" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1620"><stop offset=".14" class="k0"/><stop offset=".24" class="k1"/><stop offset=".42" class="k2"/><stop offset=".7" class="k3"/><stop offset="1" class="k4"/></radialGradient>' +
+      `<linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="${BH_X - 420}" y1="0" x2="${BH_X + 420}" y2="0"><stop offset="0" class="l0"/><stop offset=".45" class="l1"/><stop offset="1" class="l2"/></linearGradient>` +
+      // Fades the disk's top edge, where each ring's tip curls, into one smooth band.
+      '<linearGradient id="fadeY" gradientUnits="userSpaceOnUse" x1="0" y1="2" x2="0" y2="40"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>' +
+      '<mask id="edge" maskUnits="userSpaceOnUse" x="-1900" y="-100" width="2400" height="400"><rect x="-1900" y="-100" width="2400" height="400" fill="url(#fadeY)"/></mask>' +
+      '<filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter>' +
+      '<filter id="bloom" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '</defs>' +
       '<rect class="bg" width="1600" height="1000"/>' +
       `<g class="dust">${dust}</g>${stars}` +
-      '<g class="shooter" transform="translate(110 150) rotate(20)"><line class="shoot" x1="0" y1="0" x2="240" y2="0" stroke="url(#trail)" stroke-width="2.4" stroke-linecap="round"/></g>' +
-      `<circle cx="${SUN_X}" cy="${SUN_Y}" r="560" fill="url(#halo)"/>` +
-      `<g class="sun"><circle cx="${SUN_X}" cy="${SUN_Y}" r="262" fill="url(#corona)"/>` +
-      `<circle class="disc" cx="${SUN_X}" cy="${SUN_Y}" r="174"/>` +
-      `<circle class="ring" cx="${SUN_X}" cy="${SUN_Y}" r="175" filter="url(#edge)"/></g>` +
-      `<g filter="url(#soft)"><circle class="flare spin" cx="${SUN_X}" cy="${SUN_Y}" r="192" stroke-width="34" stroke-dasharray="70 200 40 250 95 180 50 230"/>` +
-      `<circle class="flare spin2" cx="${SUN_X}" cy="${SUN_Y}" r="204" stroke-width="22" stroke-dasharray="40 260 80 220 30 300 60 240"/></g>`,
+      `<circle cx="${BH_X}" cy="${BH_Y}" r="900" fill="url(#haze)"/>` +
+      `<circle cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 90}" fill="none" stroke="url(#hg)" stroke-width="170" opacity=".28" filter="url(#soft)"/>` +
+      `<g class="halo" filter="url(#bloom)">${halo}</g>${swirl}` +
+      `<circle class="hole" cx="${BH_X}" cy="${BH_Y}" r="${HOLE}"/>` +
+      `<circle class="ring pulse" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 5}"/>` +
+      `<g ${plane}><ellipse rx="1200" ry="${f(1200 * FLAT * 0.9)}" cy="${f(1200 * FLAT * 0.35)}" fill="url(#dg)" opacity=".18" filter="url(#soft)"/></g>` +
+      `<g ${plane} mask="url(#edge)"><g class="disk" filter="url(#bloom)">${disk}</g>${flow}</g>`,
   )
 }
 
@@ -228,13 +277,13 @@ function dusk(): string {
 export const SCENES: Record<StyleId, string> = {
   ember: ember(),
   contour: contour(),
-  corona: corona(),
+  phoenix: phoenix(),
   dusk: dusk(),
 }
 
 export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals and cracks of heat along the bottom of a warm charcoal background',
   contour: 'Orange topographic map lines drifting slowly over a blue-slate background',
-  corona: 'An eclipse with turning orange flares in the top corner of a near-black starry sky',
+  phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left',
   dusk: 'Orange and violet light ribbons swaying above layered dusk hills',
 }
