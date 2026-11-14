@@ -1,5 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
+import { LOOKS } from '../hooks/looks'
+
 // Run with: claude plugin test ./desktop-themes
 // Nothing sits beneath the plugin in a test: each hook here stands for the
 // engine (the theme, the store and the command menu).
@@ -48,6 +50,12 @@ test('a first session sets Dusk, palette and scene', async ($, on) => {
   expect(sets.length).toBe(1)
   expect(sets[0].backdrop.scene).toBe('dusk')
   expect(sets[0].colors.label).toBe('ctxline Dusk')
+})
+
+test('every palette is one Desktop paints', async () => {
+  for (const look of Object.values(LOOKS)) {
+    expect(look.problems.filter(p => p.startsWith("Desktop won't paint"))).toEqual([])
+  }
 })
 
 test('an unreadable store still sets Dusk', async ($, on) => {

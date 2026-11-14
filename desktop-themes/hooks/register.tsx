@@ -96,8 +96,8 @@ export const register: Register = on => {
       }
     }
 
-    await $.store.set(STORE_KEY, arg)
     const notDrawn = await apply($, arg)
+    await $.store.set(STORE_KEY, arg)
     const name = LOOKS[arg].name
 
     if (notDrawn !== undefined) {
