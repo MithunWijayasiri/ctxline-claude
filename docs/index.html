@@ -204,6 +204,29 @@
   .opt .cmd code span{white-space:nowrap}
   .notice{background:#fbe9df;border:1px solid var(--accent);border-left-width:5px;font-size:15px}
   .notice .cmd{margin-top:14px}
+
+  /* desktop themes: each card is the plugin's real backdrop (docs/assets/themes, from
+     scripts/themes-assets.mjs) under a small chat drawn in that style's dark palette */
+  .themes{display:grid;grid-template-columns:1fr 1fr;gap:26px 20px;max-width:960px;margin:0 auto}
+  .theme{display:flex;flex-direction:column;gap:12px}
+  .theme .shot{position:relative;aspect-ratio:16/10;max-width:100%;border-radius:16px;overflow:hidden;background:var(--s0);box-shadow:0 22px 44px -26px rgba(28,26,23,.6)}
+  .theme .shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .theme .ui{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:9px;padding:16px 8%;font-size:12.5px;line-height:1.45;color:var(--tp)}
+  .theme .msg{align-self:flex-end;max-width:85%;background:color-mix(in srgb,var(--s2) 90%,transparent);border:1px solid color-mix(in srgb,var(--tp) 8%,transparent);padding:6px 11px;border-radius:11px}
+  .theme .reply code{font-family:var(--mono);font-size:11.5px;color:var(--ac);background:color-mix(in srgb,var(--s2) 85%,transparent);padding:0 4px;border-radius:4px}
+  .theme .box{display:flex;justify-content:space-between;align-items:center;margin-top:4px;background:color-mix(in srgb,var(--s2) 92%,transparent);border:1px solid color-mix(in srgb,var(--tp) 12%,transparent);border-radius:11px;padding:7px 7px 7px 12px;color:var(--tm);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .theme .box i{font-style:normal;font-weight:700;width:24px;height:24px;border-radius:7px;background:var(--ac);color:var(--s0);display:grid;place-items:center}
+  .theme figcaption{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:0 4px}
+  .theme figcaption b{font-size:17px}
+  .theme .def{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-soft);border-radius:5px;padding:0 6px}
+  .theme figcaption code{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:auto}
+  .theme .what{flex-basis:100%;color:var(--muted);font-size:14.5px}
+  .t-dusk{--s0:#141019;--s2:#211a28;--tp:#f1ebf5;--tm:#9d91a8;--ac:#e07f5a}
+  .t-ember{--s0:#17120f;--s2:#261e19;--tp:#f3e9df;--tm:#a69686;--ac:#d97757}
+  .t-contour{--s0:#0f1318;--s2:#1b222b;--tp:#e8edf3;--tm:#8f9aa7;--ac:#d97757}
+  .t-corona{--s0:#0b0a0a;--s2:#1a1817;--tp:#f6f2ee;--tm:#9c948c;--ac:#e8845f}
+  .themes+.insp-hint{max-width:62ch;margin-left:auto;margin-right:auto}
+  @media(max-width:700px){.themes{grid-template-columns:1fr}}
   @media(max-width:640px){
     .opt li code,.opt .cmd code span{white-space:normal}
     .setup code{overflow-wrap:anywhere}
@@ -369,6 +392,7 @@
     <div class="brand"><span class="pulse"></span> <b>ctxline</b>&nbsp;· claude</div>
     <div class="links">
       <a href="#desktop">Desktop</a>
+      <a href="#themes">Themes</a>
       <a href="https://www.npmjs.com/package/ctxline-claude" target="_blank" rel="noopener">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
       <a class="kofi-btn" href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">❤ Ko-fi</a>
@@ -493,6 +517,78 @@
         <div class="cmd">
           <code><span class="cm">Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline</span></code>
           <button class="copy" onclick="copyCmd(this,'Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline')">Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESKTOP THEMES -->
+  <section class="block" id="themes">
+    <div class="sec-head">
+      <span class="kicker">Desktop themes</span>
+      <h2>Four looks in Claude orange</h2>
+      <p>A second plugin, ctxline themes, restyles the desktop app with dark looks built around Claude orange. Each has a light version and a softly animated background.</p>
+    </div>
+    <div class="themes">
+      <figure class="theme t-dusk">
+        <div class="shot">
+          <img src="assets/themes/dusk.svg" alt="Dusk: orange and violet light ribbons swaying above layered plum hills" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Dusk</b><span class="def">Default</span><code>/ctxtheme dusk</code><span class="what">Deep plum. Orange and violet ribbons sway over dusk hills.</span></figcaption>
+      </figure>
+      <figure class="theme t-ember">
+        <div class="shot">
+          <img src="assets/themes/ember.svg" alt="Ember: glowing coals and cracks of heat along the bottom of a warm charcoal background" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Ember</b><code>/ctxtheme ember</code><span class="what">Warm charcoal. Coals brighten and dim, cracks of heat pulse.</span></figcaption>
+      </figure>
+      <figure class="theme t-contour">
+        <div class="shot">
+          <img src="assets/themes/contour.svg" alt="Contour: orange topographic map lines drifting over a blue-slate background, with bands of lines glowing" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Contour</b><code>/ctxtheme contour</code><span class="what">Blue-slate. Map lines drift; bands of them light up and fade.</span></figcaption>
+      </figure>
+      <figure class="theme t-corona">
+        <div class="shot">
+          <img src="assets/themes/corona.svg" alt="Corona: an eclipse with turning orange flares in the top corner of a near-black starry sky" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Corona</b><code>/ctxtheme corona</code><span class="what">Near-black. An eclipse with turning flares, stars twinkle.</span></figcaption>
+      </figure>
+    </div>
+    <p class="insp-hint">Shown in dark mode. In light mode the app switches each style to its light version. The backgrounds hold still when your system asks for reduced motion.</p>
+    <div class="setup">
+      <div class="opt">
+        <span class="kicker">Install the themes</span>
+        <p class="way">In the app</p>
+        <ol>
+          <li>Add the marketplace <code>MithunWijayasiri/ctxline-claude</code> (skip if you already did for ctxline-desktop)</li>
+          <li>Install <b>ctxline-desktop-themes</b></li>
+          <li>Run <code>/ctxtheme</code> to list the styles, then <code>/ctxtheme &lt;style&gt;</code> to switch. Your pick stays on for new sessions.</li>
+        </ol>
+        <p class="way">Or with commands</p>
+        <div class="cmd">
+          <code>/plugin marketplace add <span>MithunWijayasiri/ctxline-claude</span><br>/plugin install <span>ctxline-desktop-themes@ctxline</span></code>
+          <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop-themes@ctxline')">Copy</button>
         </div>
       </div>
     </div>
@@ -642,7 +738,7 @@
     var reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
     // tag elements that should animate
     var sel = '.hero .kicker,.hero h1,.hero .sub,.term,.hero .cmd,.hero small,.hero .platforms,' +
-              '.sec-head,.feat,.step,details,.insp-hint,.insp-panel,.subagent-term';
+              '.sec-head,.feat,.step,details,.insp-hint,.insp-panel,.subagent-term,.theme';
     var els = Array.prototype.slice.call(document.querySelectorAll(sel));
     if(reduce){ return; } // CSS already shows everything; skip JS motion
     els.forEach(function(el){ el.setAttribute('data-anim',''); });

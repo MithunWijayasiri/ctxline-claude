@@ -206,6 +206,12 @@ To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove
 
 A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks built around Claude orange. Each one has a light version that the app picks when it's in light mode, and an animated background behind the conversation.
 
+<p align="center">
+  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes in dark mode: Dusk, Ember, Contour and Corona">
+</p>
+
+The preview shows dark mode, with each background caught at one moment. See them move at [ctxline.js.org](https://ctxline.js.org/#themes).
+
 ```
 /plugin install ctxline-desktop-themes@ctxline
 ```

@@ -105,6 +105,8 @@ Four styles, `ember`, `contour`, `corona`, `dusk` (default, `DEFAULT_STYLE`), ea
 
 Validate + test: `claude plugin validate ./desktop-themes`, `claude plugin test ./desktop-themes` (`tests/themes.test.tsx`; both in CI). Bump `version` with every change meant to ship.
 
+Mirrors (not drift-tested) — update when a style or scene changes: `docs/assets/themes/<style>.svg` (site `#themes` cards; generated, dark only — run `node --experimental-strip-types scripts/themes-assets.mjs`, never hand-edit), the `.t-<style>` palette vars and captions in `docs/index.html` `#themes`, `docs/assets/desktop-themes-preview.jpg` (README + PR; hand-captured mockups), README "Themes" section.
+
 ## Keep in sync when `statusline.js` changes
 
 `statusline.js` is source of truth; these files mirror it — change in the same edit or CI/release/site drifts. After any edit run `npm test` + `npm run preview`.
