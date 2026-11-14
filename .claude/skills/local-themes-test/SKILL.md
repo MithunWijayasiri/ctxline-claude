@@ -54,8 +54,8 @@ Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws i
 - Reopen an older Code session → pick re-applied? Untested (`session.start` should run on resume). Record the finding in `CLAUDE.md` → Desktop themes plugin.
 
 Backdrops (dark mode):
-- `dusk` — orange and violet ribbons sway over layered hills.
-- `ember` — coals along the bottom brighten and dim; cracks of heat pulse.
+- `dusk` — orange and violet ribbons sway over soft, blurred hills; no sharp lines anywhere.
+- `ember` — coals along the bottom brighten and dim; soft sparks drift up and fade.
 - `contour` — orange map lines drift; bands light up and fade, about one a second.
 - `phoenix` — black hole pinned to the right edge, gold halo, striped disk streaming left; disk never crosses the halo. Narrow/tall window → left side cropped, hole stays.
 - Text over the backdrop readable (glass blur/opacity) in chat, prompt box, sidebar.
