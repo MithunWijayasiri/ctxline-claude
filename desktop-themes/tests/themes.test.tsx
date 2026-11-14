@@ -83,7 +83,8 @@ test('/ctxtheme switches, remembers, lists and turns off', async ($, on) => {
   expect(sets.at(-1).backdrop.scene).toBe('ember')
 
   const list = await run('')
-  expect(list.text).toContain('● ember')
+  expect(list.text).toContain('Current theme: **Ember**')
+  expect(list.text).toContain('- `ember` (current): ')
 
   const bad = await run('neon')
   expect(bad.text).toContain('No style called')

@@ -41,19 +41,22 @@ async function apply($: EngineInterface, id: StyleId): Promise<string | undefine
   return set.reason
 }
 
+// Markdown: the app draws a command's reply as markdown, after the plugin's name.
 function listing(current: Choice): string {
   const rows = STYLE_IDS.map(id => {
-    const mark = id === current ? '●' : '○'
-    const tag = id === DEFAULT_STYLE ? ' (default)' : ''
+    const tags = [id === current && 'current', id === DEFAULT_STYLE && 'default'].filter(Boolean)
+    const tag = tags.length > 0 ? ` (${tags.join(', ')})` : ''
 
-    return `${mark} ${id.padEnd(8)} ${LOOKS[id].blurb}${tag}`
+    return `- \`${id}\`${tag}: ${LOOKS[id].blurb}`
   })
-  const now = current === OFF ? 'off (the app’s own look)' : LOOKS[current].name
+  const now = current === OFF ? '**off** (the app’s own look)' : `**${LOOKS[current].name}**`
 
   return [
-    `ctxline themes: ${now}`,
+    `Current theme: ${now}`,
+    '',
     ...rows,
-    `/${COMMAND} <style> switches, /${COMMAND} off goes back to the app’s own look.`,
+    '',
+    `Switch with \`/${COMMAND} <style>\`. Turn off with \`/${COMMAND} off\`.`,
   ].join('\n')
 }
 
@@ -97,17 +100,18 @@ export const register: Register = on => {
     }
 
     const notDrawn = await apply($, arg)
-    await $.store.set(STORE_KEY, arg)
+    const isSaved = await $.store.set(STORE_KEY, arg).then(() => true, () => false)
     const name = LOOKS[arg].name
+    const keep = isSaved ? 'It stays on for new sessions.' : 'It couldn’t be saved, so new sessions won’t keep it.'
 
     if (notDrawn !== undefined) {
       return {
-        text: `Switched to ${name}, but nothing shows it here yet: ${notDrawn}. It appears in the Claude desktop app and stays on for new sessions.`,
+        text: `Switched to ${name}, but nothing shows it here yet: ${notDrawn}. It appears in the Claude desktop app. ${keep}`,
         isTextDisplayOnly: true,
       }
     }
 
-    return { text: `Switched to ${name}. It stays on for new sessions.`, isTextDisplayOnly: true }
+    return { text: `Switched to ${name}. ${keep}`, isTextDisplayOnly: true }
   }).catch(() => ({ text: 'ctxline themes could not switch the theme. Try again.', isTextDisplayOnly: true }))
 
   // Draws the backdrop scene this plugin set; another plugin's is left alone.
