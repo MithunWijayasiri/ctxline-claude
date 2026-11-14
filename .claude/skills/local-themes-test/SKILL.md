@@ -29,7 +29,7 @@ Set:
 ```
 
 - Merge into existing `env` / `enabledPlugins` — don't replace other keys.
-- `CLAUDE_CODE_PLUGIN_DIRS` already set (e.g. a `local-claudedesktop-test` run still active) → append our path, don't replace: separator `;` on Windows, `:` on Unix (documented). Already listed → leave it.
+- `CLAUDE_CODE_PLUGIN_DIRS` already set (e.g. a `local-claudedesktop-test` run still active) → append our path, don't replace: separator `;` on Windows, `:` on Unix (documented). Already listed → leave it. Note whether this step added the path — step 4 needs it.
 - `CLAUDE_CODE_PLUGIN_DIRS` → desktop sessions are headless/SDK; this env var is the documented way to load a plugin there. `CLAUDE_CODE_PLUGIN_DIR_WATCH=1` → hot reload on save.
 - Absolute path (or `~`-prefixed) — relative paths are skipped. Windows: backslashes JSON-escaped (`C:\\Github\\ctxline\\desktop-themes`).
 - Marketplace copy disabled (if installed) → same plugin name as the local one; disabled to avoid two copies setting the theme.
@@ -51,7 +51,9 @@ Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws i
 - ` Ember ` (case, spaces) → works. Unknown name → `No style called “<x>”. Pick one of: …`.
 - `/ctxtheme off` → app's own look; new session stays off.
 - New Code session → last pick re-applied.
-- Reopen an older Code session → pick re-applied? Untested (`session.start` should run on resume). Record the finding in `CLAUDE.md` → Desktop themes plugin.
+- `/resume` an older Code session → pick re-applied (`session.start` runs; found by testing).
+- `/clear` → backdrop comes back right after (the plugin hooks `/clear`; the app drops the theme there).
+- `/branch` → theme stays or comes back? Untested. Record the finding in `CLAUDE.md` → Desktop themes plugin.
 
 Backdrops (dark mode):
 - `dusk` — orange and violet ribbons sway over soft, blurred hills; no sharp lines anywhere.
@@ -81,7 +83,7 @@ Live edits:
 ## 4. Revert
 
 Undo only what step 1 added; leave anything else changed since (other env vars, other plugin paths) as it is:
-- `CLAUDE_CODE_PLUGIN_DIRS` → remove our path and its separator from the list. Nothing left and the key didn't exist before → delete the key.
+- `CLAUDE_CODE_PLUGIN_DIRS` → step 1 added our path → remove it and its separator from the list; it was already listed before → leave it. Nothing left and the key didn't exist before → delete the key.
 - `CLAUDE_CODE_PLUGIN_DIR_WATCH` → saved value, or delete the key if it didn't exist.
 - `env` didn't exist before and is now empty → delete it.
 - `enabledPlugins["ctxline-desktop-themes@ctxline"]` → saved value, or delete the key if it didn't exist.
