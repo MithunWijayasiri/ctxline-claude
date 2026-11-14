@@ -52,7 +52,7 @@ Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws i
 - `/ctxtheme off` → app's own look; new session stays off.
 - New Code session → last pick re-applied.
 - `/resume` an older Code session → pick re-applied (`session.start` runs; found by testing).
-- `/clear` → backdrop comes back right after (the plugin hooks `/clear`; the app drops the theme there).
+- `/clear` → background gone for that session: known limitation, documented in README (see `CLAUDE.md` → Desktop themes plugin for what was tried). A new Code session brings it back.
 - `/branch` → theme stays or comes back? Untested. Record the finding in `CLAUDE.md` → Desktop themes plugin.
 
 Backdrops (dark mode):
