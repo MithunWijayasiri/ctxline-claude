@@ -6,5 +6,6 @@
   "author": { "name": "Mithun Wijayasiri" },
   "homepage": "https://ctxline.js.org",
   "repository": "https://github.com/MithunWijayasiri/ctxline-claude",
-  "license": "MIT"
+  "license": "MIT",
+  "types": "./types/index.d.ts"
 }

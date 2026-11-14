@@ -16,6 +16,8 @@ const OFF = 'off'
 
 type Choice = StyleId | typeof OFF
 
+const APPLIED = { plugin: 'ctxline-desktop-themes', key: 'applied' } as const
+
 // An unreadable store falls back to the default rather than no theme at all.
 async function savedChoice($: EngineInterface): Promise<Choice> {
   const value: unknown = await $.store.get(STORE_KEY).catch(() => undefined)
@@ -74,6 +76,7 @@ export const register: Register = on => {
     if (choice !== OFF) {
       await apply($, choice)
     }
+    await $.state.set(APPLIED, choice)
 
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -82,12 +85,15 @@ export const register: Register = on => {
     const arg = e.args.trim().toLowerCase()
 
     if (arg === '') {
-      return { text: listing(await savedChoice($)), isTextDisplayOnly: true }
+      const { value: applied } = await $.state.get(APPLIED)
+
+      return { text: listing(applied ?? (await savedChoice($))), isTextDisplayOnly: true }
     }
 
     if (arg === OFF) {
       await $.store.set(STORE_KEY, OFF)
       await $.theme.clear()
+      await $.state.set(APPLIED, OFF)
 
       return { text: 'ctxline themes off. Back to the app’s own look.', isTextDisplayOnly: true }
     }
@@ -100,6 +106,7 @@ export const register: Register = on => {
     }
 
     const notDrawn = await apply($, arg)
+    await $.state.set(APPLIED, arg)
     const isSaved = await $.store.set(STORE_KEY, arg).then(() => true, () => false)
     const name = LOOKS[arg].name
     const keep = isSaved ? 'It stays on for new sessions.' : 'It couldn’t be saved, so new sessions won’t keep it.'

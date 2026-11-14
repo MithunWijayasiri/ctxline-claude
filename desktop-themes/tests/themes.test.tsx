@@ -14,9 +14,16 @@ type Engine = { sets: any[]; clears: () => number; store: Map<string, unknown> }
 function engine(on: any, opts: { store?: boolean; notDrawn?: string } = {}): Engine {
   const sets: any[] = []
   const store = new Map<string, unknown>()
+  const state = new Map<string, unknown>()
   let clears = 0
 
   on('command.register', (_: unknown, e: any) => ({ value: { command: e.name } }))
+  on('state.get', (_: unknown, e: any) => ({ value: { value: state.get(e.key), version: 0 } }))
+  on('state.set', (_: unknown, e: any) => {
+    state.set(e.key, e.value)
+
+    return { value: { isSet: true, version: 1 } }
+  })
   on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
   on('theme.set', (_: unknown, e: any) => {
     sets.push(e)
@@ -96,6 +103,19 @@ test('/ctxtheme switches, remembers, lists and turns off', async ($, on) => {
   const before = sets.length
   await $.session.start(START)
   expect(sets.length).toBe(before)
+})
+
+test('/ctxtheme lists the style on screen when it could not be saved', async ($, on) => {
+  engine(on, { store: false })
+  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
+
+  await $.session.start(START)
+
+  const ran = await run('ember')
+  expect(ran.text).toContain('It couldn’t be saved')
+
+  const list = await run('')
+  expect(list.text).toContain('Current theme: **Ember**')
 })
 
 test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
