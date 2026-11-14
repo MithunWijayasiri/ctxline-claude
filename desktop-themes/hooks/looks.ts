@@ -31,7 +31,7 @@ function look(
 }
 
 export const LOOKS: Record<StyleId, Look> = {
-  ember: look('Ember', 'warm charcoal, breathing coals and pulsing cracks of heat', { blur: 20, opacity: 0.6 }, {
+  ember: look('Ember', 'warm charcoal, breathing coals and soft rising sparks', { blur: 20, opacity: 0.6 }, {
     label: 'ctxline Ember',
     id: 'ctxline-ember',
     roles: { accent: '#d97757', danger: '#e5574b', success: '#9bb563', warning: '#e3a73f', pro: '#c493d8' },

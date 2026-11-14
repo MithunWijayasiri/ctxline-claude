@@ -219,7 +219,7 @@ The preview shows dark mode, with each background caught at one moment. See them
 | Style | Look | Background |
 |---|---|---|
 | `dusk` (default) | deep plum | orange and violet light ribbons sway over layered hills |
-| `ember` | warm charcoal | coals along the bottom brighten and dim, cracks of heat pulse |
+| `ember` | warm charcoal | coals along the bottom brighten and dim, soft sparks drift up |
 | `contour` | blue-slate | orange map lines drift; bands of them light up and fade |
 | `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left |
 

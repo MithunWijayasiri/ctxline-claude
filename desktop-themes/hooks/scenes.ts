@@ -26,18 +26,7 @@ function svg(aspect: string, style: string, body: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="${aspect}"><style>.art{opacity:${ART_OPACITY}}${style}${STILL}</style>${body}</svg>`
 }
 
-// ---------- Ember: breathing coals, pulsing cracks, a rising haze ----------
-
-const CRACKS = [
-  'M30 598 L80 566 L122 578 L170 546 L226 556 L262 532',
-  'M122 578 L140 600',
-  'M300 600 L334 574 L392 584 L428 558 L470 566',
-  'M520 598 L558 570 L612 580 L650 550 L702 560 L740 536',
-  'M650 550 L664 528',
-  'M820 600 L852 578 L906 588 L944 560 L990 568',
-  'M1000 598 L1036 566 L1084 576 L1124 548 L1176 558',
-  'M1084 576 L1096 600',
-]
+// ---------- Ember: breathing coals, soft sparks rising, a rising haze ----------
 
 function ember(): string {
   const rnd = seeded(11)
@@ -47,27 +36,32 @@ function ember(): string {
     const cx = i * 184 - 96 + rnd() * 96
     coals += `<circle class="coal" cx="${f(cx)}" cy="1000" r="${f(r)}" fill="url(#coal)" style="animation-duration:${f(4 + rnd() * 5)}s;animation-delay:-${f(rnd() * 8)}s"/>`
   }
-  const cracks = CRACKS.map(
-    d => `<path class="crack" d="${d}" style="animation-duration:${f(3.5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 6)}s"/>`,
-  ).join('')
+  let sparks = ''
+  for (let i = 0; i < 16; i++) {
+    const cx = 40 + rnd() * 1520
+    const cy = 900 + rnd() * 90
+    const r = 5 + rnd() * 5
+    sparks += `<circle class="spark" cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="url(#spark)" style="animation-duration:${f(8 + rnd() * 6)}s;animation-delay:-${f(rnd() * 14)}s"/>`
+  }
 
   const style =
     '.s0{stop-color:#120e0c}.s1{stop-color:#1a1310}' +
     '.g0{stop-color:rgba(217,119,87,.45)}.g1{stop-color:rgba(217,119,87,.12)}.g2{stop-color:rgba(217,119,87,0)}' +
     '.c0{stop-color:rgba(236,116,64,.85)}.c1{stop-color:rgba(236,116,64,0)}' +
     '.h0{stop-color:rgba(217,119,87,.32)}.h1{stop-color:rgba(217,119,87,0)}' +
-    '.crack{fill:none;stroke:#ffa06a;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.15;animation:pulse ease-in-out infinite}' +
+    '.p0{stop-color:rgba(255,178,122,.9)}.p1{stop-color:rgba(255,178,122,0)}' +
+    '.spark{opacity:0;animation:rise linear infinite}' +
     '.coal{transform-box:fill-box;transform-origin:center;opacity:.35;animation:smolder ease-in-out infinite}' +
     '.haze{transform-box:fill-box;transform-origin:center bottom;animation:haze 16s ease-in-out infinite}' +
     '@keyframes smolder{0%,100%{opacity:.22;transform:scale(.92)}50%{opacity:.95;transform:scale(1.06)}}' +
     '@keyframes haze{0%,100%{transform:translateY(0) scaleX(1);opacity:.55}50%{transform:translateY(-60px) scaleX(1.12);opacity:1}}' +
-    '@keyframes pulse{0%,100%{opacity:.1}50%{opacity:.9}}' +
+    '@keyframes rise{0%{opacity:0;transform:translate(0,0)}15%{opacity:.9}100%{opacity:0;transform:translate(30px,-420px)}}' +
     '@media (prefers-color-scheme:light){' +
     '.s0{stop-color:#efe5da}.s1{stop-color:#f1dccb}' +
     '.g0{stop-color:rgba(232,146,104,.35)}.g1{stop-color:rgba(232,146,104,.1)}.g2{stop-color:rgba(232,146,104,0)}' +
     '.c0{stop-color:rgba(236,140,96,.6)}.c1{stop-color:rgba(236,140,96,0)}' +
     '.h0{stop-color:rgba(240,170,125,.35)}.h1{stop-color:rgba(240,170,125,0)}' +
-    '.crack{stroke:#d9774f}}'
+    '.p0{stop-color:rgba(217,119,79,.7)}.p1{stop-color:rgba(217,119,79,0)}}'
 
   return svg(
     'xMidYMax slice',
@@ -77,13 +71,13 @@ function ember(): string {
       '<radialGradient id="glow" cx=".3" cy="1.2" r=".85"><stop offset="0" class="g0"/><stop offset=".45" class="g1"/><stop offset="1" class="g2"/></radialGradient>' +
       '<radialGradient id="coal"><stop offset="0" class="c0"/><stop offset=".68" class="c1"/></radialGradient>' +
       '<radialGradient id="hz" cy=".6" r=".5"><stop offset="0" class="h0"/><stop offset="1" class="h1"/></radialGradient>' +
-      '<filter id="heat" x="-10%" y="-50%" width="120%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+      '<radialGradient id="spark"><stop offset="0" class="p0"/><stop offset="1" class="p1"/></radialGradient>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
       '<g class="art"><rect width="1600" height="1000" fill="url(#glow)"/>' +
       '<ellipse class="haze" cx="800" cy="900" rx="1000" ry="460" fill="url(#hz)"/>' +
       coals +
-      `<g filter="url(#heat)" transform="translate(0 200) scale(1.3334)">${cracks}</g></g>`,
+      `${sparks}</g>`,
   )
 }
 
@@ -248,13 +242,13 @@ function dusk(): string {
   const style =
     '.k0{stop-color:#120e17}.k1{stop-color:#1a1322}.k2{stop-color:#2a1a2a}' +
     '.ra{stop-color:#d97757}.rb{stop-color:#9b6fd6}' +
-    '.h1{fill:#1d1525}.h2{fill:#17111e}.h3{fill:#120d17}.rim{fill:none;stroke:rgba(217,119,87,.55);stroke-width:2}' +
+    '.h1{fill:#1d1525}.h2{fill:#17111e}.h3{fill:#120d17}' +
     '.ribbons{opacity:.85;transform-origin:800px 400px;animation:sway 26s ease-in-out infinite alternate}' +
     '@keyframes sway{from{transform:translateX(-55px) skewX(-3deg)}to{transform:translateX(55px) skewX(3deg)}}' +
     '@media (prefers-color-scheme:light){' +
     '.k0{stop-color:#eee8f1}.k1{stop-color:#f1e6ea}.k2{stop-color:#f6ddd0}' +
     '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}' +
-    '.h1{fill:#e6dbe9}.h2{fill:#ddd0e2}.h3{fill:#d4c5da}.rim{stroke:rgba(217,119,87,.45)}' +
+    '.h1{fill:#e6dbe9}.h2{fill:#ddd0e2}.h3{fill:#d4c5da}' +
     '.ribbons{opacity:.7}}'
 
   return svg(
@@ -265,16 +259,19 @@ function dusk(): string {
       '<linearGradient id="r1" x1="0" x2="1"><stop offset="0" class="rb" stop-opacity="0"/><stop offset=".45" class="ra"/><stop offset="1" class="rb" stop-opacity="0"/></linearGradient>' +
       '<linearGradient id="r2" x1="0" x2="1"><stop offset="0" class="ra" stop-opacity="0"/><stop offset=".6" class="rb"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>' +
       '<filter id="soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="30"/></filter>' +
+      '<filter id="haze" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="24"/></filter>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
       '<g class="art"><g class="ribbons" filter="url(#soft)">' +
       '<path d="M-70 333 C 267 200, 560 433, 867 283 S 1400 183, 1680 317" stroke="url(#r1)" stroke-width="110" fill="none"/>' +
       '<path d="M-70 483 C 347 383, 627 550, 1013 433 S 1440 383, 1680 467" stroke="url(#r2)" stroke-width="70" fill="none"/>' +
       '</g></g>' +
-      '<path class="h1" d="M0 783 C 240 717, 453 758, 693 717 S 1173 667, 1600 733 V1000 H0Z"/>' +
-      '<path class="rim art" d="M0 783 C 240 717, 453 758, 693 717 S 1173 667, 1600 733"/>' +
-      '<path class="h2" d="M0 858 C 293 817, 560 867, 853 825 S 1307 800, 1600 842 V1000 H0Z"/>' +
-      '<path class="h3" d="M0 933 C 347 908, 640 942, 960 917 S 1360 900, 1600 925 V1000 H0Z"/>',
+      // The hills run past every edge so the blur fades only their tops.
+      '<g filter="url(#haze)">' +
+      '<path class="h1" d="M-100 783 C 240 717, 453 758, 693 717 S 1173 667, 1700 733 V1100 H-100Z"/>' +
+      '<path class="h2" d="M-100 858 C 293 817, 560 867, 853 825 S 1307 800, 1700 842 V1100 H-100Z"/>' +
+      '<path class="h3" d="M-100 933 C 347 908, 640 942, 960 917 S 1360 900, 1700 925 V1100 H-100Z"/>' +
+      '</g>',
   )
 }
 
@@ -286,7 +283,7 @@ export const SCENES: Record<StyleId, string> = {
 }
 
 export const SCENE_ALT: Record<StyleId, string> = {
-  ember: 'Glowing coals and cracks of heat along the bottom of a warm charcoal background',
+  ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
   contour: 'Orange topographic map lines drifting slowly over a blue-slate background',
   phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left',
   dusk: 'Orange and violet light ribbons swaying above layered dusk hills',
