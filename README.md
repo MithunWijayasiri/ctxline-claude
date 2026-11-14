@@ -202,6 +202,25 @@ Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.js
 
 To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove it, run `claude plugin uninstall ctxline-desktop@ctxline`. Source is in [`desktop/`](desktop/).
 
+### Themes
+
+A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks built around Claude orange. Each one has a light version that the app picks when it's in light mode, and an animated background behind the conversation.
+
+```
+/plugin install ctxline-desktop-themes@ctxline
+```
+
+| Style | Look | Background |
+|---|---|---|
+| `dusk` (default) | deep plum | orange and violet light ribbons sway over layered hills |
+| `ember` | warm charcoal | coals along the bottom brighten and dim, cracks of heat pulse |
+| `contour` | blue-slate | orange map lines drift; bands of them light up and fade |
+| `corona` | near-black | an eclipse in the top corner with turning flares, twinkling stars |
+
+Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look. The backgrounds hold still when your system asks for reduced motion.
+
+It works on its own or together with `ctxline-desktop`. Updates work the same way as above: `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
+
 ## FAQ
 
 <details>

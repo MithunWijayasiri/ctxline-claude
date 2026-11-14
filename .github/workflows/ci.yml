@@ -44,3 +44,7 @@ jobs:
         run: claude plugin validate .
       - name: Validate plugin
         run: claude plugin validate ./desktop
+      - name: Validate themes plugin
+        run: claude plugin validate ./desktop-themes
+      - name: Test themes plugin
+        run: claude plugin test ./desktop-themes
