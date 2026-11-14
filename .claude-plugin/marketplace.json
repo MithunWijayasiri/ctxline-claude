@@ -7,6 +7,11 @@
       "name": "ctxline-desktop",
       "source": "./desktop",
       "description": "Statusline for the Claude desktop app: live activity, context, cache hit rate, 5-hour and weekly usage limits, cost and Git sync above the prompt. Learn more at ctxline.js.org"
+    },
+    {
+      "name": "ctxline-desktop-themes",
+      "source": "./desktop-themes",
+      "description": "Four dark looks for the Claude desktop app, three in Claude orange (Dusk, Ember, Contour) and one in gold (Phoenix), each with a light version and an animated background. Switch with /ctxtheme. Learn more at ctxline.js.org"
     }
   ]
 }

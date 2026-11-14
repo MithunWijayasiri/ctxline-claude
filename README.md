@@ -202,6 +202,34 @@ Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.js
 
 To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove it, run `claude plugin uninstall ctxline-desktop@ctxline`. Source is in [`desktop/`](desktop/).
 
+### Themes
+
+A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks: three built around Claude orange and one around gold. Each one has a light and a dark version, and an animated background behind the conversation. The colors follow the app's light or dark mode. The background switches with the `prefers-color-scheme` media query.
+
+<p align="center">
+  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes in dark mode: Dusk, Ember, Contour and Phoenix">
+</p>
+
+The preview shows dark mode, with each background caught at one moment. See them move at [ctxline.js.org](https://ctxline.js.org/#themes).
+
+```
+/plugin install ctxline-desktop-themes@ctxline
+```
+
+| Style | Look | Background |
+|---|---|---|
+| `dusk` (default) | deep plum | orange and violet light ribbons sway over layered hills |
+| `ember` | warm charcoal | coals along the bottom brighten and dim, soft sparks drift up |
+| `contour` | blue-slate | orange map lines drift; bands of them light up and fade |
+| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left |
+
+Themes show only in Code sessions, starting with the next one you open after installing. A session that's already open, the home screen and the Chat tab keep the app's own look. Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look. The backgrounds hold still when your system asks for reduced motion.
+
+> [!NOTE]
+> `/clear` removes the theme's background for that session. Start a new Code session to get it back.
+
+It works on its own or together with `ctxline-desktop`. Updates work the same way as above: `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
+
 ## FAQ
 
 <details>
