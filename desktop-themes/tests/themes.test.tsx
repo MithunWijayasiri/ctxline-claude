@@ -123,6 +123,22 @@ test('/ctxtheme lists the style on screen when it could not be saved', async ($,
   expect((await run('')).text).toContain('Current theme: **off**')
 })
 
+test('/clear sets the shown style again', async ($, on) => {
+  const { sets } = engine(on)
+  // Stands for core's /clear, which drops the theme.
+  on('command.run', { command: 'clear' }, () => ({ text: '' }))
+  const run = (command: string, args = '') => $.command.run({ command, args } as any)
+
+  await $.session.start(START)
+  await run('ctxtheme', 'ember')
+  const before = sets.length
+
+  await run('clear')
+
+  expect(sets.length).toBe(before + 1)
+  expect(sets.at(-1).backdrop.scene).toBe('ember')
+})
+
 test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
   // No client that draws themes is attached, as in a terminal-only session.
   const { store } = engine(on, { notDrawn: 'no desktop client attached' })
