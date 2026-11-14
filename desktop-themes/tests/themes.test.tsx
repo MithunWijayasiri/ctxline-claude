@@ -106,7 +106,7 @@ test('/ctxtheme switches, remembers, lists and turns off', async ($, on) => {
 })
 
 test('/ctxtheme lists the style on screen when it could not be saved', async ($, on) => {
-  engine(on, { store: false })
+  const { clears } = engine(on, { store: false })
   const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
 
   await $.session.start(START)
@@ -116,6 +116,11 @@ test('/ctxtheme lists the style on screen when it could not be saved', async ($,
 
   const list = await run('')
   expect(list.text).toContain('Current theme: **Ember**')
+
+  const off = await run('off')
+  expect(off.text).toContain('It couldn’t be saved')
+  expect(clears()).toBe(1)
+  expect((await run('')).text).toContain('Current theme: **off**')
 })
 
 test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {

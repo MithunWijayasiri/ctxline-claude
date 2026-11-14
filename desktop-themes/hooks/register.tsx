@@ -25,6 +25,16 @@ async function savedChoice($: EngineInterface): Promise<Choice> {
   return value === OFF || isStyleId(value) ? value : DEFAULT_STYLE
 }
 
+const UNSAVED = 'It couldn’t be saved, so new sessions won’t keep it.'
+
+// Saved after the theme changes, so a failed save leaves this session's change standing.
+async function save($: EngineInterface, choice: Choice): Promise<boolean> {
+  return $.store.set(STORE_KEY, choice).then(
+    () => true,
+    () => false,
+  )
+}
+
 // Resolves why nothing draws the theme right now, or undefined when it's drawn.
 // Not drawn isn't a failure: the theme still stands for the session and a
 // surface that attaches later (the desktop app) draws it.
@@ -91,11 +101,11 @@ export const register: Register = on => {
     }
 
     if (arg === OFF) {
-      await $.store.set(STORE_KEY, OFF)
       await $.theme.clear()
       await $.state.set(APPLIED, OFF)
+      const keep = (await save($, OFF)) ? 'It stays off for new sessions.' : UNSAVED
 
-      return { text: 'ctxline themes off. Back to the app’s own look.', isTextDisplayOnly: true }
+      return { text: `ctxline themes off. Back to the app’s own look. ${keep}`, isTextDisplayOnly: true }
     }
 
     if (!isStyleId(arg)) {
@@ -107,9 +117,8 @@ export const register: Register = on => {
 
     const notDrawn = await apply($, arg)
     await $.state.set(APPLIED, arg)
-    const isSaved = await $.store.set(STORE_KEY, arg).then(() => true, () => false)
     const name = LOOKS[arg].name
-    const keep = isSaved ? 'It stays on for new sessions.' : 'It couldn’t be saved, so new sessions won’t keep it.'
+    const keep = (await save($, arg)) ? 'It stays on for new sessions.' : UNSAVED
 
     if (notDrawn !== undefined) {
       return {
