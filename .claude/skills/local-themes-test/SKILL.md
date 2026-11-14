@@ -31,6 +31,7 @@ Set:
 - Merge into existing `env` / `enabledPlugins` — don't replace other keys.
 - `CLAUDE_CODE_PLUGIN_DIRS` already set (e.g. a `local-claudedesktop-test` run still active) → append our path, don't replace: separator `;` on Windows, `:` on Unix (documented). Already listed → leave it. Note whether this step added the path — step 4 needs it.
 - `CLAUDE_CODE_PLUGIN_DIRS` → desktop sessions are headless/SDK; this env var is the documented way to load a plugin there. `CLAUDE_CODE_PLUGIN_DIR_WATCH=1` → hot reload on save.
+- Minimum Claude Code (documented): v2.1.280 for `CLAUDE_CODE_PLUGIN_DIRS`, v2.1.287 for `CLAUDE_CODE_PLUGIN_DIR_WATCH`. The desktop app runs its own copy — `claude --version` (the CLI) may differ. Check the app's: last `[CCD] session spawn on required_version:<version>` line in `%LOCALAPPDATA%\Claude\Logs\main.log`.
 - Absolute path (or `~`-prefixed) — relative paths are skipped. Windows: backslashes JSON-escaped (`C:\\Github\\ctxline\\desktop-themes`).
 - Marketplace copy disabled (if installed) → same plugin name as the local one; disabled to avoid two copies setting the theme.
 - Installed `ctxline-desktop` (marketplace) stays on — themes must work alongside it.
@@ -73,7 +74,7 @@ Live edits:
 
 ## 3. Where errors surface
 
-- No theme anywhere → first: is this a Code session opened after the restart? If yes and `/ctxtheme` is missing from the slash menu → plugin not loaded: check `desktop-themes/tsconfig.json` / `.claude-plugin/types/` timestamps against the restart, and the path escaping in `settings.json`. Desktop log: `%LOCALAPPDATA%\Claude\Logs\main.log` (`[CCD] session spawn` per session; no per-plugin detail).
+- No theme anywhere → first: is this a Code session opened after the restart? If yes and `/ctxtheme` is missing from the slash menu → plugin not loaded: check `desktop-themes/tsconfig.json` / `.claude-plugin/types/` timestamps against the restart, the path escaping in `settings.json`, and the app's Claude Code version (step 1: below v2.1.280 → not loaded; below v2.1.287 → loads but saves don't reload). Desktop log: `%LOCALAPPDATA%\Claude\Logs\main.log` (`[CCD] session spawn` per session; no per-plugin detail).
 - Theme set but not drawn → `/ctxtheme` reply `…nothing shows it here yet: <reason>`; debug log `<style>: not drawn: <reason>`.
 - Command threw → `ctxline themes could not switch the theme. Try again.`
 - Pick applied but not saved → `It couldn’t be saved, so new sessions won’t keep it.`
