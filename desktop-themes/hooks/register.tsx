@@ -36,8 +36,7 @@ async function save($: EngineInterface, choice: Choice): Promise<boolean> {
 }
 
 // Resolves why nothing draws the theme right now, or undefined when it's drawn.
-// Not drawn isn't a failure: the theme still stands for the session and a
-// surface that attaches later (the desktop app) draws it.
+// Not drawn isn't a failure: the theme still stands for the session.
 async function apply($: EngineInterface, id: StyleId): Promise<string | undefined> {
   const look = LOOKS[id]
   const set = await $.theme.set({
@@ -129,27 +128,6 @@ export const register: Register = on => {
 
     return { text: `Switched to ${name}. ${keep}`, isTextDisplayOnly: true }
   }).catch(() => ({ text: 'ctxline themes could not switch the theme. Try again.', isTextDisplayOnly: true }))
-
-  // `/clear` starts a fresh session in the same process: no session.start fires
-  // and the theme is dropped (found by testing), so the shown style is set again.
-  on('command.run', { command: 'clear' }, async ($, e, next) => {
-    // Never let the theme get in the way of the clear itself.
-    const { value: shown } = await $.state.get(APPLIED).catch(() => ({ value: undefined }))
-    const result = await next(e)
-
-    try {
-      const choice = shown ?? (await savedChoice($))
-
-      if (choice !== OFF) {
-        await apply($, choice)
-      }
-      await $.state.set(APPLIED, choice)
-    } catch (err) {
-      $.ui.log(`could not set the theme again after /clear: ${err}`, { to: 'debug' })
-    }
-
-    return result
-  })
 
   // Draws the backdrop scene this plugin set; another plugin's is left alone.
   on('ui.render', { component: 'Backdrop' }, ($, e, next) => {

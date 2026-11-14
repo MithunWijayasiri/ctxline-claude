@@ -225,6 +225,9 @@ The preview shows dark mode, with each background caught at one moment. See them
 
 Themes show only in Code sessions, starting with the next one you open after installing. A session that's already open, the home screen and the Chat tab keep the app's own look. Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look. The backgrounds hold still when your system asks for reduced motion.
 
+> [!NOTE]
+> `/clear` removes the theme's background for that session. Start a new Code session to get it back.
+
 It works on its own or together with `ctxline-desktop`. Updates work the same way as above: `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
 
 ## FAQ
