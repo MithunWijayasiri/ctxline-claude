@@ -58,7 +58,7 @@ export const LOOKS: Record<StyleId, Look> = {
           'surface-3': '#fbf6f0',
           'text-primary': '#2b1f18',
           'text-secondary': '#5a4a3e',
-          'text-muted': '#76665a',
+          'text-muted': '#736357',
         },
       },
       roles: { accent: '#c4643f', danger: '#c2412f', success: '#5d7d2c', warning: '#a8700f', pro: '#8a55a8' },

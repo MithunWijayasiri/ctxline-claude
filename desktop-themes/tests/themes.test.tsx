@@ -71,6 +71,13 @@ test('every palette is one Desktop paints', async () => {
   }
 })
 
+// makeColors checks each text tone on every surface, dark and light (AA, or the app's own pair if lower).
+test('body text reads on every surface', async () => {
+  for (const look of Object.values(LOOKS)) {
+    expect(look.problems.filter(p => /^text-(primary|secondary|muted) on surface-/.test(p))).toEqual([])
+  }
+})
+
 test('an unreadable store still sets Dusk', async ($, on) => {
   const { sets } = engine(on, { store: false })
 
