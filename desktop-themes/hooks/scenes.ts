@@ -105,8 +105,8 @@ function contour(): string {
 
   const style =
     '.t0{stop-color:#18202b}.t1{stop-color:#0f1318}' +
-    '.mn{fill:none;stroke:rgba(217,119,87,.26);stroke-width:1.1;stroke-dasharray:100;stroke-dashoffset:100;animation:flow ' + CYCLE + 's linear infinite}' +
-    '.mj{fill:none;stroke:rgba(217,119,87,.5);stroke-width:1.5;stroke-dasharray:100;stroke-dashoffset:100;animation:flow ' + CYCLE + 's linear infinite}' +
+    '.mn{fill:none;stroke:rgba(217,119,87,.26);stroke-width:1.1;stroke-dasharray:100;stroke-dashoffset:0;animation:flow ' + CYCLE + 's linear infinite}' +
+    '.mj{fill:none;stroke:rgba(217,119,87,.5);stroke-width:1.5;stroke-dasharray:100;stroke-dashoffset:0;animation:flow ' + CYCLE + 's linear infinite}' +
     '@keyframes flow{0%{stroke-dashoffset:100;opacity:0;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}42%{stroke-dashoffset:0;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}55%{stroke-dashoffset:0;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}100%{stroke-dashoffset:-100;opacity:0}}' +
     '.drift{animation:drift 90s ease-in-out infinite alternate}' +
     '@keyframes drift{from{transform:translate(0,0)}to{transform:translate(-160px,-90px)}}' +
