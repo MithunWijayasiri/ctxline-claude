@@ -125,42 +125,142 @@ function contour(): string {
   )
 }
 
-// ---------- Phoenix: a large gold black hole, its disk streaming out left ----------
+// ---------- Phoenix: a large gold black hole, its disk streaming out left, galaxies drifting round it ----------
 
 // The hole sits on the right edge; the scene pins that side (xMaxYMid) so a
 // narrow or tall window crops the left instead. The halo is the far side of
-// the disk, bent round the hole, so no back half of the disk is drawn, and the
-// disk's rings start outside the halo so nothing crosses it.
+// the disk, bent round the hole; the disk's own back half is hidden inside the
+// halo so the two never cross. Stars, galaxies and dust sit clear of the hole,
+// its lensing and the disk by at least their drift (`clearOfHole`).
 const BH_X = 1480
 const BH_Y = 400
 const HOLE = 190
 const HALO = HOLE + 214
+const LENS = HALO + 100 // outer edge of the lensed star arcs
 const TILT = -7
 const FLAT = 0.09 // disk ry = rx * FLAT
+const DISK = HALO + 8 + 1300 // outermost ring's rx
+const SINE = 'cubic-bezier(.37,0,.63,1)' // ease-in-out sine; with `alternate`, a swing that never jerks
+
+function clearOfHole(x: number, y: number, pad: number): boolean {
+  const dx = x - BH_X
+  const dy = y - BH_Y
+  if (Math.hypot(dx, dy) < LENS + 20 + pad) return false
+  // Into the disk's plane: undo the tilt.
+  const a = (-TILT * Math.PI) / 180
+  const lx = dx * Math.cos(a) - dy * Math.sin(a)
+  const ly = dx * Math.sin(a) + dy * Math.cos(a)
+  return Math.abs(ly) > FLAT * Math.sqrt(Math.max(0, DISK * DISK - lx * lx)) + 40 + pad
+}
 
 function phoenix(): string {
   const rnd = seeded(41)
 
-  let dust = ''
-  for (let i = 0; i < 90; i++) {
-    dust += `<circle cx="${f(rnd() * 1600)}" cy="${f(rnd() * 1000)}" r="${f(0.4 + rnd() * 0.8)}"/>`
-  }
-  let stars = ''
-  for (let i = 0; i < 24; i++) {
-    stars += `<circle class="star" cx="${f(rnd() * 1100)}" cy="${f(rnd() * 1000)}" r="${f(0.8 + rnd() * 0.9)}" style="animation-duration:${f(2.5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 5)}s"/>`
+  const spot = (pad: number): [number, number] => {
+    for (let i = 0; i < 1000; i++) {
+      const x = rnd() * 1600
+      const y = rnd() * 1000
+      if (clearOfHole(x, y, pad)) return [x, y]
+    }
+    throw new Error('phoenix: no spot clear of the black hole')
   }
 
-  // The front half of a disk ring, right to left, below the centre line.
+  // x and y swing on their own periods, so the path wanders and never stops.
+  const drift = (ax: number, ay: number, period: number, body: string): string =>
+    `<g class="dx" style="--a:${f(ax)}px;animation-duration:${f(period)}s;animation-delay:-${f(rnd() * period)}s">` +
+    `<g class="dy" style="--a:${f(ay)}px;animation-duration:${f(period * (0.7 + rnd() * 0.25))}s;animation-delay:-${f(rnd() * period)}s">${body}</g></g>`
+
+  // ----- Sky -----
+
+  const STAR_TINTS = ['#fff6ea', '#fff6ea', '#fff6ea', '#e6ecff', '#ffdcae']
+  let stars = ''
+  for (let i = 0; i < 120; i++) {
+    const [x, y] = spot(4)
+    stars += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + rnd() * 0.8)}" fill="${STAR_TINTS[Math.floor(rnd() * STAR_TINTS.length)]}" opacity="${(0.15 + rnd() * 0.4).toFixed(2)}"/>`
+  }
+  for (let i = 0; i < 34; i++) {
+    const [x, y] = spot(6)
+    stars += `<circle class="tw" cx="${f(x)}" cy="${f(y)}" r="${f(0.8 + rnd() * 0.9)}" fill="${STAR_TINTS[Math.floor(rnd() * STAR_TINTS.length)]}" style="animation-duration:${f(2.5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 6)}s"/>`
+  }
+  // A few bright ones with a soft four-point glint.
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = spot(16)
+    const s = 7 + rnd() * 6
+    stars +=
+      `<g class="glint" transform="translate(${f(x)} ${f(y)})" style="animation-duration:${f(5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 8)}s">` +
+      `<path d="M${f(-s)} 0H${f(s)}M0 ${f(-s)}V${f(s)}"/><circle r="1.5"/></g>`
+  }
+
+  // Galaxies: [x, y, radius, tilt°, inclination (ry/rx), spiral?]
+  const GALAXIES: [number, number, number, number, number, boolean][] = [
+    [250, 230, 46, -24, 0.42, true],
+    [720, 150, 30, 38, 0.55, true],
+    [560, 830, 40, 12, 0.36, true],
+    [1150, 880, 26, -40, 0.6, true],
+    [110, 820, 18, 20, 0.6, false],
+    [900, 120, 15, -10, 0.7, false],
+  ]
+  let galaxies = ''
+  for (const [x, y, r, tilt, incl, spiral] of GALAXIES) {
+    const ax = 10 + rnd() * 12
+    const ay = 6 + rnd() * 8
+    if (!clearOfHole(x, y, r + Math.max(ax, ay))) throw new Error(`phoenix: galaxy at ${x},${y} meets the black hole`)
+    let body = `<circle r="${f(r)}" fill="url(#gHalo)"/>`
+    if (spiral) {
+      let arms = ''
+      let dots = ''
+      for (let k = 0; k < 2; k++) {
+        let d = ''
+        for (let i = 0; i <= 24; i++) {
+          const t = i / 24
+          const ang = k * Math.PI + t * 3.6
+          const rr = r * (0.14 + 0.86 * t)
+          d += `${i ? 'L' : 'M'}${f(Math.cos(ang) * rr)} ${f(Math.sin(ang) * rr)}`
+        }
+        arms += `<path d="${d}"/>`
+        for (let i = 0; i < 16; i++) {
+          const t = rnd()
+          const ang = k * Math.PI + t * 3.6 + (rnd() - 0.5) * 0.4
+          const rr = r * (0.14 + 0.86 * t) * (0.9 + rnd() * 0.2)
+          dots += `<circle cx="${f(Math.cos(ang) * rr)}" cy="${f(Math.sin(ang) * rr)}" r="${f(0.5 + rnd() * 0.8)}" opacity="${(0.3 + (1 - t) * 0.6).toFixed(2)}"/>`
+        }
+      }
+      body +=
+        `<g class="spin" style="animation-duration:${f(260 + rnd() * 200)}s">` +
+        `<g class="arm" style="stroke-width:${f(r * 0.2)}">${arms}</g><g class="arm thin">${arms}</g><g class="gdot">${dots}</g></g>`
+    }
+    body += `<circle r="${f(r * (spiral ? 0.3 : 0.55))}" fill="url(#gCore)"/>`
+    galaxies += drift(ax, ay, 40 + rnd() * 30, `<g transform="translate(${x} ${y}) rotate(${tilt}) scale(1 ${incl})">${body}</g>`)
+  }
+
+  // Dust: three layers, nearer ones larger, drifting further and faster.
+  let dust = ''
+  for (let layer = 0; layer < 3; layer++) {
+    const reach = 6 + layer * 6
+    let motes = ''
+    for (let i = 0; i < 36; i++) {
+      const [x, y] = spot(reach + 2)
+      motes += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + layer * 0.3 + rnd() * 0.5)}" opacity="${(0.25 + rnd() * 0.45).toFixed(2)}"/>`
+    }
+    dust += drift(reach, reach * 0.7, 70 - layer * 15, motes)
+  }
+
+  // ----- Black hole -----
+
+  // Half a disk ring, right to left below the centre line (front) or left to right above it (back).
   const front = (rx: number): string => `M${f(rx)} 0A${f(rx)} ${f(rx * FLAT)} 0 0 1 ${f(-rx)} 0`
+  const back = (rx: number): string => `M${f(-rx)} 0A${f(rx)} ${f(rx * FLAT)} 0 0 1 ${f(rx)} 0`
 
   // Striated disk: many thin rings, brighter and denser near the hole.
   let disk = ''
+  let farDisk = ''
   const RINGS = 64
   for (let i = 0; i < RINGS; i++) {
     const t = i / (RINGS - 1)
-    const width = 1.5 + rnd() * 6
-    const opacity = Math.pow(1 - t, 0.7) * (0.35 + rnd() * 0.65)
-    disk += `<path d="${front(HALO + 8 + Math.pow(t, 1.15) * 1300)}" style="stroke-width:${f(width)};opacity:${opacity.toFixed(2)}"/>`
+    const rx = HALO + 8 + Math.pow(t, 1.15) * 1300
+    const look = `style="stroke-width:${f(1.5 + rnd() * 6)};opacity:${(Math.pow(1 - t, 0.7) * (0.35 + rnd() * 0.65)).toFixed(2)}"`
+    disk += `<path d="${front(rx)}" ${look}/>`
+    farDisk += `<path d="${back(rx)}" ${look}/>`
   }
 
   // Streaks flowing round the disk, inner ones faster.
@@ -182,35 +282,60 @@ function phoenix(): string {
   }
   let swirl = ''
   for (let k = 0; k < 6; k++) {
-    swirl += `<circle class="${k % 2 ? 'spinR' : 'spin'}" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 22 + k * 26}" style="stroke-width:${f(1.5 + rnd() * 2)};stroke-dasharray:${f(30 + rnd() * 90)} ${f(40 + rnd() * 140)};animation-duration:${f(60 + k * 18)}s"/>`
+    swirl += `<circle class="halo-spin${k % 2 ? ' spinR' : ''}" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 22 + k * 26}" style="stroke-width:${f(1.5 + rnd() * 2)};stroke-dasharray:${f(30 + rnd() * 90)} ${f(40 + rnd() * 140)};animation-duration:${f(60 + k * 18)}s"/>`
+  }
+
+  // Light distortion: starlight just outside the halo stretched into arcs, longer nearer the hole.
+  let lens = `<circle cx="${BH_X}" cy="${BH_Y}" r="${HALO + 34}" style="stroke-width:.8;opacity:.16"/>`
+  for (let i = 0; i < 18; i++) {
+    const near = rnd()
+    const r = HALO + 14 + near * (LENS - HALO - 14)
+    const a0 = rnd() * Math.PI * 2
+    const a1 = a0 + (0.03 + rnd() * 0.07) * (1.3 - near)
+    lens +=
+      `<path d="M${f(BH_X + r * Math.cos(a0))} ${f(BH_Y + r * Math.sin(a0))}A${f(r)} ${f(r)} 0 0 1 ${f(BH_X + r * Math.cos(a1))} ${f(BH_Y + r * Math.sin(a1))}" ` +
+      `style="stroke-width:${f(0.6 + rnd() * 1.1)};opacity:${((0.15 + rnd() * 0.3) * (1.1 - near)).toFixed(2)}"/>`
   }
 
   const plane = `transform="translate(${BH_X} ${BH_Y}) rotate(${TILT})"`
   const origin = `transform-origin:${BH_X}px ${BH_Y}px`
 
   const style =
-    '.bg{fill:#0c0906}.hole{fill:#000}' +
+    '.bg{fill:#0c0906}' +
+    '.e0{stop-color:#000}.e1{stop-color:#000}.e2{stop-color:#1a1109}' +
     '.h0{stop-color:rgba(255,214,150,.16)}.h1{stop-color:rgba(255,190,110,.05)}.h2{stop-color:rgba(255,190,110,0)}' +
-    // Disk colour by distance: cream near the hole, then gold, amber, bronze.
-    '.k0{stop-color:#fff6e2}.k1{stop-color:#fbd897}.k2{stop-color:#eeb05e}.k3{stop-color:#b8702f}.k4{stop-color:#5e3417}' +
-    // Halo: brighter on the left.
-    '.l0{stop-color:#ffe6b8}.l1{stop-color:#f2bd6a}.l2{stop-color:#b5762f}' +
-    '.disk path{fill:none;stroke:url(#dg)}.halo circle{fill:none;stroke:url(#hg)}' +
+    // Disk colour by ring radius: cream near the hole, then gold, amber, bronze.
+    '.k0{stop-color:#fff1d2}.k1{stop-color:#fcd48c}.k2{stop-color:#eeac58}.k3{stop-color:#b8702f}.k4{stop-color:#5e3417}' +
+    // Halo: brighter on the upper left, where its light comes toward us.
+    '.l0{stop-color:#ffe6b8}.l1{stop-color:#f2bd6a}.l2{stop-color:#9c6226}' +
+    '.disk path{fill:none;stroke:url(#dg)}.far{opacity:.35}.halo circle{fill:none;stroke:url(#hg)}' +
     '.flow{fill:none;stroke:#fff1d6;stroke-linecap:round;opacity:.45;animation:flow linear infinite}' +
-    `.spin,.spinR{fill:none;stroke:#ffe4b0;opacity:.3;${origin};animation:spin linear infinite}.spinR{animation-direction:reverse}` +
-    '.ring{fill:none;stroke:#fff6e4;stroke-width:1.6}' +
-    `.pulse{${origin};animation:pulse 7s ease-in-out infinite}` +
-    '.dust{fill:rgba(255,240,220,.35)}.star{fill:#fff6ea;opacity:.2;animation:twinkle ease-in-out infinite}' +
+    `.halo-spin{fill:none;stroke:#ffe4b0;opacity:.3;${origin};animation:spin linear infinite}.spinR{animation-direction:reverse}` +
+    `.lens{fill:none;stroke:#ffeccc;stroke-linecap:round;${origin};animation:spin 300s linear infinite}` +
+    `.ring{fill:none;stroke:#fff3dc}.pulse{animation:pulse 8s ${SINE} infinite alternate}` +
+    `.heat{fill:none;stroke:#ffd590;stroke-linecap:round;animation:heat 11s ${SINE} infinite alternate}` +
+    // Sky: stars, galaxies, dust.
+    `.tw{opacity:.2;animation:tw ${SINE} infinite alternate}` +
+    `.glint{fill:#fff6ea;stroke:#fff6ea;stroke-width:.8;stroke-linecap:round;opacity:.35;animation:tw ${SINE} infinite alternate}` +
+    `.dx,.dy{animation:dx 50s ${SINE} infinite alternate}.dy{animation-name:dy}` +
+    '.spin{transform-origin:0 0;animation:spin 300s linear infinite}' +
+    '.arm path{fill:none;stroke:#ecdcc2;stroke-linecap:round;stroke-linejoin:round;opacity:.1}.arm.thin path{stroke-width:1;opacity:.35}' +
+    '.gdot,.dust{fill:#fff2dc}' +
+    '.g0{stop-color:#fff4e0;stop-opacity:.95}.g1{stop-color:#f6d9a8;stop-opacity:.35}.g2{stop-color:#e8c48e;stop-opacity:0}' +
+    '.q0{stop-color:#e9dcc8;stop-opacity:.22}.q1{stop-color:#e9dcc8;stop-opacity:0}' +
     '@keyframes flow{to{stroke-dashoffset:var(--p)}}' +
     '@keyframes spin{to{transform:rotate(360deg)}}' +
-    '@keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}' +
-    '@keyframes twinkle{0%,100%{opacity:.12}50%{opacity:.95}}' +
+    '@keyframes pulse{from{opacity:.6}to{opacity:1}}' +
+    '@keyframes heat{from{opacity:.22}to{opacity:.42}}' +
+    '@keyframes tw{from{opacity:.1}to{opacity:.9}}' +
+    '@keyframes dx{from{transform:translateX(calc(var(--a) * -1))}to{transform:translateX(var(--a))}}' +
+    '@keyframes dy{from{transform:translateY(calc(var(--a) * -1))}to{transform:translateY(var(--a))}}' +
     '@media (prefers-color-scheme:light){' +
-    '.bg{fill:url(#day)}.hole{fill:#120d09}' +
+    '.bg{fill:url(#day)}.e0,.e1{stop-color:#120d09}.e2{stop-color:#2e2014}' +
     '.h0{stop-color:rgba(214,150,70,.14)}.h1{stop-color:rgba(214,150,70,.04)}' +
     '.k0{stop-color:#fff3dc}.k1{stop-color:#f1c172}.k2{stop-color:#d8913f}.k3{stop-color:#9a5a24}.k4{stop-color:#5e3417}' +
     '.l0{stop-color:#ffeccc}.l1{stop-color:#e9b464}.l2{stop-color:#a8692e}' +
-    '.dust,.star{display:none}}'
+    '.lens{stroke:#a8692e}.sky{display:none}}'
 
   return svg(
     'xMaxYMid slice',
@@ -218,22 +343,37 @@ function phoenix(): string {
     '<defs>' +
       '<radialGradient id="day" cx=".85" cy=".4" r="1"><stop offset="0" stop-color="#f6efe4"/><stop offset=".75" stop-color="#ece5da"/></radialGradient>' +
       '<radialGradient id="haze"><stop offset="0" class="h0"/><stop offset=".5" class="h1"/><stop offset="1" class="h2"/></radialGradient>' +
-      '<radialGradient id="dg" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1620"><stop offset=".14" class="k0"/><stop offset=".24" class="k1"/><stop offset=".42" class="k2"/><stop offset=".7" class="k3"/><stop offset="1" class="k4"/></radialGradient>' +
-      `<linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="${BH_X - 420}" y1="0" x2="${BH_X + 420}" y2="0"><stop offset="0" class="l0"/><stop offset=".45" class="l1"/><stop offset="1" class="l2"/></linearGradient>` +
-      // Fades the disk's top edge, where each ring's tip curls, into one smooth band.
+      // The event horizon: black, with a faint warm rim just inside the photon ring.
+      '<radialGradient id="eh"><stop offset="0" class="e0"/><stop offset=".86" class="e1"/><stop offset="1" class="e2"/></radialGradient>' +
+      `<radialGradient id="dg" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1620" gradientTransform="scale(1 ${FLAT})"><stop offset=".26" class="k0"/><stop offset=".34" class="k1"/><stop offset=".5" class="k2"/><stop offset=".7" class="k3"/><stop offset="1" class="k4"/></radialGradient>` +
+      `<linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="${BH_X - 380}" y1="${BH_Y - 200}" x2="${BH_X + 380}" y2="${BH_Y + 200}"><stop offset="0" class="l0"/><stop offset=".45" class="l1"/><stop offset="1" class="l2"/></linearGradient>` +
+      '<radialGradient id="gHalo"><stop offset="0" class="q0"/><stop offset="1" class="q1"/></radialGradient>' +
+      '<radialGradient id="gCore"><stop offset="0" class="g0"/><stop offset=".35" class="g1"/><stop offset="1" class="g2"/></radialGradient>' +
+      // Fades the disk's top edge, where each front ring's tip curls, into one smooth band.
       '<linearGradient id="fadeY" gradientUnits="userSpaceOnUse" x1="0" y1="2" x2="0" y2="40"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>' +
       '<mask id="edge" maskUnits="userSpaceOnUse" x="-1900" y="-100" width="2400" height="400"><rect x="-1900" y="-100" width="2400" height="400" fill="url(#fadeY)"/></mask>' +
+      // Hides the disk's back half inside the halo.
+      `<radialGradient id="outside" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="${HALO + 30}"><stop offset="${f((HALO - 30) / (HALO + 30) * 100)}%" stop-color="#000"/><stop offset="1" stop-color="#fff"/></radialGradient>` +
+      '<mask id="behind" maskUnits="userSpaceOnUse" x="-1900" y="-300" width="2400" height="600"><rect x="-1900" y="-300" width="2400" height="600" fill="url(#outside)"/></mask>' +
       '<filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter>' +
+      '<filter id="wide" x="-10%" y="-300%" width="120%" height="700%"><feGaussianBlur stdDeviation="12"/></filter>' +
+      '<filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>' +
       '<filter id="bloom" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '</defs>' +
       '<rect class="bg" width="1600" height="1000"/>' +
-      `<g class="art"><g class="dust">${dust}</g>${stars}` +
+      `<g class="art"><g class="sky">${stars}${galaxies}<g class="dust">${dust}</g></g>` +
       `<circle cx="${BH_X}" cy="${BH_Y}" r="900" fill="url(#haze)"/>` +
+      `<g ${plane} mask="url(#behind)"><g class="disk far">${farDisk}</g></g>` +
       `<circle cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 90}" fill="none" stroke="url(#hg)" stroke-width="170" opacity=".28" filter="url(#soft)"/>` +
-      `<g class="halo" filter="url(#bloom)">${halo}</g>${swirl}</g>` +
-      `<circle class="hole" cx="${BH_X}" cy="${BH_Y}" r="${HOLE}"/>` +
-      `<g class="art"><circle class="ring pulse" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 5}"/>` +
-      `<g ${plane}><ellipse rx="1200" ry="${f(1200 * FLAT * 0.9)}" cy="${f(1200 * FLAT * 0.35)}" fill="url(#dg)" opacity=".18" filter="url(#soft)"/></g>` +
+      `<g class="halo" filter="url(#bloom)">${halo}</g>${swirl}` +
+      `<g class="lens">${lens}</g></g>` +
+      `<circle cx="${BH_X}" cy="${BH_Y}" r="${HOLE}" fill="url(#eh)"/>` +
+      // Photon ring: a soft glow under a crisp line, and a fainter echo just outside.
+      `<g class="art"><g class="pulse"><circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 4}" stroke-width="9" opacity=".55" filter="url(#glow)"/>` +
+      `<circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 3}" stroke-width="1.6"/></g>` +
+      `<circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 11}" stroke-width=".7" opacity=".4"/>` +
+      `<g ${plane}><ellipse rx="1200" ry="${f(1200 * FLAT * 0.9)}" cy="${f(1200 * FLAT * 0.35)}" fill="url(#dg)" opacity=".18" filter="url(#soft)"/>` +
+      `<path class="heat" d="${front(HALO + 30)}" stroke-width="26" filter="url(#wide)"/></g>` +
       `<g ${plane} mask="url(#edge)"><g class="disk" filter="url(#bloom)">${disk}</g>${flow}</g></g>`,
   )
 }
@@ -316,6 +456,6 @@ export const STILL_SCENES = Object.fromEntries(
 export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
   contour: 'Orange map lines drawing themselves in, holding, then wiping away, over a blue-slate background',
-  phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left',
+  phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies drifting among the stars around it',
   dusk: 'Violet and orange aurora curtains falling above layered dusk hills',
 }

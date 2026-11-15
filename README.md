@@ -221,7 +221,7 @@ The preview shows dark mode, with each background caught at one moment. See them
 | `dusk` (default) | deep plum | violet and orange aurora curtains fall over layered hills |
 | `ember` | warm charcoal | coals along the bottom brighten and dim, soft sparks drift up |
 | `contour` | blue-slate | orange map lines draw themselves in, hold, wipe away; always redrawing |
-| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left |
+| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left, small galaxies drifting round it |
 
 Themes show only in Code sessions, starting with the next one you open after installing. A session that's already open, the home screen and the Chat tab keep the app's own look. Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look. The backgrounds hold still when your system asks for reduced motion. `/ctxtheme motion off` keeps the theme but holds its background still, which is easier on a laptop battery. `/ctxtheme motion on` brings the movement back.
 
