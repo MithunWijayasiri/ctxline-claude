@@ -66,7 +66,7 @@ export const LOOKS: Record<StyleId, Look> = {
     },
   }),
 
-  contour: look('Contour', 'blue-slate night, drifting orange map lines that glow and fade', { blur: 12, opacity: 0.55 }, {
+  contour: look('Contour', 'blue-slate night, orange map lines that draw and erase themselves', { blur: 12, opacity: 0.55 }, {
     label: 'ctxline Contour',
     id: 'ctxline-contour',
     roles: { accent: '#d97757', danger: '#ef6461', success: '#62bb8e', warning: '#e6b553', pro: '#93a2f2' },

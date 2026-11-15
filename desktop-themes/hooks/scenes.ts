@@ -1,4 +1,4 @@
-import { GLOWS, MAJOR, MAP_H, MAP_W, MINOR } from './contour-paths'
+import { MAJOR, MINOR } from './contour-paths'
 import type { StyleId } from './looks'
 
 // The four animated backdrop scenes. A scene runs no script and loads nothing:
@@ -81,45 +81,47 @@ function ember(): string {
   )
 }
 
-// ---------- Contour: drifting map lines; bands light up and fade ----------
+// ---------- Contour: map lines draw themselves in, hold, wipe away; loop flows ----------
 
+// The map's paths are cut into stretches; each draws in (dashoffset 100→0),
+// holds a beat, then erases forward (0→-100). Both cycle ends are fully hidden,
+// so the loop point is invisible, and the nine stretches are evenly out of
+// phase, so lines are always appearing somewhere and dissolving elsewhere.
 function contour(): string {
-  const rnd = seeded(29)
-  let masks = ''
-  let glows = ''
-  GLOWS.forEach((g, n) => {
-    masks += `<mask id="m${n}" maskUnits="userSpaceOnUse" x="${g.cx - g.r}" y="${g.cy - g.r}" width="${g.r * 2}" height="${g.r * 2}"><circle cx="${g.cx}" cy="${g.cy}" r="${g.r}" fill="url(#fade)"/></mask>`
-    const duration = 13 + rnd() * 5
-    // Spread the starts evenly over one cycle, so a band lights about every second.
-    const delay = (n / GLOWS.length) * duration + rnd()
-    glows += `<g class="glow" mask="url(#m${n})" style="animation-duration:${f(duration)}s;animation-delay:-${f(delay)}s"><path d="${g.d}"/></g>`
-  })
+  const split = (d: string, n: number): string[] => {
+    const parts = d.split(/(?=M)/)
+    const size = Math.ceil(parts.length / n)
+    const out: string[] = []
+    for (let i = 0; i < n; i++) out.push(parts.slice(i * size, (i + 1) * size).join(''))
+    return out.filter(Boolean)
+  }
+  // 6 minor + 3 major stretches, interleaved evenly across one 36s cycle.
+  const CYCLE = 36
+  const order = ['mn', 'mn', 'mj', 'mn', 'mn', 'mj', 'mn', 'mn', 'mj']
+  const pool: Record<string, string[]> = { mn: split(MINOR, 6), mj: split(MAJOR, 3) }
+  const paths = order
+    .map((cls, i) => `<path pathLength="100" class="${cls}" d="${pool[cls].shift()}" style="animation-delay:-${f((i * CYCLE) / order.length)}s"/>`)
+    .join('')
 
   const style =
     '.t0{stop-color:#18202b}.t1{stop-color:#0f1318}' +
-    '.minor{fill:none;stroke:rgba(217,119,87,.2);stroke-width:1.1}' +
-    '.major{fill:none;stroke:rgba(217,119,87,.42);stroke-width:1.5}' +
-    '.glow{opacity:0;animation:glow linear infinite}' +
-    '.glow path{fill:none;stroke:#ff9669;stroke-width:2.8;stroke-linecap:round}' +
-    '.map{animation:drift 40s ease-in-out infinite alternate}' +
-    `@keyframes drift{to{transform:translate(${1600 - MAP_W}px,${1000 - MAP_H}px)}}` +
-    '@keyframes glow{0%{opacity:0}7%{opacity:1}17%{opacity:1}25%,100%{opacity:0}}' +
+    '.mn{fill:none;stroke:rgba(217,119,87,.26);stroke-width:1.1;stroke-dasharray:100;stroke-dashoffset:100;animation:flow ' + CYCLE + 's linear infinite}' +
+    '.mj{fill:none;stroke:rgba(217,119,87,.5);stroke-width:1.5;stroke-dasharray:100;stroke-dashoffset:100;animation:flow ' + CYCLE + 's linear infinite}' +
+    '@keyframes flow{0%{stroke-dashoffset:100;opacity:0;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}42%{stroke-dashoffset:0;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}55%{stroke-dashoffset:0;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}100%{stroke-dashoffset:-100;opacity:0}}' +
+    '.drift{animation:drift 90s ease-in-out infinite alternate}' +
+    '@keyframes drift{from{transform:translate(0,0)}to{transform:translate(-160px,-90px)}}' +
     '@media (prefers-color-scheme:light){' +
     '.t0{stop-color:#f1f3f4}.t1{stop-color:#e3e8ec}' +
-    '.minor{stroke:rgba(176,92,54,.2)}.major{stroke:rgba(176,92,54,.5)}' +
-    '.glow path{stroke:#c45c30}}'
+    '.mn{stroke:rgba(176,92,54,.26)}.mj{stroke:rgba(176,92,54,.5)}}'
 
   return svg(
     'xMidYMid slice',
     style,
     '<defs>' +
       '<radialGradient id="sky" cx=".85" cy=".1" r=".9"><stop offset="0" class="t0"/><stop offset=".75" class="t1"/></radialGradient>' +
-      '<radialGradient id="fade"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#fff" stop-opacity=".85"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
-      '<filter id="bloom" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
-      masks +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      `<g class="art"><g class="map"><path class="minor" d="${MINOR}"/><path class="major" d="${MAJOR}"/><g filter="url(#bloom)">${glows}</g></g></g>`,
+      `<g class="art"><g class="drift">${paths}</g></g>`,
   )
 }
 
@@ -313,7 +315,7 @@ export const STILL_SCENES = Object.fromEntries(
 
 export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
-  contour: 'Orange topographic map lines drifting slowly over a blue-slate background',
+  contour: 'Orange map lines drawing themselves in, holding, then wiping away, over a blue-slate background',
   phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left',
   dusk: 'Violet and orange aurora curtains falling above layered dusk hills',
 }
