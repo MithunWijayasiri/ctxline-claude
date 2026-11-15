@@ -219,6 +219,21 @@ test('/ctxtheme motion off holds the background still, and remembers', async ($,
   expect(sets.length).toBe(before)
 })
 
+test('/ctxtheme motion off holds for the session when it could not be saved', async ($, on) => {
+  const { sets } = engine(on, { store: false })
+  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
+
+  await $.session.start(START)
+
+  const off = await run('motion off')
+  expect(off.text).toContain('It couldn’t be saved')
+  expect((await run('motion')).text).toContain('Background motion is off')
+  expect((await run('')).text).toContain('Background motion: **off**')
+
+  await run('ember')
+  expect(sets.at(-1).backdrop.scene).toBe('ember-still')
+})
+
 test('the backdrop draws each scene and leaves other plugins alone', async ($, on) => {
   on('ui.render', ($: any, e: any) => {
     const { Text } = $.ui.resolve(e)

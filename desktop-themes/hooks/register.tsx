@@ -20,6 +20,7 @@ const STILL = '-still'
 type Choice = StyleId | typeof OFF
 
 const APPLIED = { plugin: 'ctxline-desktop-themes', key: 'applied' } as const
+const SHOWN_STILL = { plugin: 'ctxline-desktop-themes', key: 'still' } as const
 
 // An unreadable store falls back to the default rather than no theme at all.
 async function savedChoice($: EngineInterface): Promise<Choice> {
@@ -29,8 +30,15 @@ async function savedChoice($: EngineInterface): Promise<Choice> {
 }
 
 // An unreadable store keeps the background moving.
-async function isStill($: EngineInterface): Promise<boolean> {
+async function savedStill($: EngineInterface): Promise<boolean> {
   return (await $.store.get(MOTION_KEY).catch(() => undefined)) === OFF
+}
+
+// This session's motion, so a failed save still reports and keeps what's on screen.
+async function isStill($: EngineInterface): Promise<boolean> {
+  const { value } = await $.state.get(SHOWN_STILL)
+
+  return value ?? (await savedStill($))
 }
 
 const UNSAVED = 'It couldn’t be saved, so new sessions won’t keep it.'
@@ -96,11 +104,13 @@ export const register: Register = on => {
     })
 
     const choice = await savedChoice($)
+    const still = await savedStill($)
 
     if (choice !== OFF) {
-      await apply($, choice, await isStill($))
+      await apply($, choice, still)
     }
     await $.state.set(APPLIED, choice)
+    await $.state.set(SHOWN_STILL, still)
 
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -142,6 +152,7 @@ export const register: Register = on => {
       if (current !== OFF) {
         await apply($, current, still)
       }
+      await $.state.set(SHOWN_STILL, still)
       const said = still ? 'Motion off: the background holds still.' : 'Motion on: the background moves.'
       const later = current === OFF ? ' It applies once a theme is on.' : ''
       const keep = (await save($, MOTION_KEY, motion[1])) ? 'It stays that way for new sessions.' : UNSAVED
