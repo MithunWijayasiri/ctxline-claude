@@ -1,0 +1,10 @@
+ctxline-desktop-themes
+Copyright (c) 2026 Mithun Wijayasiri. Licensed under the MIT License (see the
+repository's LICENSE).
+
+Third-party files
+
+hooks/make-colors.js and hooks/make-colors.d.ts are copied unmodified from the
+plugin-authoring kit that ships with Claude Code, as that kit tells mod authors
+to do. They are not covered by this project's MIT License and remain under their
+original terms.
