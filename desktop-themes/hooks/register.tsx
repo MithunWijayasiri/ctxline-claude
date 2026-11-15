@@ -149,12 +149,15 @@ export const register: Register = on => {
       const { value: applied } = await $.state.get(APPLIED)
       const current = applied ?? (await savedChoice($))
 
-      if (current !== OFF) {
-        await apply($, current, still)
-      }
+      const notDrawn = current === OFF ? undefined : await apply($, current, still)
       await $.state.set(SHOWN_STILL, still)
       const said = still ? 'Motion off: the background holds still.' : 'Motion on: the background moves.'
-      const later = current === OFF ? ' It applies once a theme is on.' : ''
+      const later =
+        current === OFF
+          ? ' It applies once a theme is on.'
+          : notDrawn === undefined
+            ? ''
+            : ` Nothing shows it here yet: ${notDrawn}. It appears in the Claude desktop app.`
       const keep = (await save($, MOTION_KEY, motion[1])) ? 'It stays that way for new sessions.' : UNSAVED
 
       return { text: `${said}${later} ${keep}`, isTextDisplayOnly: true }

@@ -169,6 +169,10 @@ test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
   expect(ran.text).toContain('Switched to Phoenix, but nothing shows it here yet')
   expect(ran.text).toContain('no desktop client attached')
   expect(store.get('style')).toBe('phoenix')
+
+  const still = await run('motion off')
+  expect(still.text).toContain('Nothing shows it here yet: no desktop client attached')
+  expect(store.get('motion')).toBe('off')
 })
 
 test('/ctxtheme keeps the pick where the theme call throws', async ($, on) => {
