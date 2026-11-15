@@ -137,7 +137,7 @@ export const LOOKS: Record<StyleId, Look> = {
     },
   }),
 
-  dusk: look('Dusk', 'deep plum, violet and orange aurora curtains over dusk hills', { blur: 20, opacity: 0.55 }, {
+  dusk: look('Dusk', 'deep plum, violet and orange aurora over mountains and a still lake', { blur: 20, opacity: 0.55 }, {
     label: 'ctxline Dusk',
     id: 'ctxline-dusk',
     roles: { accent: '#e07f5a', danger: '#ec5f6a', success: '#7cc2a0', warning: '#e8b45a', pro: '#b896f0' },

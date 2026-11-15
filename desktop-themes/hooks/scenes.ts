@@ -378,66 +378,233 @@ function phoenix(): string {
   )
 }
 
-// ---------- Dusk: violet and orange aurora curtains falling over layered hills ----------
+// ---------- Dusk: rippling aurora curtains over mountain ridges and a still lake ----------
+
+const SHORE = 820 // the lake's far edge; everything below it is water
+const SUN_X = 950 // the sun, just set behind the ridges: the afterglow, crest rims and the lake's glitter line up on it
+const SEGS = 24 // brightness steps along each aurora curtain
+const WAVE_STEP = 1.25 // s of delay per step: a brightness wave 8 steps long runs along the curtain
+
+type Ridge = { base: number; amp: number; rough: number; dip: number; dipX: number; dipW: number }
+
+// Crest points from x -40 to 1640: midpoint displacement for the jagged line,
+// plus a dip that opens a valley toward the afterglow.
+function ridgeCrest(rnd: () => number, r: Ridge): [number, number][] {
+  const n = 128
+  const d = new Array<number>(n + 1).fill(0)
+  d[0] = (rnd() - 0.5) * r.amp
+  d[n] = (rnd() - 0.5) * r.amp
+  for (let step = n, amp = r.amp; step > 1; step /= 2, amp *= r.rough) {
+    for (let i = step / 2; i < n; i += step) d[i] = (d[i - step / 2] + d[i + step / 2]) / 2 + (rnd() - 0.5) * amp
+  }
+
+  return d.map((dy, i) => {
+    const x = -40 + (i * 1680) / n
+    const y = r.base + dy + r.dip * Math.exp(-(((x - r.dipX) / r.dipW) ** 2))
+
+    return [x, Math.min(y, SHORE)]
+  })
+}
+
+const crestPath = (pts: [number, number][]): string => 'M' + pts.map(([x, y]) => `${f(x)} ${f(y)}`).join('L')
+
+type Curtain = {
+  x0: number
+  x1: number
+  edge: number
+  wave: number
+  cycles: number
+  len: [number, number]
+  ray: string
+  sway: number
+  op: number
+}
+
+// An aurora curtain: vertical rays rising from a wavy lower edge, brightest at
+// the edge, fading out at both ends. Sways from its edge; brightness waves run along it.
+function curtain(rnd: () => number, c: Curtain): string {
+  const segs = new Array<string>(SEGS).fill('')
+  const [p1, p2, p3] = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28]
+  for (let x = c.x0; x < c.x1; x += 7 + rnd() * 7) {
+    const t = (x - c.x0) / (c.x1 - c.x0)
+    const env = Math.sin(Math.PI * t) ** 0.6
+    const edge = c.edge + c.wave * Math.sin(6.28 * c.cycles * t + p1) + 18 * Math.sin(6.28 * 3.7 * t + p2) + 6 * Math.sin(6.28 * 11 * t) + (rnd() - 0.5) * 8
+    const len =
+      (c.len[0] + (c.len[1] - c.len[0]) * (0.5 + 0.5 * Math.sin(6.28 * 1.6 * t + p3))) *
+      (0.45 + 0.55 * rnd()) *
+      (0.55 + 0.45 * env)
+    segs[Math.min(SEGS - 1, Math.floor(t * SEGS))] +=
+      `<rect x="${f(x)}" y="${f(edge - len)}" width="${f(2 + rnd() * 4)}" height="${f(len)}" fill-opacity="${(env * (0.3 + 0.7 * rnd())).toFixed(2)}"/>`
+  }
+  const cx = (c.x0 + c.x1) / 2
+
+  return (
+    `<g class="cw" opacity="${c.op}" style="transform-origin:${cx}px ${c.edge}px;animation-duration:${c.sway}s;animation-delay:-${f(rnd() * c.sway)}s">` +
+    `<ellipse cx="${cx}" cy="${c.edge}" rx="${(c.x1 - c.x0) / 2 + 80}" ry="230" fill="url(#${c.ray}g)"/>` +
+    `<g filter="url(#rs)" fill="url(#${c.ray})">` +
+    segs.map((s, i) => `<g class="sg" style="animation-delay:-${f(i * WAVE_STEP)}s">${s}</g>`).join('') +
+    '</g></g>'
+  )
+}
 
 function dusk(): string {
+  const rnd = seeded(23)
+  const SINE_ALT = `${SINE} infinite alternate`
+
+  const ridges = [
+    { base: 585, amp: 150, rough: 0.62, dip: 0, dipX: 0, dipW: 1 },
+    { base: 650, amp: 120, rough: 0.6, dip: 40, dipX: 1000, dipW: 350 },
+    { base: 705, amp: 100, rough: 0.62, dip: 60, dipX: SUN_X, dipW: 330 },
+    { base: 745, amp: 90, rough: 0.6, dip: 110, dipX: 900, dipW: 300 },
+  ].map((r) => ridgeCrest(rnd, r))
+  const fills = ridges.map((pts, i) => `<path class="m${i + 1}" d="${crestPath(pts)}V${SHORE + 1}H-40Z"/>`)
+  // Backlit crests: a thin rim, brightest where the sun went down.
+  const rimGroup = (body: string): string =>
+    `<g class="rim" fill="none" stroke="url(#rimg)" stroke-linejoin="round">${body}</g>`
+  const rims = [
+    `<path d="${crestPath(ridges[0])}" stroke-width="5" stroke-opacity=".3" filter="url(#rg)"/><path d="${crestPath(ridges[0])}" stroke-width="1.2" stroke-opacity=".55"/>`,
+    `<path d="${crestPath(ridges[1])}" stroke-width="1.2" stroke-opacity=".3"/>`,
+  ]
+  const r1 = ridges[0]
+  const crestAt = (x: number): number => r1[Math.round(((x + 40) / 1680) * (r1.length - 1))][1]
+
+  // Stars thin out toward the glowing horizon.
+  const tint = (): string => {
+    const t = rnd()
+
+    return t < 0.7 ? 's0' : t < 0.85 ? 's1' : 's2'
+  }
+  let stars = ''
+  for (let i = 0; i < 150; ) {
+    const x = rnd() * 1600
+    const y = 8 + rnd() * 540
+    if (rnd() > 1 - y / 640 || y > crestAt(x) - 20) continue
+    const fade = 1 - y / 640
+    if (i < 28) {
+      const p = 2.5 + rnd() * 4
+      stars += `<circle class="tw ${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.9 + rnd() * 0.6)}" fill-opacity="${(fade * (0.5 + rnd() * 0.4)).toFixed(2)}" style="animation-duration:${f(p)}s;animation-delay:-${f(rnd() * p)}s"/>`
+    } else {
+      stars += `<circle class="${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + rnd() * 0.7)}" fill-opacity="${(fade * (0.2 + rnd() * 0.5)).toFixed(2)}"/>`
+    }
+    i++
+  }
+  for (const [x, y] of [
+    [1490, 70],
+    [560, 64],
+    [250, 430],
+  ]) {
+    if (y > crestAt(x) - 40) throw new Error(`dusk: glint star at ${x},${y} sits on a ridge`)
+    stars +=
+      `<g transform="translate(${x} ${y})"><g class="tw s0" style="animation-duration:6s;animation-delay:-${f(rnd() * 6)}s">` +
+      '<circle r="1.7"/><path d="M-8 0H8M0 -8V8" stroke="#fff6ea" stroke-width=".6" stroke-opacity=".55"/></g></g>'
+  }
+
+  const curtains: Curtain[] = [
+    { x0: -60, x1: 520, edge: 270, wave: 20, cycles: 1.1, len: [80, 170], ray: 'rv', sway: 23, op: 0.6 },
+    { x0: 820, x1: 1580, edge: 290, wave: 24, cycles: 1.2, len: [100, 210], ray: 'rv', sway: 19, op: 0.8 },
+    { x0: 140, x1: 1080, edge: 400, wave: 30, cycles: 1.3, len: [150, 290], ray: 'ra', sway: 16, op: 1 },
+  ]
+
+  // Mist pooled in a valley, in front of the ridge behind it: [cx, cy, rx, ry, drift].
+  const mist = (list: number[][]): string =>
+    '<g class="art">' +
+    list
+      .map(
+        ([cx, cy, rx, ry, a]) =>
+          `<g class="mf" style="--a:${a}px;animation-delay:-${f(rnd() * 60)}s"><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#mg)"/></g>`,
+      )
+      .join('') +
+    '</g>'
+
+  // Glitter on the water: mostly a column under the afterglow, a few violet
+  // flecks from the aurora; longer and thicker toward the near shore.
+  let glitter = ''
+  for (let i = 0; i < 36; i++) {
+    const y = SHORE + 6 + rnd() ** 1.3 * 168
+    const near = (y - SHORE) / 180
+    const warm = rnd() < 0.85
+    const x = warm ? SUN_X + (rnd() - 0.5) * (260 + near * 420) : 60 + rnd() * 1480
+    const len = (12 + near * 80) * (0.5 + rnd())
+    const p = 3 + rnd() * 4
+    glitter += `<path class="sh" d="M${f(x - len / 2)} ${f(y)}h${f(len)}" stroke="url(#${warm ? 'gw' : 'gv'})" stroke-width="${f(0.7 + near * 1.2)}" stroke-opacity="${((warm ? 0.35 : 0.2) + rnd() * 0.4).toFixed(2)}" style="animation-duration:${f(p)}s;animation-delay:-${f(rnd() * p)}s"/>`
+  }
+  // userSpaceOnUse: a horizontal line's zero-height box can't take a bounding-box gradient
+  const flat = (id: string, cls: string): string =>
+    `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop class="${cls}"/></linearGradient>`
+
   const style =
-    '.k0{stop-color:#120e17}.k1{stop-color:#1a1322}.k2{stop-color:#2a1a2a}' +
-    '.ra{stop-color:#d97757}.rb{stop-color:#9b6fd6}.st{fill:#cbb8e8}' +
-    '.h1{fill:#1d1525}.h2{fill:#17111e}.h3{fill:#120d17}' +
-    '.fall{animation:fall 22s linear infinite}' +
-    '.f2{animation:fall 30s linear infinite;animation-delay:-9s}' +
-    '.f3{animation:fall 38s linear infinite;animation-delay:-20s}' +
-    '@keyframes fall{0%{transform:translateY(-560px);opacity:0}12%{opacity:.55}85%{opacity:.45}100%{transform:translateY(180px);opacity:0}}' +
-    '.sway{animation:skew 14s ease-in-out infinite alternate;transform-origin:800px 0}' +
-    '.sw2{animation:skew 18s ease-in-out infinite alternate-reverse;transform-origin:1000px 0}' +
-    '@keyframes skew{from{transform:skewX(-2.5deg)}to{transform:skewX(2.5deg)}}' +
-    '.star{animation:tw 6s ease-in-out infinite alternate}' +
-    '.star:nth-of-type(2n){animation-delay:-2s}.star:nth-of-type(3n){animation-delay:-4s}' +
-    '@keyframes tw{from{opacity:.15}to{opacity:.6}}' +
+    '.k0{stop-color:#0c0a11}.k1{stop-color:#151020}.k2{stop-color:#261a2c}.k3{stop-color:#3d2331}' +
+    '.ra{stop-color:#d97757}.rb{stop-color:#9b6fd6}.gl{stop-color:#e08a5c}.mi{stop-color:#8c7aa8}' +
+    '.l0{stop-color:#1c1525}.l1{stop-color:#09070c}' +
+    '.m1{fill:#211829}.m2{fill:#1a1321}.m3{fill:#130e19}.m4{fill:#0c0a10}' +
+    '.s0{fill:#f3ecff}.s1{fill:#e6ecff}.s2{fill:#ffdcae}' +
+    `.cw{animation:cw 18s ${SINE_ALT}}@keyframes cw{from{transform:skewX(-5deg) scaleY(.9)}to{transform:skewX(5deg) scaleY(1.05)}}` +
+    `.sg{animation:sg 5s ${SINE_ALT}}@keyframes sg{from{opacity:.4}to{opacity:1}}` +
+    `.tw{animation:tw 4s ${SINE_ALT}}@keyframes tw{from{opacity:.3}to{opacity:1}}` +
+    `.mf{animation:dx 60s ${SINE_ALT}}@keyframes dx{from{transform:translateX(calc(var(--a) * -1))}to{transform:translateX(var(--a))}}` +
+    `.sh{transform-box:fill-box;transform-origin:center;animation:sh 4s ${SINE_ALT}}@keyframes sh{from{opacity:.15;transform:scaleX(.5)}to{opacity:1;transform:scaleX(1)}}` +
+    // a shooting star: under a second of streak, then a long pause
+    '.mt{opacity:0;animation:mt 19s linear 6s infinite}@keyframes mt{0%{transform:translate(0,0);opacity:0}1.5%{opacity:1}6%,100%{transform:translate(-300px,104px);opacity:0}}' +
     '@media (prefers-color-scheme:light){' +
-    '.k0{stop-color:#eee8f1}.k1{stop-color:#f1e6ea}.k2{stop-color:#f6ddd0}' +
-    '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}.st{fill:#8a6fb0}' +
-    '.h1{fill:#e6dbe9}.h2{fill:#ddd0e2}.h3{fill:#d4c5da}' +
-    '.fall,.f2,.f3{opacity:.7}}'
+    '.k0{stop-color:#e9e2ef}.k1{stop-color:#efe4ec}.k2{stop-color:#f4dccf}.k3{stop-color:#f6d2bf}' +
+    '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}.gl{stop-color:#f0a07c}.mi{stop-color:#fff}' +
+    '.l0{stop-color:#d9cbdf}.l1{stop-color:#e8dfec}' +
+    '.m1{fill:#e2d3e3}.m2{fill:#d6c5da}.m3{fill:#c9b6d0}.m4{fill:#bba7c4}' +
+    '.sky,.rim{display:none}}'
+
+  const afterglow = `<ellipse cx="${SUN_X}" cy="680" rx="1000" ry="300" fill="url(#ag)"/>`
+  const water = `y="${SHORE}" width="1600" height="${1000 - SHORE}"`
 
   return svg(
     'xMidYMax slice',
     style,
     '<defs>' +
-      '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="k0"/><stop offset=".55" class="k1"/><stop offset="1" class="k2"/></linearGradient>' +
-      // Vertical sheets: bright mid-band, fading out at both ends of their length.
-      '<linearGradient id="c1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="rb" stop-opacity="0"/><stop offset=".45" class="rb" stop-opacity=".5"/><stop offset=".7" class="ra" stop-opacity=".3"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>' +
-      '<linearGradient id="c2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="rb" stop-opacity="0"/><stop offset=".5" class="rb" stop-opacity=".38"/><stop offset="1" class="rb" stop-opacity="0"/></linearGradient>' +
-      '<linearGradient id="c3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ra" stop-opacity="0"/><stop offset=".5" class="ra" stop-opacity=".3"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>' +
-      '<filter id="soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="26"/></filter>' +
-      '<filter id="haze" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="24"/></filter>' +
-      '<clipPath id="sc"><rect x="0" y="0" width="1600" height="820"/></clipPath>' +
+      '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="k0"/><stop offset=".4" class="k1"/><stop offset=".62" class="k2"/><stop offset=".8" class="k3"/></linearGradient>' +
+      '<radialGradient id="ag"><stop class="gl" stop-opacity=".45"/><stop offset=".3" class="ra" stop-opacity=".22"/><stop offset=".65" class="rb" stop-opacity=".07"/><stop offset="1" class="rb" stop-opacity="0"/></radialGradient>' +
+      // rays: faint violet tops, bright rose lower edge
+      '<linearGradient id="ra" x1="0" y1="0" x2="0" y2="1"><stop class="rb" stop-opacity="0"/><stop offset=".35" class="rb" stop-opacity=".08"/><stop offset=".6" class="rb" stop-opacity=".35"/><stop offset=".8" class="ra" stop-opacity=".85"/><stop offset=".96" class="ra"/><stop offset="1" class="ra" stop-opacity=".3"/></linearGradient>' +
+      '<linearGradient id="rv" x1="0" y1="0" x2="0" y2="1"><stop class="rb" stop-opacity="0"/><stop offset=".4" class="rb" stop-opacity=".08"/><stop offset=".7" class="rb" stop-opacity=".45"/><stop offset=".95" class="rb" stop-opacity=".9"/><stop offset="1" class="rb" stop-opacity=".2"/></linearGradient>' +
+      '<radialGradient id="rag"><stop class="ra" stop-opacity=".16"/><stop offset=".5" class="rb" stop-opacity=".08"/><stop offset="1" class="rb" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="rvg"><stop class="rb" stop-opacity=".14"/><stop offset="1" class="rb" stop-opacity="0"/></radialGradient>' +
+      `<linearGradient id="rimg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop class="ra" stop-opacity="0"/><stop offset=".3" class="ra" stop-opacity=".25"/><stop offset="${(SUN_X / 1600).toFixed(2)}" class="gl"/><stop offset=".85" class="ra" stop-opacity=".25"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>` +
+      '<radialGradient id="mg"><stop class="mi" stop-opacity=".14"/><stop offset="1" class="mi" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="lake" x1="0" y1="0" x2="0" y2="1"><stop class="l0"/><stop offset="1" class="l1"/></linearGradient>' +
+      '<linearGradient id="lf" x1="0" y1="0" x2="0" y2="1"><stop class="l1" stop-opacity="0"/><stop offset="1" class="l1" stop-opacity=".55"/></linearGradient>' +
+      flat('gw', 'ra') +
+      flat('gv', 'rb') +
+      '<linearGradient id="mtg" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#fff6ea" stop-opacity=".9"/><stop offset="1" stop-color="#fff6ea" stop-opacity="0"/></linearGradient>' +
+      '<filter id="rs"><feGaussianBlur stdDeviation="1.2 1"/></filter>' +
+      '<filter id="rg" y="-50%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>' +
+      '<filter id="ref" y="-10%" height="120%"><feGaussianBlur stdDeviation="1 3"/></filter>' +
+      `<clipPath id="lk"><rect ${water}/></clipPath>` +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      '<g class="art">' +
-      '<g class="st">' +
-      '<circle class="star" cx="200" cy="140" r="1.6"/><circle class="star" cx="480" cy="90" r="1.2"/><circle class="star" cx="760" cy="180" r="1.5"/>' +
-      '<circle class="star" cx="1040" cy="110" r="1.2"/><circle class="star" cx="1320" cy="200" r="1.7"/><circle class="star" cx="1480" cy="90" r="1.2"/>' +
-      '<circle class="star" cx="340" cy="260" r="1.1"/><circle class="star" cx="900" cy="300" r="1.3"/><circle class="star" cx="1180" cy="330" r="1.1"/>' +
-      '</g>' +
-      '<g clip-path="url(#sc)">' +
-      '<g class="fall" filter="url(#soft)"><g class="sway">' +
-      '<path d="M180 -80 C 260 120, 220 340, 300 560 L 520 560 C 440 340, 480 120, 420 -80 Z" fill="url(#c1)"/>' +
-      '</g></g>' +
-      '<g class="f2" filter="url(#soft)"><g class="sw2">' +
-      '<path d="M760 -120 C 840 100, 780 320, 880 540 L 1080 540 C 990 320, 1050 100, 970 -120 Z" fill="url(#c2)"/>' +
-      '</g></g>' +
-      '<g class="f3" filter="url(#soft)"><g class="sway">' +
-      '<path d="M1160 -100 C 1240 120, 1180 320, 1280 540 L 1450 540 C 1360 320, 1420 120, 1340 -100 Z" fill="url(#c3)"/>' +
-      '</g></g>' +
-      '</g></g>' +
-      // The hills run past every edge so the blur fades only their tops.
-      '<g filter="url(#haze)">' +
-      '<path class="h1" d="M-100 783 C 240 717, 453 758, 693 717 S 1173 667, 1700 733 V1100 H-100Z"/>' +
-      '<path class="h2" d="M-100 858 C 293 817, 560 867, 853 825 S 1307 800, 1700 842 V1100 H-100Z"/>' +
-      '<path class="h3" d="M-100 933 C 347 908, 640 942, 960 917 S 1360 900, 1700 925 V1100 H-100Z"/>' +
-      '</g>',
+      afterglow +
+      `<g class="art sky">${stars}</g>` +
+      `<g class="art">${curtains.map((c) => curtain(rnd, c)).join('')}</g>` +
+      '<g class="art sky"><g transform="translate(1380 70)"><path class="mt" d="M0 0L150 -52" stroke="url(#mtg)" stroke-width="1.6" stroke-linecap="round"/></g></g>' +
+      fills[0] +
+      rimGroup(rims[0]) +
+      mist([
+        [400, 655, 520, 40, 30],
+        [1250, 645, 480, 36, 40],
+      ]) +
+      fills[1] +
+      rimGroup(rims[1]) +
+      mist([
+        [820, 712, 600, 34, 35],
+        [150, 705, 350, 30, 25],
+      ]) +
+      fills[2] +
+      mist([[1100, 772, 450, 28, 30]]) +
+      fills[3] +
+      // the lake: the land mirrored and softened, darkening toward the near shore
+      `<rect ${water} fill="url(#lake)"/>` +
+      `<g clip-path="url(#lk)" opacity=".85"><g filter="url(#ref)"><g transform="matrix(1 0 0 -1 0 ${2 * SHORE})">${afterglow}${fills.join('')}</g></g></g>` +
+      `<rect ${water} fill="url(#lf)"/>` +
+      rimGroup(`<path d="M-40 ${SHORE}H1640" stroke-width="1.2" stroke-opacity=".5"/>`) +
+      mist([[700, SHORE - 2, 700, 18, 45]]) +
+      `<g class="art" stroke-linecap="round">${glitter}</g>`,
   )
 }
 
@@ -457,5 +624,5 @@ export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
   contour: 'Orange map lines drawing themselves in, holding, then wiping away, over a blue-slate background',
   phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies drifting among the stars around it',
-  dusk: 'Violet and orange aurora curtains falling above layered dusk hills',
+  dusk: 'Violet and orange aurora curtains rippling above layered mountain ridges at dusk, the afterglow mirrored in a still lake below',
 }

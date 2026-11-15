@@ -218,7 +218,7 @@ The preview shows dark mode, with each background caught at one moment. See them
 
 | Style | Look | Background |
 |---|---|---|
-| `dusk` (default) | deep plum | violet and orange aurora curtains fall over layered hills |
+| `dusk` (default) | deep plum | violet and orange aurora ripples over mountain ridges and a still lake |
 | `ember` | warm charcoal | coals along the bottom brighten and dim, soft sparks drift up |
 | `contour` | blue-slate | orange map lines draw themselves in, hold, wipe away; always redrawing |
 | `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left, small galaxies drifting round it |
