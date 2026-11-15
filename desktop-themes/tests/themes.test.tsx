@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { LOOKS } from '../hooks/looks'
+import { LOOKS, STYLE_IDS } from '../hooks/looks'
+import { SCENE_ALT, SCENES } from '../hooks/scenes'
 
 // Run with: claude plugin test ./desktop-themes
 // Nothing sits beneath the plugin in a test: each hook here stands for the
@@ -75,6 +76,27 @@ test('every palette is one Desktop paints', async () => {
 test('body text reads on every surface', async () => {
   for (const look of Object.values(LOOKS)) {
     expect(look.problems.filter(p => /^text-(primary|secondary|muted) on surface-/.test(p))).toEqual([])
+  }
+})
+
+// Anything that could run code or load from outside the scene itself.
+const UNSAFE =
+  /<script|javascript:|href=|<use\b|<image|<foreignObject|<iframe|<object|<embed|<a\b|@import|data:|\son\w+=|<!ENTITY|<!DOCTYPE|url\((?!#)/i
+
+test('every scene is self-contained, holds still on request and never flashes', async () => {
+  for (const id of STYLE_IDS) {
+    const svg = SCENES[id]
+
+    expect(svg.match(UNSAFE)?.[0]).toBeUndefined()
+    expect(svg).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important}}')
+    expect(SCENE_ALT[id].length).toBeGreaterThan(20)
+
+    // WCAG 2.3.1: no more than three flashes a second, so no cycle under 1/3 s.
+    const cycles = [...svg.matchAll(/animation(?:-duration)?:[^;}"]*?(\d*\.?\d+)(m?s)\b/g)].map(
+      ([, n, unit]) => Number(n) / (unit === 'ms' ? 1000 : 1),
+    )
+    expect(cycles.length).toBeGreaterThan(0)
+    expect(Math.min(...cycles)).toBeGreaterThanOrEqual(1 / 3)
   }
 })
 
