@@ -236,35 +236,59 @@ function phoenix(): string {
   )
 }
 
-// ---------- Dusk: orange and violet ribbons swaying over layered hills ----------
+// ---------- Dusk: violet and orange aurora curtains falling over layered hills ----------
 
 function dusk(): string {
   const style =
     '.k0{stop-color:#120e17}.k1{stop-color:#1a1322}.k2{stop-color:#2a1a2a}' +
-    '.ra{stop-color:#d97757}.rb{stop-color:#9b6fd6}' +
+    '.ra{stop-color:#d97757}.rb{stop-color:#9b6fd6}.st{fill:#cbb8e8}' +
     '.h1{fill:#1d1525}.h2{fill:#17111e}.h3{fill:#120d17}' +
-    '.ribbons{opacity:.85;transform-origin:800px 400px;animation:sway 26s ease-in-out infinite alternate}' +
-    '@keyframes sway{from{transform:translateX(-55px) skewX(-3deg)}to{transform:translateX(55px) skewX(3deg)}}' +
+    '.fall{animation:fall 22s linear infinite}' +
+    '.f2{animation:fall 30s linear infinite;animation-delay:-9s}' +
+    '.f3{animation:fall 38s linear infinite;animation-delay:-20s}' +
+    '@keyframes fall{0%{transform:translateY(-560px);opacity:0}12%{opacity:.55}85%{opacity:.45}100%{transform:translateY(180px);opacity:0}}' +
+    '.sway{animation:skew 14s ease-in-out infinite alternate;transform-origin:800px 0}' +
+    '.sw2{animation:skew 18s ease-in-out infinite alternate-reverse;transform-origin:1000px 0}' +
+    '@keyframes skew{from{transform:skewX(-2.5deg)}to{transform:skewX(2.5deg)}}' +
+    '.star{animation:tw 6s ease-in-out infinite alternate}' +
+    '.star:nth-of-type(2n){animation-delay:-2s}.star:nth-of-type(3n){animation-delay:-4s}' +
+    '@keyframes tw{from{opacity:.15}to{opacity:.6}}' +
     '@media (prefers-color-scheme:light){' +
     '.k0{stop-color:#eee8f1}.k1{stop-color:#f1e6ea}.k2{stop-color:#f6ddd0}' +
-    '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}' +
+    '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}.st{fill:#8a6fb0}' +
     '.h1{fill:#e6dbe9}.h2{fill:#ddd0e2}.h3{fill:#d4c5da}' +
-    '.ribbons{opacity:.7}}'
+    '.fall,.f2,.f3{opacity:.7}}'
 
   return svg(
     'xMidYMax slice',
     style,
     '<defs>' +
       '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="k0"/><stop offset=".55" class="k1"/><stop offset="1" class="k2"/></linearGradient>' +
-      '<linearGradient id="r1" x1="0" x2="1"><stop offset="0" class="rb" stop-opacity="0"/><stop offset=".45" class="ra"/><stop offset="1" class="rb" stop-opacity="0"/></linearGradient>' +
-      '<linearGradient id="r2" x1="0" x2="1"><stop offset="0" class="ra" stop-opacity="0"/><stop offset=".6" class="rb"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>' +
-      '<filter id="soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="30"/></filter>' +
+      // Vertical sheets: bright mid-band, fading out at both ends of their length.
+      '<linearGradient id="c1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="rb" stop-opacity="0"/><stop offset=".45" class="rb" stop-opacity=".5"/><stop offset=".7" class="ra" stop-opacity=".3"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>' +
+      '<linearGradient id="c2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="rb" stop-opacity="0"/><stop offset=".5" class="rb" stop-opacity=".38"/><stop offset="1" class="rb" stop-opacity="0"/></linearGradient>' +
+      '<linearGradient id="c3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ra" stop-opacity="0"/><stop offset=".5" class="ra" stop-opacity=".3"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>' +
+      '<filter id="soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="26"/></filter>' +
       '<filter id="haze" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="24"/></filter>' +
+      '<clipPath id="sc"><rect x="0" y="0" width="1600" height="820"/></clipPath>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      '<g class="art"><g class="ribbons" filter="url(#soft)">' +
-      '<path d="M-70 333 C 267 200, 560 433, 867 283 S 1400 183, 1680 317" stroke="url(#r1)" stroke-width="110" fill="none"/>' +
-      '<path d="M-70 483 C 347 383, 627 550, 1013 433 S 1440 383, 1680 467" stroke="url(#r2)" stroke-width="70" fill="none"/>' +
+      '<g class="art">' +
+      '<g class="st">' +
+      '<circle class="star" cx="200" cy="140" r="1.6"/><circle class="star" cx="480" cy="90" r="1.2"/><circle class="star" cx="760" cy="180" r="1.5"/>' +
+      '<circle class="star" cx="1040" cy="110" r="1.2"/><circle class="star" cx="1320" cy="200" r="1.7"/><circle class="star" cx="1480" cy="90" r="1.2"/>' +
+      '<circle class="star" cx="340" cy="260" r="1.1"/><circle class="star" cx="900" cy="300" r="1.3"/><circle class="star" cx="1180" cy="330" r="1.1"/>' +
+      '</g>' +
+      '<g clip-path="url(#sc)">' +
+      '<g class="fall" filter="url(#soft)"><g class="sway">' +
+      '<path d="M180 -80 C 260 120, 220 340, 300 560 L 520 560 C 440 340, 480 120, 420 -80 Z" fill="url(#c1)"/>' +
+      '</g></g>' +
+      '<g class="f2" filter="url(#soft)"><g class="sw2">' +
+      '<path d="M760 -120 C 840 100, 780 320, 880 540 L 1080 540 C 990 320, 1050 100, 970 -120 Z" fill="url(#c2)"/>' +
+      '</g></g>' +
+      '<g class="f3" filter="url(#soft)"><g class="sway">' +
+      '<path d="M1160 -100 C 1240 120, 1180 320, 1280 540 L 1450 540 C 1360 320, 1420 120, 1340 -100 Z" fill="url(#c3)"/>' +
+      '</g></g>' +
       '</g></g>' +
       // The hills run past every edge so the blur fades only their tops.
       '<g filter="url(#haze)">' +
@@ -291,5 +315,5 @@ export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
   contour: 'Orange topographic map lines drifting slowly over a blue-slate background',
   phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left',
-  dusk: 'Orange and violet light ribbons swaying above layered dusk hills',
+  dusk: 'Violet and orange aurora curtains falling above layered dusk hills',
 }
