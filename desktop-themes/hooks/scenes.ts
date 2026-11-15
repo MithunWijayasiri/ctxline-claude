@@ -282,6 +282,11 @@ export const SCENES: Record<StyleId, string> = {
   dusk: dusk(),
 }
 
+// Motion off (`/ctxtheme motion off`): each scene held on its reduced-motion frame.
+export const STILL_SCENES = Object.fromEntries(
+  Object.entries(SCENES).map(([id, source]) => [id, source.replace('<style>', '<style>*{animation:none!important}')]),
+) as Record<StyleId, string>
+
 export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
   contour: 'Orange topographic map lines drifting slowly over a blue-slate background',

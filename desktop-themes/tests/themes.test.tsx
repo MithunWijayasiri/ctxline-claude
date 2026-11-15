@@ -187,6 +187,38 @@ test('/ctxtheme keeps the pick where the theme call throws', async ($, on) => {
   expect(store.get('style')).toBe('off')
 })
 
+test('/ctxtheme motion off holds the background still, and remembers', async ($, on) => {
+  const { sets, store } = engine(on)
+  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
+
+  await $.session.start(START)
+  await run('ember')
+
+  const off = await run('motion off')
+  expect(off.text).toContain('Motion off')
+  expect(sets.at(-1).backdrop.scene).toBe('ember-still')
+  expect(store.get('motion')).toBe('off')
+
+  expect((await run('motion')).text).toContain('Background motion is off')
+  expect((await run('')).text).toContain('Background motion: **off**')
+
+  await $.session.start(START)
+  expect(sets.at(-1).backdrop.scene).toBe('ember-still')
+
+  await run('phoenix')
+  expect(sets.at(-1).backdrop.scene).toBe('phoenix-still')
+
+  await run('motion on')
+  expect(sets.at(-1).backdrop.scene).toBe('phoenix')
+  expect(store.get('motion')).toBe('on')
+
+  await run('off')
+  const before = sets.length
+  const later = await run('motion off')
+  expect(later.text).toContain('It applies once a theme is on')
+  expect(sets.length).toBe(before)
+})
+
 test('the backdrop draws each scene and leaves other plugins alone', async ($, on) => {
   on('ui.render', ($: any, e: any) => {
     const { Text } = $.ui.resolve(e)
@@ -208,6 +240,19 @@ test('the backdrop draws each scene and leaves other plugins alone', async ($, o
     expect(svg?.props.source.length).toBeLessThan(131072)
     await ui.unmount()
   }
+
+  const still = await $.ui.mount({
+    plugin: PLUGIN,
+    surface: 'desktop',
+    component: 'Backdrop',
+    requestId: 'r3',
+    props: { scene: 'dusk-still', plugin: PLUGIN, glass: false },
+  } as any)
+  const frozen: any = await still.find({ type: 'Svg' } as any)
+
+  expect(frozen?.props.source.startsWith('<svg')).toBe(true)
+  expect(frozen?.props.source).toContain('<style>*{animation:none!important}')
+  await still.unmount()
 
   const other = await $.ui.mount({
     plugin: PLUGIN,
