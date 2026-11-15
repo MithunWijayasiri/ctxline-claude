@@ -35,14 +35,18 @@ async function save($: EngineInterface, choice: Choice): Promise<boolean> {
   )
 }
 
+function reasonOf(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
 // Resolves why nothing draws the theme right now, or undefined when it's drawn.
 // Not drawn isn't a failure: the theme still stands for the session.
+// A window that can't take themes (the terminal) throws instead of answering not drawn.
 async function apply($: EngineInterface, id: StyleId): Promise<string | undefined> {
   const look = LOOKS[id]
-  const set = await $.theme.set({
-    colors: look.colors,
-    backdrop: { scene: id, glass: look.glass },
-  })
+  const set = await $.theme
+    .set({ colors: look.colors, backdrop: { scene: id, glass: look.glass } })
+    .catch((err: unknown) => ({ isDrawn: false as const, reason: reasonOf(err) }))
 
   if (set.isDrawn) {
     return undefined
@@ -100,7 +104,8 @@ export const register: Register = on => {
     }
 
     if (arg === OFF) {
-      await $.theme.clear()
+      // Nothing to clear in a window that can't take themes.
+      await $.theme.clear().catch((err: unknown) => $.ui.log(`off: not cleared: ${reasonOf(err)}`, { to: 'debug' }))
       await $.state.set(APPLIED, OFF)
       const keep = (await save($, OFF)) ? 'It stays off for new sessions.' : UNSAVED
 

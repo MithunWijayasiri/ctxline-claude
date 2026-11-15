@@ -11,7 +11,7 @@ const START = { cwd: '/', surface: 'desktop', isInteractive: true } as const
 
 type Engine = { sets: any[]; clears: () => number; store: Map<string, unknown> }
 
-function engine(on: any, opts: { store?: boolean; notDrawn?: string } = {}): Engine {
+function engine(on: any, opts: { store?: boolean; notDrawn?: string; throws?: string } = {}): Engine {
   const sets: any[] = []
   const store = new Map<string, unknown>()
   const state = new Map<string, unknown>()
@@ -27,6 +27,9 @@ function engine(on: any, opts: { store?: boolean; notDrawn?: string } = {}): Eng
   on('session.start', (_: unknown, e: any) => ({ cwd: e.cwd }))
   on('theme.set', (_: unknown, e: any) => {
     sets.push(e)
+    if (opts.throws !== undefined) {
+      throw new Error(opts.throws)
+    }
 
     return opts.notDrawn === undefined
       ? { value: { isDrawn: true, requestId: 'r1' } }
@@ -34,6 +37,9 @@ function engine(on: any, opts: { store?: boolean; notDrawn?: string } = {}): Eng
   })
   on('theme.clear', () => {
     clears++
+    if (opts.throws !== undefined) {
+      throw new Error(opts.throws)
+    }
 
     return { value: { isDrawn: false, reason: 'cleared' } }
   })
@@ -134,6 +140,22 @@ test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
   expect(ran.text).toContain('Switched to Phoenix, but nothing shows it here yet')
   expect(ran.text).toContain('no desktop client attached')
   expect(store.get('style')).toBe('phoenix')
+})
+
+test('/ctxtheme keeps the pick where the theme call throws', async ($, on) => {
+  const { store } = engine(on, { throws: 'no themes in this window' })
+  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
+
+  await $.session.start(START)
+
+  const ran = await run('contour')
+  expect(ran.text).toContain('Switched to Contour, but nothing shows it here yet')
+  expect(store.get('style')).toBe('contour')
+  expect((await run('')).text).toContain('Current theme: **Contour**')
+
+  const off = await run('off')
+  expect(off.text).toContain('ctxline themes off')
+  expect(store.get('style')).toBe('off')
 })
 
 test('the backdrop draws each scene and leaves other plugins alone', async ($, on) => {
