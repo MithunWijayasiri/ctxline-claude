@@ -105,7 +105,7 @@ Four styles, `ember`, `contour`, `phoenix`, `dusk` (default, `DEFAULT_STYLE`), e
 
 Validate + test: `claude plugin validate ./desktop-themes`, `claude plugin test ./desktop-themes` (`tests/themes.test.tsx`; both in CI). Bump `version` with every change meant to ship.
 
-Mirrors — update when a style or scene changes: `docs/assets/themes/<style>.svg` (site `#themes` cards; generated, dark only — run `node --experimental-strip-types scripts/themes-assets.mjs`, never hand-edit; CI regenerates it and `contour-paths.ts` and fails on any change or new file), and, not drift-tested: the `.t-<style>` palette vars and captions in `docs/index.html` `#themes`, `docs/assets/desktop-themes-preview.jpg` (README + PR; hand-captured mockups), README "Themes" section.
+Mirrors — update when a style or scene changes: `docs/assets/themes/<style>.svg` (site `#themes` cards; generated, dark only — run `node --experimental-strip-types scripts/themes-assets.mjs` (Node 22.6+, CI uses 24; the package's `>=18` is too old), never hand-edit; CI regenerates it and `contour-paths.ts` and fails on any change or new file), and, not drift-tested: the `.t-<style>` palette vars and captions in `docs/index.html` `#themes`, `docs/assets/desktop-themes-preview.jpg` (README + PR; hand-captured mockups), README "Themes" section.
 
 ## Keep in sync when `statusline.js` changes
 
