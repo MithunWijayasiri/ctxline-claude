@@ -426,7 +426,7 @@ type Curtain = {
 function curtain(rnd: () => number, c: Curtain): string {
   const segs = new Array<string>(SEGS).fill('')
   const [p1, p2, p3] = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28]
-  for (let x = c.x0; x < c.x1; x += 7 + rnd() * 7) {
+  for (let x = c.x0; x < c.x1; x += 10 + rnd() * 8) {
     const t = (x - c.x0) / (c.x1 - c.x0)
     const env = Math.sin(Math.PI * t) ** 0.6
     const edge = c.edge + c.wave * Math.sin(6.28 * c.cycles * t + p1) + 18 * Math.sin(6.28 * 3.7 * t + p2) + 6 * Math.sin(6.28 * 11 * t) + (rnd() - 0.5) * 8
@@ -435,7 +435,7 @@ function curtain(rnd: () => number, c: Curtain): string {
       (0.45 + 0.55 * rnd()) *
       (0.55 + 0.45 * env)
     segs[Math.min(SEGS - 1, Math.floor(t * SEGS))] +=
-      `<rect x="${f(x)}" y="${f(edge - len)}" width="${f(2 + rnd() * 4)}" height="${f(len)}" fill-opacity="${(env * (0.3 + 0.7 * rnd())).toFixed(2)}"/>`
+      `<rect x="${f(x)}" y="${f(edge - len)}" width="${f(16 + rnd() * 16)}" height="${f(len)}" fill-opacity="${(env * (0.3 + 0.7 * rnd())).toFixed(2)}"/>`
   }
   const cx = (c.x0 + c.x1) / 2
 
@@ -551,7 +551,7 @@ function dusk(): string {
     '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}.gl{stop-color:#f0a07c}.mi{stop-color:#fff}' +
     '.l0{stop-color:#d9cbdf}.l1{stop-color:#e8dfec}' +
     '.m1{fill:#e2d3e3}.m2{fill:#d6c5da}.m3{fill:#c9b6d0}.m4{fill:#bba7c4}' +
-    '.sky,.rim{display:none}}'
+    '.sky,.rim,.aur{display:none}}'
 
   const afterglow = `<ellipse cx="${SUN_X}" cy="680" rx="1000" ry="300" fill="url(#ag)"/>`
   const water = `y="${SHORE}" width="1600" height="${1000 - SHORE}"`
@@ -574,7 +574,7 @@ function dusk(): string {
       flat('gw', 'ra') +
       flat('gv', 'rb') +
       '<linearGradient id="mtg" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#fff6ea" stop-opacity=".9"/><stop offset="1" stop-color="#fff6ea" stop-opacity="0"/></linearGradient>' +
-      '<filter id="rs"><feGaussianBlur stdDeviation="1.2 1"/></filter>' +
+      '<filter id="rs"><feGaussianBlur stdDeviation="7 4"/></filter>' +
       '<filter id="rg" y="-50%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>' +
       '<filter id="ref" y="-10%" height="120%"><feGaussianBlur stdDeviation="1 3"/></filter>' +
       `<clipPath id="lk"><rect ${water}/></clipPath>` +
@@ -582,7 +582,7 @@ function dusk(): string {
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
       afterglow +
       `<g class="art sky">${stars}</g>` +
-      `<g class="art">${curtains.map((c) => curtain(rnd, c)).join('')}</g>` +
+      `<g class="art aur">${curtains.map((c) => curtain(rnd, c)).join('')}</g>` +
       '<g class="art sky"><g transform="translate(1380 70)"><path class="mt" d="M0 0L150 -52" stroke="url(#mtg)" stroke-width="1.6" stroke-linecap="round"/></g></g>' +
       fills[0] +
       rimGroup(rims[0]) +
