@@ -229,6 +229,8 @@ Themes show only in Code sessions, starting with the next one you open after ins
 > `/clear` removes the theme's background for that session. Start a new Code session to get it back.
 >
 > The app shows one theme at a time, so turn off other theme plugins to keep ctxline's. In the terminal, `/ctxtheme` still saves your pick, but nothing is drawn there.
+>
+> Some parts of the app keep their own look because Claude's theme API doesn't reach them yet: permission prompts ("Allow Claude to run this command?"), the terminal pane, and the Changes and files side panel. Code blocks get a code color theme per style, but the block's background is the app's. Support will follow when the API adds it.
 
 It works on its own or together with `ctxline-desktop`. Updates work the same way as above: `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
 

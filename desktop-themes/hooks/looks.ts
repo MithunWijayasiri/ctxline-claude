@@ -34,6 +34,7 @@ export const LOOKS: Record<StyleId, Look> = {
   ember: look('Ember', 'warm charcoal, breathing coals and soft rising sparks', { blur: 20, opacity: 0.6 }, {
     label: 'ctxline Ember',
     id: 'ctxline-ember',
+    codeTheme: { dark: 'gruvbox-dark-medium', light: 'gruvbox-light-medium' },
     roles: { accent: '#d97757', danger: '#e5574b', success: '#9bb563', warning: '#e3a73f', pro: '#c493d8' },
     dark: {
       gray: {
@@ -69,6 +70,7 @@ export const LOOKS: Record<StyleId, Look> = {
   contour: look('Contour', 'blue-slate night, orange map lines that draw and erase themselves', { blur: 12, opacity: 0.55 }, {
     label: 'ctxline Contour',
     id: 'ctxline-contour',
+    codeTheme: { dark: 'nord', light: 'github-light' },
     roles: { accent: '#d97757', danger: '#ef6461', success: '#62bb8e', warning: '#e6b553', pro: '#93a2f2' },
     dark: {
       gray: {
@@ -104,6 +106,7 @@ export const LOOKS: Record<StyleId, Look> = {
   phoenix: look('Phoenix', 'warm black, a large gold black hole with a striped disk', { blur: 16, opacity: 0.6 }, {
     label: 'ctxline Phoenix',
     id: 'ctxline-phoenix',
+    codeTheme: { dark: 'vitesse-dark', light: 'vitesse-light' },
     // Gold instead of Claude orange, to match the black hole.
     roles: { accent: '#e8b05a', danger: '#f06a5b', success: '#8fca8a', warning: '#e9c46a', pro: '#c9a0f0' },
     dark: {
@@ -140,6 +143,7 @@ export const LOOKS: Record<StyleId, Look> = {
   dusk: look('Dusk', 'deep plum, violet and orange aurora over mountains and a still lake', { blur: 20, opacity: 0.55 }, {
     label: 'ctxline Dusk',
     id: 'ctxline-dusk',
+    codeTheme: { dark: 'rose-pine', light: 'rose-pine-dawn' },
     roles: { accent: '#e07f5a', danger: '#ec5f6a', success: '#7cc2a0', warning: '#e8b45a', pro: '#b896f0' },
     dark: {
       gray: {
