@@ -331,11 +331,12 @@ function phoenix(): string {
     '@keyframes dx{from{transform:translateX(calc(var(--a) * -1))}to{transform:translateX(var(--a))}}' +
     '@keyframes dy{from{transform:translateY(calc(var(--a) * -1))}to{transform:translateY(var(--a))}}' +
     '@media (prefers-color-scheme:light){' +
-    '.bg{fill:url(#day)}.e0,.e1{stop-color:#120d09}.e2{stop-color:#2e2014}' +
+    // A white hole: a luminous core with a warm rim, and a gold photon ring and deeper inner disk so both read on the pale ground.
+    '.bg{fill:url(#day)}.e0{stop-color:#fffefb}.e1{stop-color:#fff8ea}.e2{stop-color:#f2d9a6}' +
     '.h0{stop-color:rgba(214,150,70,.14)}.h1{stop-color:rgba(214,150,70,.04)}' +
-    '.k0{stop-color:#fff3dc}.k1{stop-color:#f1c172}.k2{stop-color:#d8913f}.k3{stop-color:#9a5a24}.k4{stop-color:#5e3417}' +
-    '.l0{stop-color:#ffeccc}.l1{stop-color:#e9b464}.l2{stop-color:#a8692e}' +
-    '.lens{stroke:#a8692e}.sky{display:none}}'
+    '.k0{stop-color:#e4ad5c}.k1{stop-color:#dfa04e}.k2{stop-color:#d08a3a}.k3{stop-color:#9a5a24}.k4{stop-color:#5e3417}' +
+    '.l0{stop-color:#f0c680}.l1{stop-color:#e0a24e}.l2{stop-color:#a8692e}' +
+    '.ring{stroke:#c58637}.flow{stroke:#fff6e4}.lens{stroke:#a8692e}.sky{display:none}}'
 
   return svg(
     'xMaxYMid slice',
