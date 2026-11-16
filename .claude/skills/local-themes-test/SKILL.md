@@ -51,7 +51,7 @@ Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws i
 - `/ctxtheme <style>` for each style → palette + backdrop change at once; reply `Switched to <Name>. It stays on for new sessions.`
 - ` Ember ` (case, spaces) → works. Unknown name → `No style called “<x>”. Pick one of: …`.
 - `/ctxtheme off` → app's own look; new session stays off.
-- `/ctxtheme motion off` → background redraws once, then holds still (same frame as reduced motion); reply `Motion off: …`. New session stays still. `/ctxtheme motion on` → moves again. `/ctxtheme motion` → reports current. Theme off → reply adds `It applies once a theme is on.`
+- Default (nothing saved) → backdrop still. `/ctxtheme motion on` → background redraws once, then moves; reply `Motion on: …`. New session keeps moving. `/ctxtheme motion off` → still again (same frame as reduced motion). `/ctxtheme motion` → reports current. Theme off → reply adds `It applies once a theme is on.`
 - New Code session → last pick re-applied.
 - `/resume` an older Code session → pick re-applied (`session.start` runs; found by testing).
 - `/clear` → background gone for that session: known limitation, documented in README (see `CLAUDE.md` → Desktop themes plugin for what was tried). A new Code session brings it back.

@@ -12,8 +12,9 @@ import { SCENE_ALT, SCENES, STILL_SCENES } from './scenes'
 const PLUGIN = 'ctxline-desktop-themes'
 const COMMAND = 'ctxtheme'
 const STORE_KEY = 'style' // a StyleId, or 'off'
-const MOTION_KEY = 'motion' // 'off' holds the background still; anything else moves
+const MOTION_KEY = 'motion' // 'on' moves the background; anything else holds it still
 const OFF = 'off'
+const ON = 'on'
 // Scene id suffix for a still background; a new id gives the Svg a new source, so it redraws.
 const STILL = '-still'
 
@@ -29,9 +30,9 @@ async function savedChoice($: EngineInterface): Promise<Choice> {
   return value === OFF || isStyleId(value) ? value : DEFAULT_STYLE
 }
 
-// An unreadable store keeps the background moving.
+// Still unless motion was turned on: moving backdrops cost CPU. An unreadable store stays still.
 async function savedStill($: EngineInterface): Promise<boolean> {
-  return (await $.store.get(MOTION_KEY).catch(() => undefined)) === OFF
+  return (await $.store.get(MOTION_KEY).catch(() => undefined)) !== ON
 }
 
 // This session's motion, so a failed save still reports and keeps what's on screen.
@@ -90,7 +91,7 @@ function listing(current: Choice, still: boolean): string {
     ...rows,
     '',
     `Switch with \`/${COMMAND} <style>\`. Turn off with \`/${COMMAND} off\`.`,
-    `\`/${COMMAND} motion off\` keeps the theme but holds the background still; \`/${COMMAND} motion on\` moves it again.`,
+    `\`/${COMMAND} motion on\` animates the background (uses more CPU); \`/${COMMAND} motion off\` holds it still again.`,
   ].join('\n')
 }
 
