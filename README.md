@@ -221,7 +221,7 @@ Open a new Code session to see it. Switch with `/ctxtheme dusk|ember|contour|pho
 > - Only one theme plugin can be on at a time.
 > - Permission prompts, the terminal pane and the Changes panel keep the app's look. The theme API doesn't reach them yet.
 
-Update with `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
+Update with `claude plugin update ctxline-desktop-themes@ctxline`. To remove it, run `/ctxtheme off` first, then `claude plugin uninstall ctxline-desktop-themes@ctxline`. Otherwise the app keeps the last theme's colors. Source is in [`desktop-themes/`](desktop-themes/).
 
 ## FAQ
 
