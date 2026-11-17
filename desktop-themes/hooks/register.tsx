@@ -16,7 +16,7 @@ const OFF = 'off'
 
 type Choice = StyleId | typeof OFF
 
-const APPLIED = { plugin: 'ctxline-desktop-themes', key: 'applied' } as const
+const APPLIED = { plugin: PLUGIN, key: 'applied' } as const
 
 // An unreadable store falls back to the default rather than no theme at all.
 async function savedChoice($: EngineInterface): Promise<Choice> {
@@ -28,8 +28,8 @@ async function savedChoice($: EngineInterface): Promise<Choice> {
 const UNSAVED = 'It couldn’t be saved, so new sessions won’t keep it.'
 
 // Saved after the theme changes, so a failed save leaves this session's change standing.
-async function save($: EngineInterface, key: string, value: string): Promise<boolean> {
-  return $.store.set(key, value).then(
+async function save($: EngineInterface, value: Choice): Promise<boolean> {
+  return $.store.set(STORE_KEY, value).then(
     () => true,
     () => false,
   )
@@ -79,8 +79,8 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: COMMAND,
-      description: 'Switch the ctxline desktop theme (ember, contour, phoenix, dusk, off)',
-      argumentHint: '[ember|contour|phoenix|dusk|off]',
+      description: `Switch the ctxline desktop theme (${[...STYLE_IDS, OFF].join(', ')})`,
+      argumentHint: `[${[...STYLE_IDS, OFF].join('|')}]`,
       immediate: true,
     })
 
@@ -106,7 +106,7 @@ export const register: Register = on => {
       // Nothing to clear in a window that can't take themes.
       await $.theme.clear().catch((err: unknown) => $.ui.log(`off: not cleared: ${reasonOf(err)}`, { to: 'debug' }))
       await $.state.set(APPLIED, OFF)
-      const keep = (await save($, STORE_KEY, OFF)) ? 'It stays off for new sessions.' : UNSAVED
+      const keep = (await save($, OFF)) ? 'It stays off for new sessions.' : UNSAVED
 
       return { text: `ctxline themes off. Back to the app’s own look. ${keep}`, isTextDisplayOnly: true }
     }
@@ -121,7 +121,7 @@ export const register: Register = on => {
     const notDrawn = await apply($, arg)
     await $.state.set(APPLIED, arg)
     const name = LOOKS[arg].name
-    const keep = (await save($, STORE_KEY, arg)) ? 'It stays on for new sessions.' : UNSAVED
+    const keep = (await save($, arg)) ? 'It stays on for new sessions.' : UNSAVED
 
     if (notDrawn !== undefined) {
       return {
@@ -137,10 +137,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'Backdrop' }, ($, e, next) => {
     const id = String(e.props.scene)
 
-    if (e.props.plugin !== PLUGIN || !isStyleId(id)) {
-      return next(e)
-    }
-    if (e.surface !== 'desktop' && e.surface !== 'mobile') {
+    if (e.props.plugin !== PLUGIN || !isStyleId(id) || (e.surface !== 'desktop' && e.surface !== 'mobile')) {
       return next(e)
     }
 
