@@ -204,35 +204,24 @@ To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove
 
 ### Themes
 
-A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks: three built around Claude orange and one around gold. Each one has a light and a dark version, and a still background behind the conversation. The colors follow the app's light or dark mode. The background switches with the `prefers-color-scheme` media query.
+A second plugin, `ctxline-desktop-themes`, adds four themes with a still background each. Light and dark follow the app.
 
 <p align="center">
-  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes in dark mode: Dusk, Ember, Contour and Phoenix">
+  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes: Dusk, Ember, Contour and Phoenix">
 </p>
-
-The preview shows dark mode, with each background caught at one moment. See them move at [ctxline.js.org](https://ctxline.js.org/#themes).
 
 ```
 /plugin install ctxline-desktop-themes@ctxline
 ```
 
-| Style | Look | Background |
-|---|---|---|
-| `dusk` (default) | deep plum | layered mountain ridges under a violet and orange sky, mirrored in a still lake |
-| `ember` | warm charcoal | glowing coals along the bottom |
-| `contour` | blue-slate | orange topographic map lines |
-| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left, small galaxies around it |
-
-Themes show only in Code sessions, starting with the next one you open after installing. A session that's already open, the home screen and the Chat tab keep the app's own look. Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look.
+Open a new Code session to see it. Switch with `/ctxtheme dusk|ember|contour|phoenix`, list with `/ctxtheme`, turn off with `/ctxtheme off`. Your pick carries over to new sessions.
 
 > [!NOTE]
-> `/clear` removes the theme's background for that session. Start a new Code session to get it back.
->
-> The app shows one theme at a time, so turn off other theme plugins to keep ctxline's. In the terminal, `/ctxtheme` still saves your pick, but nothing is drawn there.
->
-> Some parts of the app keep their own look because Claude's theme API doesn't reach them yet: permission prompts ("Allow Claude to run this command?"), the terminal pane, and the Changes and files side panel. Code blocks get a code color theme per style, but the block's background is the app's. Support will follow when the API adds it.
+> - `/clear` removes the background for that session. A new session brings it back.
+> - Only one theme plugin can be on at a time.
+> - Permission prompts, the terminal pane and the Changes panel keep the app's look. The theme API doesn't reach them yet.
 
-It works on its own or together with `ctxline-desktop`. Updates work the same way as above: `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
+Update with `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
 
 ## FAQ
 
