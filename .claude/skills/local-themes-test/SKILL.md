@@ -51,16 +51,15 @@ Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws i
 - `/ctxtheme <style>` for each style → palette + backdrop change at once; reply `Switched to <Name>. It stays on for new sessions.`
 - ` Ember ` (case, spaces) → works. Unknown name → `No style called “<x>”. Pick one of: …`.
 - `/ctxtheme off` → app's own look; new session stays off.
-- `/ctxtheme motion` → `No style called “motion”` (command removed).
 - New Code session → last pick re-applied.
 - `/resume` an older Code session → pick re-applied (`session.start` runs; found by testing).
 - `/clear` → background gone for that session: known limitation, documented in README (see `CLAUDE.md` → Desktop themes plugin for what was tried). A new Code session brings it back.
 - `/branch` → theme stays or comes back? Untested. Record the finding in `CLAUDE.md` → Desktop themes plugin.
 
 Backdrops (dark mode):
-- `dusk` — orange and violet ribbons over soft, blurred hills; no sharp lines anywhere.
+- `dusk` — layered mountain ridges under violet-orange sky, backlit crests, afterglow mirrored in still lake.
 - `ember` — glowing coals along the bottom.
-- `contour` — orange map lines and soft glow bands.
+- `contour` — orange map lines.
 - `phoenix` — black hole pinned to the right edge, gold halo, striped disk streaming left; disk never crosses the halo. Narrow/tall window → left side cropped, hole stays.
 - Text over the backdrop readable (glass blur/opacity) in chat, prompt box, sidebar.
 

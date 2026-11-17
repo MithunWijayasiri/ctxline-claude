@@ -5,7 +5,7 @@ import type { StyleId } from './looks'
 // Each is dark first, with a `prefers-color-scheme: light` block for the light
 // version. Keep each under 131,072 chars.
 
-// How strongly each scene's art (coals, map lines, the black hole, ribbons)
+// How strongly each scene's art (coals, map lines, the black hole, stars and mist)
 // shows over its background; kept low so it doesn't pull the eye.
 const ART_OPACITY = 0.5
 
@@ -15,12 +15,6 @@ function seeded(seed: number): () => number {
   let s = seed
 
   return () => (s = (s * 9301 + 49297) % 233280) / 233280
-}
-
-// Draws n values and drops them, keeping later draws where they were when
-// the scenes still used these for motion.
-function skip(rnd: () => number, n: number): void {
-  for (let i = 0; i < n; i++) rnd()
 }
 
 const f = (n: number): string => n.toFixed(1).replace(/\.0$/, '')
@@ -37,7 +31,6 @@ function ember(): string {
   for (let i = 0; i < 9; i++) {
     const r = 145 + rnd() * 135
     const cx = i * 184 - 96 + rnd() * 96
-    skip(rnd, 2)
     coals += `<circle class="coal" cx="${f(cx)}" cy="1000" r="${f(r)}" fill="url(#coal)"/>`
   }
 
@@ -141,7 +134,6 @@ function phoenix(): string {
   for (let i = 0; i < 34; i++) {
     const [x, y] = spot(6)
     stars += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.8 + rnd() * 0.9)}" fill="${STAR_TINTS[Math.floor(rnd() * STAR_TINTS.length)]}" opacity=".2"/>`
-    skip(rnd, 2)
   }
   // A few bright ones with a soft four-point glint.
   for (let i = 0; i < 4; i++) {
@@ -149,7 +141,6 @@ function phoenix(): string {
     const s = 7 + rnd() * 6
     stars +=
       `<g class="glint" transform="translate(${f(x)} ${f(y)})"><path d="M${f(-s)} 0H${f(s)}M0 ${f(-s)}V${f(s)}"/><circle r="1.5"/></g>`
-    skip(rnd, 2)
   }
 
   // Galaxies: [x, y, radius, tilt°, inclination (ry/rx), spiral?]
@@ -163,7 +154,6 @@ function phoenix(): string {
   ]
   let galaxies = ''
   for (const [x, y, r, tilt, incl, spiral] of GALAXIES) {
-    skip(rnd, 2)
     if (!clearOfHole(x, y, r)) throw new Error(`phoenix: galaxy at ${x},${y} meets the black hole`)
     let body = `<circle r="${f(r)}" fill="url(#gHalo)"/>`
     if (spiral) {
@@ -185,11 +175,9 @@ function phoenix(): string {
           dots += `<circle cx="${f(Math.cos(ang) * rr)}" cy="${f(Math.sin(ang) * rr)}" r="${f(0.5 + rnd() * 0.8)}" opacity="${(0.3 + (1 - t) * 0.6).toFixed(2)}"/>`
         }
       }
-      skip(rnd, 1)
       body += `<g class="arm" style="stroke-width:${f(r * 0.2)}">${arms}</g><g class="arm thin">${arms}</g><g class="gdot">${dots}</g>`
     }
     body += `<circle r="${f(r * (spiral ? 0.3 : 0.55))}" fill="url(#gCore)"/>`
-    skip(rnd, 4)
     galaxies += `<g transform="translate(${x} ${y}) rotate(${tilt}) scale(1 ${incl})">${body}</g>`
   }
 
@@ -202,7 +190,6 @@ function phoenix(): string {
       const [x, y] = spot(reach + 2)
       motes += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + layer * 0.3 + rnd() * 0.5)}" opacity="${(0.25 + rnd() * 0.45).toFixed(2)}"/>`
     }
-    skip(rnd, 3)
     dust += motes
   }
 
@@ -389,9 +376,7 @@ function dusk(): string {
     if (rnd() > 1 - y / 640 || y > crestAt(x) - 20) continue
     const fade = 1 - y / 640
     if (i < 28) {
-      skip(rnd, 1)
       stars += `<circle class="${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.9 + rnd() * 0.6)}" fill-opacity="${(fade * (0.5 + rnd() * 0.4)).toFixed(2)}"/>`
-      skip(rnd, 1)
     } else {
       stars += `<circle class="${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + rnd() * 0.7)}" fill-opacity="${(fade * (0.2 + rnd() * 0.5)).toFixed(2)}"/>`
     }
@@ -403,20 +388,14 @@ function dusk(): string {
     [250, 430],
   ]) {
     if (y > crestAt(x) - 40) throw new Error(`dusk: glint star at ${x},${y} sits on a ridge`)
-    skip(rnd, 1)
     stars += `<g class="s0" transform="translate(${x} ${y})"><circle r="1.7"/><path d="M-8 0H8M0 -8V8" stroke="#fff6ea" stroke-width=".6" stroke-opacity=".55"/></g>`
   }
 
   // Mist pooled in a valley, in front of the ridge behind it: [cx, cy, rx, ry].
-  const mist = (list: number[][]): string => {
-    skip(rnd, list.length)
-
-    return (
-      '<g class="art">' +
-      list.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#mg)"/>`).join('') +
-      '</g>'
-    )
-  }
+  const mist = (list: number[][]): string =>
+    '<g class="art">' +
+    list.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#mg)"/>`).join('') +
+    '</g>'
 
   const style =
     '.k0{stop-color:#0c0a11}.k1{stop-color:#151020}.k2{stop-color:#261a2c}.k3{stop-color:#3d2331}' +
@@ -454,24 +433,24 @@ function dusk(): string {
       fills[0] +
       rimGroup(rims[0]) +
       mist([
-        [400, 655, 520, 40, 30],
-        [1250, 645, 480, 36, 40],
+        [400, 655, 520, 40],
+        [1250, 645, 480, 36],
       ]) +
       fills[1] +
       rimGroup(rims[1]) +
       mist([
-        [820, 712, 600, 34, 35],
-        [150, 705, 350, 30, 25],
+        [820, 712, 600, 34],
+        [150, 705, 350, 30],
       ]) +
       fills[2] +
-      mist([[1100, 772, 450, 28, 30]]) +
+      mist([[1100, 772, 450, 28]]) +
       fills[3] +
       // the lake: the land mirrored and softened, darkening toward the near shore
       `<rect ${water} fill="url(#lake)"/>` +
       `<g clip-path="url(#lk)" opacity=".85"><g filter="url(#ref)"><g transform="matrix(1 0 0 -1 0 ${2 * SHORE})">${afterglow}${fills.join('')}</g></g></g>` +
       `<rect ${water} fill="url(#lf)"/>` +
       rimGroup(`<path d="M-40 ${SHORE}H1640" stroke-width="1.2" stroke-opacity=".5"/>`) +
-      mist([[700, SHORE - 2, 700, 18, 45]]),
+      mist([[700, SHORE - 2, 700, 18]]),
   )
 }
 
