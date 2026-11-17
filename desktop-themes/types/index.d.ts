@@ -6,8 +6,6 @@ declare module 'claude-code' {
     'ctxline-desktop-themes': {
       // The style this session shows, or 'off'; a failed save leaves it apart from $.store.
       applied: Applied
-      // Whether this session's background holds still; a failed save leaves it apart from $.store.
-      still: boolean
     }
   }
 }

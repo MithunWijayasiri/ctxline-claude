@@ -4,7 +4,7 @@ import { makeColors } from './make-colors.js'
 
 // The four styles, in the order /ctxtheme lists them. Each one is a palette for
 // both modes (makeColors turns a few anchors and role seeds into the app's ~100
-// colors) plus an animated backdrop scene of the same id (scenes.ts).
+// colors) plus a backdrop scene of the same id (scenes.ts).
 
 export const STYLE_IDS = ['ember', 'contour', 'phoenix', 'dusk'] as const
 export type StyleId = (typeof STYLE_IDS)[number]
@@ -31,7 +31,7 @@ function look(
 }
 
 export const LOOKS: Record<StyleId, Look> = {
-  ember: look('Ember', 'warm charcoal, breathing coals and soft rising sparks', { blur: 20, opacity: 0.6 }, {
+  ember: look('Ember', 'warm charcoal, glowing coals along the bottom', { blur: 20, opacity: 0.6 }, {
     label: 'ctxline Ember',
     id: 'ctxline-ember',
     codeTheme: { dark: 'gruvbox-dark-medium', light: 'gruvbox-light-medium' },
@@ -67,7 +67,7 @@ export const LOOKS: Record<StyleId, Look> = {
     },
   }),
 
-  contour: look('Contour', 'blue-slate night, orange map lines that draw and erase themselves', { blur: 12, opacity: 0.55 }, {
+  contour: look('Contour', 'blue-slate night, orange map lines', { blur: 12, opacity: 0.55 }, {
     label: 'ctxline Contour',
     id: 'ctxline-contour',
     codeTheme: { dark: 'nord', light: 'github-light' },
@@ -140,7 +140,7 @@ export const LOOKS: Record<StyleId, Look> = {
     },
   }),
 
-  dusk: look('Dusk', 'deep plum, violet and orange aurora over mountains and a still lake', { blur: 20, opacity: 0.55 }, {
+  dusk: look('Dusk', 'deep plum, violet and orange dusk over mountains and a still lake', { blur: 20, opacity: 0.55 }, {
     label: 'ctxline Dusk',
     id: 'ctxline-dusk',
     codeTheme: { dark: 'rose-pine', light: 'rose-pine-dawn' },

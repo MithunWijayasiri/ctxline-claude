@@ -1,15 +1,12 @@
 import { MAJOR, MINOR } from './contour-paths'
 import type { StyleId } from './looks'
 
-// The four animated backdrop scenes. A scene runs no script and loads nothing:
-// every move is CSS animation inside the SVG's own <style>. Each scene is dark
-// first, with a `prefers-color-scheme: light` block for the light version, and
-// holds still under `prefers-reduced-motion`. Keep each under 131,072 chars.
+// The four still backdrop scenes. A scene runs no script and loads nothing.
+// Each is dark first, with a `prefers-color-scheme: light` block for the light
+// version. Keep each under 131,072 chars.
 
-const STILL = '@media (prefers-reduced-motion: reduce){*{animation:none!important}}'
-
-// How strongly each scene's moving art (coals, map lines, the black hole,
-// ribbons) shows over its background; kept low so it doesn't pull the eye.
+// How strongly each scene's art (coals, map lines, the black hole, ribbons)
+// shows over its background; kept low so it doesn't pull the eye.
 const ART_OPACITY = 0.5
 
 // Seeded so a scene is the same text every load (a changed source makes the
@@ -20,13 +17,19 @@ function seeded(seed: number): () => number {
   return () => (s = (s * 9301 + 49297) % 233280) / 233280
 }
 
+// Draws n values and drops them, keeping later draws where they were when
+// the scenes still used these for motion.
+function skip(rnd: () => number, n: number): void {
+  for (let i = 0; i < n; i++) rnd()
+}
+
 const f = (n: number): string => n.toFixed(1).replace(/\.0$/, '')
 
 function svg(aspect: string, style: string, body: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="${aspect}"><style>.art{opacity:${ART_OPACITY}}${style}${STILL}</style>${body}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="${aspect}"><style>.art{opacity:${ART_OPACITY}}${style}</style>${body}</svg>`
 }
 
-// ---------- Ember: breathing coals, soft sparks rising, a rising haze ----------
+// ---------- Ember: glowing coals under a warm haze ----------
 
 function ember(): string {
   const rnd = seeded(11)
@@ -34,14 +37,8 @@ function ember(): string {
   for (let i = 0; i < 9; i++) {
     const r = 145 + rnd() * 135
     const cx = i * 184 - 96 + rnd() * 96
-    coals += `<circle class="coal" cx="${f(cx)}" cy="1000" r="${f(r)}" fill="url(#coal)" style="animation-duration:${f(4 + rnd() * 5)}s;animation-delay:-${f(rnd() * 8)}s"/>`
-  }
-  let sparks = ''
-  for (let i = 0; i < 16; i++) {
-    const cx = 40 + rnd() * 1520
-    const cy = 900 + rnd() * 90
-    const r = 5 + rnd() * 5
-    sparks += `<circle class="spark" cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="url(#spark)" style="animation-duration:${f(8 + rnd() * 6)}s;animation-delay:-${f(rnd() * 14)}s"/>`
+    skip(rnd, 2)
+    coals += `<circle class="coal" cx="${f(cx)}" cy="1000" r="${f(r)}" fill="url(#coal)"/>`
   }
 
   const style =
@@ -49,19 +46,12 @@ function ember(): string {
     '.g0{stop-color:rgba(217,119,87,.45)}.g1{stop-color:rgba(217,119,87,.12)}.g2{stop-color:rgba(217,119,87,0)}' +
     '.c0{stop-color:rgba(236,116,64,.85)}.c1{stop-color:rgba(236,116,64,0)}' +
     '.h0{stop-color:rgba(217,119,87,.32)}.h1{stop-color:rgba(217,119,87,0)}' +
-    '.p0{stop-color:rgba(255,178,122,.9)}.p1{stop-color:rgba(255,178,122,0)}' +
-    '.spark{opacity:0;animation:rise linear infinite}' +
-    '.coal{transform-box:fill-box;transform-origin:center;opacity:.35;animation:smolder ease-in-out infinite}' +
-    '.haze{transform-box:fill-box;transform-origin:center bottom;animation:haze 16s ease-in-out infinite}' +
-    '@keyframes smolder{0%,100%{opacity:.22;transform:scale(.92)}50%{opacity:.95;transform:scale(1.06)}}' +
-    '@keyframes haze{0%,100%{transform:translateY(0) scaleX(1);opacity:.55}50%{transform:translateY(-60px) scaleX(1.12);opacity:1}}' +
-    '@keyframes rise{0%{opacity:0;transform:translate(0,0)}15%{opacity:.9}100%{opacity:0;transform:translate(30px,-420px)}}' +
+    '.coal{opacity:.35}' +
     '@media (prefers-color-scheme:light){' +
     '.s0{stop-color:#efe5da}.s1{stop-color:#f1dccb}' +
     '.g0{stop-color:rgba(232,146,104,.35)}.g1{stop-color:rgba(232,146,104,.1)}.g2{stop-color:rgba(232,146,104,0)}' +
     '.c0{stop-color:rgba(236,140,96,.6)}.c1{stop-color:rgba(236,140,96,0)}' +
-    '.h0{stop-color:rgba(240,170,125,.35)}.h1{stop-color:rgba(240,170,125,0)}' +
-    '.p0{stop-color:rgba(217,119,79,.7)}.p1{stop-color:rgba(217,119,79,0)}}'
+    '.h0{stop-color:rgba(240,170,125,.35)}.h1{stop-color:rgba(240,170,125,0)}}'
 
   return svg(
     'xMidYMax slice',
@@ -71,45 +61,21 @@ function ember(): string {
       '<radialGradient id="glow" cx=".3" cy="1.2" r=".85"><stop offset="0" class="g0"/><stop offset=".45" class="g1"/><stop offset="1" class="g2"/></radialGradient>' +
       '<radialGradient id="coal"><stop offset="0" class="c0"/><stop offset=".68" class="c1"/></radialGradient>' +
       '<radialGradient id="hz" cy=".6" r=".5"><stop offset="0" class="h0"/><stop offset="1" class="h1"/></radialGradient>' +
-      '<radialGradient id="spark"><stop offset="0" class="p0"/><stop offset="1" class="p1"/></radialGradient>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
       '<g class="art"><rect width="1600" height="1000" fill="url(#glow)"/>' +
-      '<ellipse class="haze" cx="800" cy="900" rx="1000" ry="460" fill="url(#hz)"/>' +
-      coals +
-      `${sparks}</g>`,
+      '<ellipse cx="800" cy="900" rx="1000" ry="460" fill="url(#hz)"/>' +
+      `${coals}</g>`,
   )
 }
 
-// ---------- Contour: map lines draw themselves in, hold, wipe away; loop flows ----------
+// ---------- Contour: orange map lines over a blue-slate ground ----------
 
-// The map's paths are cut into stretches; each draws in (dashoffset 100→0),
-// holds a beat, then erases forward (0→-100). Both cycle ends are fully hidden,
-// so the loop point is invisible, and the nine stretches are evenly out of
-// phase, so lines are always appearing somewhere and dissolving elsewhere.
 function contour(): string {
-  const split = (d: string, n: number): string[] => {
-    const parts = d.split(/(?=M)/)
-    const size = Math.ceil(parts.length / n)
-    const out: string[] = []
-    for (let i = 0; i < n; i++) out.push(parts.slice(i * size, (i + 1) * size).join(''))
-    return out.filter(Boolean)
-  }
-  // 6 minor + 3 major stretches, interleaved evenly across one 36s cycle.
-  const CYCLE = 36
-  const order = ['mn', 'mn', 'mj', 'mn', 'mn', 'mj', 'mn', 'mn', 'mj']
-  const pool: Record<string, string[]> = { mn: split(MINOR, 6), mj: split(MAJOR, 3) }
-  const paths = order
-    .map((cls, i) => `<path pathLength="100" class="${cls}" d="${pool[cls].shift()}" style="animation-delay:-${f((i * CYCLE) / order.length)}s"/>`)
-    .join('')
-
   const style =
     '.t0{stop-color:#18202b}.t1{stop-color:#0f1318}' +
-    '.mn{fill:none;stroke:rgba(217,119,87,.26);stroke-width:1.1;stroke-dasharray:100;stroke-dashoffset:0;animation:flow ' + CYCLE + 's linear infinite}' +
-    '.mj{fill:none;stroke:rgba(217,119,87,.5);stroke-width:1.5;stroke-dasharray:100;stroke-dashoffset:0;animation:flow ' + CYCLE + 's linear infinite}' +
-    '@keyframes flow{0%{stroke-dashoffset:100;opacity:0;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}42%{stroke-dashoffset:0;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}55%{stroke-dashoffset:0;opacity:1;animation-timing-function:cubic-bezier(.45,.05,.55,.95)}100%{stroke-dashoffset:-100;opacity:0}}' +
-    '.drift{animation:drift 90s ease-in-out infinite alternate}' +
-    '@keyframes drift{from{transform:translate(0,0)}to{transform:translate(-160px,-90px)}}' +
+    '.mn{fill:none;stroke:rgba(217,119,87,.26);stroke-width:1.1}' +
+    '.mj{fill:none;stroke:rgba(217,119,87,.5);stroke-width:1.5}' +
     '@media (prefers-color-scheme:light){' +
     '.t0{stop-color:#f1f3f4}.t1{stop-color:#e3e8ec}' +
     '.mn{stroke:rgba(176,92,54,.26)}.mj{stroke:rgba(176,92,54,.5)}}'
@@ -121,17 +87,17 @@ function contour(): string {
       '<radialGradient id="sky" cx=".85" cy=".1" r=".9"><stop offset="0" class="t0"/><stop offset=".75" class="t1"/></radialGradient>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      `<g class="art"><g class="drift">${paths}</g></g>`,
+      `<g class="art"><path class="mn" d="${MINOR}"/><path class="mj" d="${MAJOR}"/></g>`,
   )
 }
 
-// ---------- Phoenix: a large gold black hole, its disk streaming out left, galaxies drifting round it ----------
+// ---------- Phoenix: a large gold black hole, its disk streaming out left, galaxies among the stars ----------
 
 // The hole sits on the right edge; the scene pins that side (xMaxYMid) so a
 // narrow or tall window crops the left instead. The halo is the far side of
 // the disk, bent round the hole; the disk's own back half is hidden inside the
 // halo so the two never cross. Stars, galaxies and dust sit clear of the hole,
-// its lensing and the disk by at least their drift (`clearOfHole`).
+// its lensing and the disk (`clearOfHole`).
 const BH_X = 1480
 const BH_Y = 400
 const HOLE = 190
@@ -140,7 +106,6 @@ const LENS = HALO + 100 // outer edge of the lensed star arcs
 const TILT = -7
 const FLAT = 0.09 // disk ry = rx * FLAT
 const DISK = HALO + 8 + 1300 // outermost ring's rx
-const SINE = 'cubic-bezier(.37,0,.63,1)' // ease-in-out sine; with `alternate`, a swing that never jerks
 
 function clearOfHole(x: number, y: number, pad: number): boolean {
   const dx = x - BH_X
@@ -165,11 +130,6 @@ function phoenix(): string {
     throw new Error('phoenix: no spot clear of the black hole')
   }
 
-  // x and y swing on their own periods, so the path wanders and never stops.
-  const drift = (ax: number, ay: number, period: number, body: string): string =>
-    `<g class="dx" style="--a:${f(ax)}px;animation-duration:${f(period)}s;animation-delay:-${f(rnd() * period)}s">` +
-    `<g class="dy" style="--a:${f(ay)}px;animation-duration:${f(period * (0.7 + rnd() * 0.25))}s;animation-delay:-${f(rnd() * period)}s">${body}</g></g>`
-
   // ----- Sky -----
 
   const STAR_TINTS = ['#fff6ea', '#fff6ea', '#fff6ea', '#e6ecff', '#ffdcae']
@@ -180,15 +140,16 @@ function phoenix(): string {
   }
   for (let i = 0; i < 34; i++) {
     const [x, y] = spot(6)
-    stars += `<circle class="tw" cx="${f(x)}" cy="${f(y)}" r="${f(0.8 + rnd() * 0.9)}" fill="${STAR_TINTS[Math.floor(rnd() * STAR_TINTS.length)]}" style="animation-duration:${f(2.5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 6)}s"/>`
+    stars += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.8 + rnd() * 0.9)}" fill="${STAR_TINTS[Math.floor(rnd() * STAR_TINTS.length)]}" opacity=".2"/>`
+    skip(rnd, 2)
   }
   // A few bright ones with a soft four-point glint.
   for (let i = 0; i < 4; i++) {
     const [x, y] = spot(16)
     const s = 7 + rnd() * 6
     stars +=
-      `<g class="glint" transform="translate(${f(x)} ${f(y)})" style="animation-duration:${f(5 + rnd() * 4)}s;animation-delay:-${f(rnd() * 8)}s">` +
-      `<path d="M${f(-s)} 0H${f(s)}M0 ${f(-s)}V${f(s)}"/><circle r="1.5"/></g>`
+      `<g class="glint" transform="translate(${f(x)} ${f(y)})"><path d="M${f(-s)} 0H${f(s)}M0 ${f(-s)}V${f(s)}"/><circle r="1.5"/></g>`
+    skip(rnd, 2)
   }
 
   // Galaxies: [x, y, radius, tilt°, inclination (ry/rx), spiral?]
@@ -202,9 +163,8 @@ function phoenix(): string {
   ]
   let galaxies = ''
   for (const [x, y, r, tilt, incl, spiral] of GALAXIES) {
-    const ax = 10 + rnd() * 12
-    const ay = 6 + rnd() * 8
-    if (!clearOfHole(x, y, r + Math.max(ax, ay))) throw new Error(`phoenix: galaxy at ${x},${y} meets the black hole`)
+    skip(rnd, 2)
+    if (!clearOfHole(x, y, r)) throw new Error(`phoenix: galaxy at ${x},${y} meets the black hole`)
     let body = `<circle r="${f(r)}" fill="url(#gHalo)"/>`
     if (spiral) {
       let arms = ''
@@ -225,15 +185,15 @@ function phoenix(): string {
           dots += `<circle cx="${f(Math.cos(ang) * rr)}" cy="${f(Math.sin(ang) * rr)}" r="${f(0.5 + rnd() * 0.8)}" opacity="${(0.3 + (1 - t) * 0.6).toFixed(2)}"/>`
         }
       }
-      body +=
-        `<g class="spin" style="animation-duration:${f(260 + rnd() * 200)}s">` +
-        `<g class="arm" style="stroke-width:${f(r * 0.2)}">${arms}</g><g class="arm thin">${arms}</g><g class="gdot">${dots}</g></g>`
+      skip(rnd, 1)
+      body += `<g class="arm" style="stroke-width:${f(r * 0.2)}">${arms}</g><g class="arm thin">${arms}</g><g class="gdot">${dots}</g>`
     }
     body += `<circle r="${f(r * (spiral ? 0.3 : 0.55))}" fill="url(#gCore)"/>`
-    galaxies += drift(ax, ay, 40 + rnd() * 30, `<g transform="translate(${x} ${y}) rotate(${tilt}) scale(1 ${incl})">${body}</g>`)
+    skip(rnd, 4)
+    galaxies += `<g transform="translate(${x} ${y}) rotate(${tilt}) scale(1 ${incl})">${body}</g>`
   }
 
-  // Dust: three layers, nearer ones larger, drifting further and faster.
+  // Dust: three layers, nearer ones larger.
   let dust = ''
   for (let layer = 0; layer < 3; layer++) {
     const reach = 6 + layer * 6
@@ -242,7 +202,8 @@ function phoenix(): string {
       const [x, y] = spot(reach + 2)
       motes += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + layer * 0.3 + rnd() * 0.5)}" opacity="${(0.25 + rnd() * 0.45).toFixed(2)}"/>`
     }
-    dust += drift(reach, reach * 0.7, 70 - layer * 15, motes)
+    skip(rnd, 3)
+    dust += motes
   }
 
   // ----- Black hole -----
@@ -263,15 +224,14 @@ function phoenix(): string {
     farDisk += `<path d="${back(rx)}" ${look}/>`
   }
 
-  // Streaks flowing round the disk, inner ones faster.
+  // Dashed streaks along the disk.
   let flow = ''
   for (let i = 0; i < 12; i++) {
     const dash = `${f(20 + rnd() * 70)} ${f(60 + rnd() * 160)}`
-    const period = dash.split(' ').reduce((a, b) => a + Number(b), 0)
-    flow += `<path class="flow" d="${front(HALO + 12 + Math.pow(i / 11, 1.2) * 650)}" style="stroke-width:${f(1 + rnd() * 2.5)};stroke-dasharray:${dash};--p:-${f(period * 4)}px;animation-duration:${f(5 + i * 1.6)}s"/>`
+    flow += `<path class="flow" d="${front(HALO + 12 + Math.pow(i / 11, 1.2) * 650)}" style="stroke-width:${f(1 + rnd() * 2.5)};stroke-dasharray:${dash}"/>`
   }
 
-  // Lensed halo rings, then a turning texture over them.
+  // Lensed halo rings, then a dashed texture over them.
   let halo = ''
   const HALO_RINGS = 36
   for (let j = 0; j < HALO_RINGS; j++) {
@@ -282,7 +242,7 @@ function phoenix(): string {
   }
   let swirl = ''
   for (let k = 0; k < 6; k++) {
-    swirl += `<circle class="halo-spin${k % 2 ? ' spinR' : ''}" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 22 + k * 26}" style="stroke-width:${f(1.5 + rnd() * 2)};stroke-dasharray:${f(30 + rnd() * 90)} ${f(40 + rnd() * 140)};animation-duration:${f(60 + k * 18)}s"/>`
+    swirl += `<circle class="halo-spin" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 22 + k * 26}" style="stroke-width:${f(1.5 + rnd() * 2)};stroke-dasharray:${f(30 + rnd() * 90)} ${f(40 + rnd() * 140)}"/>`
   }
 
   // Light distortion: starlight just outside the halo stretched into arcs, longer nearer the hole.
@@ -298,7 +258,6 @@ function phoenix(): string {
   }
 
   const plane = `transform="translate(${BH_X} ${BH_Y}) rotate(${TILT})"`
-  const origin = `transform-origin:${BH_X}px ${BH_Y}px`
 
   const style =
     '.bg{fill:#0c0906}' +
@@ -309,27 +268,17 @@ function phoenix(): string {
     // Halo: brighter on the upper left, where its light comes toward us.
     '.l0{stop-color:#ffe6b8}.l1{stop-color:#f2bd6a}.l2{stop-color:#9c6226}' +
     '.disk path{fill:none;stroke:url(#dg)}.far{opacity:.35}.halo circle{fill:none;stroke:url(#hg)}' +
-    '.flow{fill:none;stroke:#fff1d6;stroke-linecap:round;opacity:.45;animation:flow linear infinite}' +
-    `.halo-spin{fill:none;stroke:#ffe4b0;opacity:.3;${origin};animation:spin linear infinite}.spinR{animation-direction:reverse}` +
-    `.lens{fill:none;stroke:#ffeccc;stroke-linecap:round;${origin};animation:spin 300s linear infinite}` +
-    `.ring{fill:none;stroke:#fff3dc}.pulse{animation:pulse 8s ${SINE} infinite alternate}` +
-    `.heat{fill:none;stroke:#ffd590;stroke-linecap:round;animation:heat 11s ${SINE} infinite alternate}` +
+    '.flow{fill:none;stroke:#fff1d6;stroke-linecap:round;opacity:.45}' +
+    '.halo-spin{fill:none;stroke:#ffe4b0;opacity:.3}' +
+    '.lens{fill:none;stroke:#ffeccc;stroke-linecap:round}' +
+    '.ring{fill:none;stroke:#fff3dc}' +
+    '.heat{fill:none;stroke:#ffd590;stroke-linecap:round}' +
     // Sky: stars, galaxies, dust.
-    `.tw{opacity:.2;animation:tw ${SINE} infinite alternate}` +
-    `.glint{fill:#fff6ea;stroke:#fff6ea;stroke-width:.8;stroke-linecap:round;opacity:.35;animation:tw ${SINE} infinite alternate}` +
-    `.dx,.dy{animation:dx 50s ${SINE} infinite alternate}.dy{animation-name:dy}` +
-    '.spin{transform-origin:0 0;animation:spin 300s linear infinite}' +
+    '.glint{fill:#fff6ea;stroke:#fff6ea;stroke-width:.8;stroke-linecap:round;opacity:.35}' +
     '.arm path{fill:none;stroke:#ecdcc2;stroke-linecap:round;stroke-linejoin:round;opacity:.1}.arm.thin path{stroke-width:1;opacity:.35}' +
     '.gdot,.dust{fill:#fff2dc}' +
     '.g0{stop-color:#fff4e0;stop-opacity:.95}.g1{stop-color:#f6d9a8;stop-opacity:.35}.g2{stop-color:#e8c48e;stop-opacity:0}' +
     '.q0{stop-color:#e9dcc8;stop-opacity:.22}.q1{stop-color:#e9dcc8;stop-opacity:0}' +
-    '@keyframes flow{to{stroke-dashoffset:var(--p)}}' +
-    '@keyframes spin{to{transform:rotate(360deg)}}' +
-    '@keyframes pulse{from{opacity:.6}to{opacity:1}}' +
-    '@keyframes heat{from{opacity:.22}to{opacity:.42}}' +
-    '@keyframes tw{from{opacity:.1}to{opacity:.9}}' +
-    '@keyframes dx{from{transform:translateX(calc(var(--a) * -1))}to{transform:translateX(var(--a))}}' +
-    '@keyframes dy{from{transform:translateY(calc(var(--a) * -1))}to{transform:translateY(var(--a))}}' +
     '@media (prefers-color-scheme:light){' +
     // A white hole: a luminous core with a warm rim, and a gold photon ring and deeper inner disk so both read on the pale ground.
     '.bg{fill:url(#day)}.e0{stop-color:#fffefb}.e1{stop-color:#fff8ea}.e2{stop-color:#f2d9a6}' +
@@ -370,8 +319,8 @@ function phoenix(): string {
       `<g class="lens">${lens}</g></g>` +
       `<circle cx="${BH_X}" cy="${BH_Y}" r="${HOLE}" fill="url(#eh)"/>` +
       // Photon ring: a soft glow under a crisp line, and a fainter echo just outside.
-      `<g class="art"><g class="pulse"><circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 4}" stroke-width="9" opacity=".55" filter="url(#glow)"/>` +
-      `<circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 3}" stroke-width="1.6"/></g>` +
+      `<g class="art"><circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 4}" stroke-width="9" opacity=".55" filter="url(#glow)"/>` +
+      `<circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 3}" stroke-width="1.6"/>` +
       `<circle class="ring" cx="${BH_X}" cy="${BH_Y}" r="${HOLE + 11}" stroke-width=".7" opacity=".4"/>` +
       `<g ${plane}><ellipse rx="1200" ry="${f(1200 * FLAT * 0.9)}" cy="${f(1200 * FLAT * 0.35)}" fill="url(#dg)" opacity=".18" filter="url(#soft)"/>` +
       `<path class="heat" d="${front(HALO + 30)}" stroke-width="26" filter="url(#wide)"/></g>` +
@@ -379,12 +328,10 @@ function phoenix(): string {
   )
 }
 
-// ---------- Dusk: rippling aurora curtains over mountain ridges and a still lake ----------
+// ---------- Dusk: mountain ridges and a still lake ----------
 
 const SHORE = 820 // the lake's far edge; everything below it is water
-const SUN_X = 950 // the sun, just set behind the ridges: the afterglow, crest rims and the lake's glitter line up on it
-const SEGS = 24 // brightness steps along each aurora curtain
-const WAVE_STEP = 1.25 // s of delay per step: a brightness wave 8 steps long runs along the curtain
+const SUN_X = 950 // the sun, just set behind the ridges: the afterglow and crest rims line up on it
 
 type Ridge = { base: number; amp: number; rough: number; dip: number; dipX: number; dipW: number }
 
@@ -409,48 +356,8 @@ function ridgeCrest(rnd: () => number, r: Ridge): [number, number][] {
 
 const crestPath = (pts: [number, number][]): string => 'M' + pts.map(([x, y]) => `${f(x)} ${f(y)}`).join('L')
 
-type Curtain = {
-  x0: number
-  x1: number
-  edge: number
-  wave: number
-  cycles: number
-  len: [number, number]
-  ray: string
-  sway: number
-  op: number
-}
-
-// An aurora curtain: vertical rays rising from a wavy lower edge, brightest at
-// the edge, fading out at both ends. Sways from its edge; brightness waves run along it.
-function curtain(rnd: () => number, c: Curtain): string {
-  const segs = new Array<string>(SEGS).fill('')
-  const [p1, p2, p3] = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28]
-  for (let x = c.x0; x < c.x1; x += 10 + rnd() * 8) {
-    const t = (x - c.x0) / (c.x1 - c.x0)
-    const env = Math.sin(Math.PI * t) ** 0.6
-    const edge = c.edge + c.wave * Math.sin(6.28 * c.cycles * t + p1) + 18 * Math.sin(6.28 * 3.7 * t + p2) + 6 * Math.sin(6.28 * 11 * t) + (rnd() - 0.5) * 8
-    const len =
-      (c.len[0] + (c.len[1] - c.len[0]) * (0.5 + 0.5 * Math.sin(6.28 * 1.6 * t + p3))) *
-      (0.45 + 0.55 * rnd()) *
-      (0.55 + 0.45 * env)
-    segs[Math.min(SEGS - 1, Math.floor(t * SEGS))] +=
-      `<rect x="${f(x)}" y="${f(edge - len)}" width="${f(16 + rnd() * 16)}" height="${f(len)}" fill-opacity="${(env * (0.3 + 0.7 * rnd())).toFixed(2)}"/>`
-  }
-  const cx = (c.x0 + c.x1) / 2
-
-  return (
-    `<g class="cw" opacity="${c.op}" style="transform-origin:${cx}px ${c.edge}px;animation-duration:${c.sway}s;animation-delay:-${f(rnd() * c.sway)}s">` +
-    `<ellipse cx="${cx}" cy="${c.edge}" rx="${(c.x1 - c.x0) / 2 + 80}" ry="230" fill="url(#${c.ray}g)"/>` +
-    `<g filter="url(#rs)" fill="url(#${c.ray})">` +
-    segs.map((s, i) => `<g class="sg" style="animation-delay:-${f(i * WAVE_STEP)}s">${s}</g>`).join('') +
-    '</g></g>'
-  )
-}
-
 function dusk(): string {
   const rnd = seeded(23)
-  const SINE_ALT = `${SINE} infinite alternate`
 
   const ridges = [
     { base: 585, amp: 150, rough: 0.62, dip: 0, dipX: 0, dipW: 1 },
@@ -482,8 +389,9 @@ function dusk(): string {
     if (rnd() > 1 - y / 640 || y > crestAt(x) - 20) continue
     const fade = 1 - y / 640
     if (i < 28) {
-      const p = 2.5 + rnd() * 4
-      stars += `<circle class="tw ${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.9 + rnd() * 0.6)}" fill-opacity="${(fade * (0.5 + rnd() * 0.4)).toFixed(2)}" style="animation-duration:${f(p)}s;animation-delay:-${f(rnd() * p)}s"/>`
+      skip(rnd, 1)
+      stars += `<circle class="${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.9 + rnd() * 0.6)}" fill-opacity="${(fade * (0.5 + rnd() * 0.4)).toFixed(2)}"/>`
+      skip(rnd, 1)
     } else {
       stars += `<circle class="${tint()}" cx="${f(x)}" cy="${f(y)}" r="${f(0.4 + rnd() * 0.7)}" fill-opacity="${(fade * (0.2 + rnd() * 0.5)).toFixed(2)}"/>`
     }
@@ -495,43 +403,20 @@ function dusk(): string {
     [250, 430],
   ]) {
     if (y > crestAt(x) - 40) throw new Error(`dusk: glint star at ${x},${y} sits on a ridge`)
-    stars +=
-      `<g transform="translate(${x} ${y})"><g class="tw s0" style="animation-duration:6s;animation-delay:-${f(rnd() * 6)}s">` +
-      '<circle r="1.7"/><path d="M-8 0H8M0 -8V8" stroke="#fff6ea" stroke-width=".6" stroke-opacity=".55"/></g></g>'
+    skip(rnd, 1)
+    stars += `<g class="s0" transform="translate(${x} ${y})"><circle r="1.7"/><path d="M-8 0H8M0 -8V8" stroke="#fff6ea" stroke-width=".6" stroke-opacity=".55"/></g>`
   }
 
-  const curtains: Curtain[] = [
-    { x0: -60, x1: 520, edge: 270, wave: 20, cycles: 1.1, len: [80, 170], ray: 'rv', sway: 23, op: 0.6 },
-    { x0: 820, x1: 1580, edge: 290, wave: 24, cycles: 1.2, len: [100, 210], ray: 'rv', sway: 19, op: 0.8 },
-    { x0: 140, x1: 1080, edge: 400, wave: 30, cycles: 1.3, len: [150, 290], ray: 'ra', sway: 16, op: 1 },
-  ]
+  // Mist pooled in a valley, in front of the ridge behind it: [cx, cy, rx, ry].
+  const mist = (list: number[][]): string => {
+    skip(rnd, list.length)
 
-  // Mist pooled in a valley, in front of the ridge behind it: [cx, cy, rx, ry, drift].
-  const mist = (list: number[][]): string =>
-    '<g class="art">' +
-    list
-      .map(
-        ([cx, cy, rx, ry, a]) =>
-          `<g class="mf" style="--a:${a}px;animation-delay:-${f(rnd() * 60)}s"><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#mg)"/></g>`,
-      )
-      .join('') +
-    '</g>'
-
-  // Glitter on the water: mostly a column under the afterglow, a few violet
-  // flecks from the aurora; longer and thicker toward the near shore.
-  let glitter = ''
-  for (let i = 0; i < 36; i++) {
-    const y = SHORE + 6 + rnd() ** 1.3 * 168
-    const near = (y - SHORE) / 180
-    const warm = rnd() < 0.85
-    const x = warm ? SUN_X + (rnd() - 0.5) * (260 + near * 420) : 60 + rnd() * 1480
-    const len = (12 + near * 80) * (0.5 + rnd())
-    const p = 3 + rnd() * 4
-    glitter += `<path class="sh" d="M${f(x - len / 2)} ${f(y)}h${f(len)}" stroke="url(#${warm ? 'gw' : 'gv'})" stroke-width="${f(0.7 + near * 1.2)}" stroke-opacity="${((warm ? 0.35 : 0.2) + rnd() * 0.4).toFixed(2)}" style="animation-duration:${f(p)}s;animation-delay:-${f(rnd() * p)}s"/>`
+    return (
+      '<g class="art">' +
+      list.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#mg)"/>`).join('') +
+      '</g>'
+    )
   }
-  // userSpaceOnUse: a horizontal line's zero-height box can't take a bounding-box gradient
-  const flat = (id: string, cls: string): string =>
-    `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop class="${cls}"/></linearGradient>`
 
   const style =
     '.k0{stop-color:#0c0a11}.k1{stop-color:#151020}.k2{stop-color:#261a2c}.k3{stop-color:#3d2331}' +
@@ -539,19 +424,12 @@ function dusk(): string {
     '.l0{stop-color:#1c1525}.l1{stop-color:#09070c}' +
     '.m1{fill:#211829}.m2{fill:#1a1321}.m3{fill:#130e19}.m4{fill:#0c0a10}' +
     '.s0{fill:#f3ecff}.s1{fill:#e6ecff}.s2{fill:#ffdcae}' +
-    `.cw{animation:cw 18s ${SINE_ALT}}@keyframes cw{from{transform:skewX(-5deg) scaleY(.9)}to{transform:skewX(5deg) scaleY(1.05)}}` +
-    `.sg{animation:sg 5s ${SINE_ALT}}@keyframes sg{from{opacity:.4}to{opacity:1}}` +
-    `.tw{animation:tw 4s ${SINE_ALT}}@keyframes tw{from{opacity:.3}to{opacity:1}}` +
-    `.mf{animation:dx 60s ${SINE_ALT}}@keyframes dx{from{transform:translateX(calc(var(--a) * -1))}to{transform:translateX(var(--a))}}` +
-    `.sh{transform-box:fill-box;transform-origin:center;animation:sh 4s ${SINE_ALT}}@keyframes sh{from{opacity:.15;transform:scaleX(.5)}to{opacity:1;transform:scaleX(1)}}` +
-    // a shooting star: under a second of streak, then a long pause
-    '.mt{opacity:0;animation:mt 19s linear 6s infinite}@keyframes mt{0%{transform:translate(0,0);opacity:0}1.5%{opacity:1}6%,100%{transform:translate(-300px,104px);opacity:0}}' +
     '@media (prefers-color-scheme:light){' +
     '.k0{stop-color:#e9e2ef}.k1{stop-color:#efe4ec}.k2{stop-color:#f4dccf}.k3{stop-color:#f6d2bf}' +
     '.ra{stop-color:#e8916c}.rb{stop-color:#b79be0}.gl{stop-color:#f0a07c}.mi{stop-color:#fff}' +
     '.l0{stop-color:#d9cbdf}.l1{stop-color:#e8dfec}' +
     '.m1{fill:#e2d3e3}.m2{fill:#d6c5da}.m3{fill:#c9b6d0}.m4{fill:#bba7c4}' +
-    '.sky,.rim,.aur{display:none}}'
+    '.sky,.rim{display:none}}'
 
   const afterglow = `<ellipse cx="${SUN_X}" cy="680" rx="1000" ry="300" fill="url(#ag)"/>`
   const water = `y="${SHORE}" width="1600" height="${1000 - SHORE}"`
@@ -562,19 +440,10 @@ function dusk(): string {
     '<defs>' +
       '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="k0"/><stop offset=".4" class="k1"/><stop offset=".62" class="k2"/><stop offset=".8" class="k3"/></linearGradient>' +
       '<radialGradient id="ag"><stop class="gl" stop-opacity=".45"/><stop offset=".3" class="ra" stop-opacity=".22"/><stop offset=".65" class="rb" stop-opacity=".07"/><stop offset="1" class="rb" stop-opacity="0"/></radialGradient>' +
-      // rays: faint violet tops, bright rose lower edge
-      '<linearGradient id="ra" x1="0" y1="0" x2="0" y2="1"><stop class="rb" stop-opacity="0"/><stop offset=".35" class="rb" stop-opacity=".08"/><stop offset=".6" class="rb" stop-opacity=".35"/><stop offset=".8" class="ra" stop-opacity=".85"/><stop offset=".96" class="ra"/><stop offset="1" class="ra" stop-opacity=".3"/></linearGradient>' +
-      '<linearGradient id="rv" x1="0" y1="0" x2="0" y2="1"><stop class="rb" stop-opacity="0"/><stop offset=".4" class="rb" stop-opacity=".08"/><stop offset=".7" class="rb" stop-opacity=".45"/><stop offset=".95" class="rb" stop-opacity=".9"/><stop offset="1" class="rb" stop-opacity=".2"/></linearGradient>' +
-      '<radialGradient id="rag"><stop class="ra" stop-opacity=".16"/><stop offset=".5" class="rb" stop-opacity=".08"/><stop offset="1" class="rb" stop-opacity="0"/></radialGradient>' +
-      '<radialGradient id="rvg"><stop class="rb" stop-opacity=".14"/><stop offset="1" class="rb" stop-opacity="0"/></radialGradient>' +
       `<linearGradient id="rimg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop class="ra" stop-opacity="0"/><stop offset=".3" class="ra" stop-opacity=".25"/><stop offset="${(SUN_X / 1600).toFixed(2)}" class="gl"/><stop offset=".85" class="ra" stop-opacity=".25"/><stop offset="1" class="ra" stop-opacity="0"/></linearGradient>` +
       '<radialGradient id="mg"><stop class="mi" stop-opacity=".14"/><stop offset="1" class="mi" stop-opacity="0"/></radialGradient>' +
       '<linearGradient id="lake" x1="0" y1="0" x2="0" y2="1"><stop class="l0"/><stop offset="1" class="l1"/></linearGradient>' +
       '<linearGradient id="lf" x1="0" y1="0" x2="0" y2="1"><stop class="l1" stop-opacity="0"/><stop offset="1" class="l1" stop-opacity=".55"/></linearGradient>' +
-      flat('gw', 'ra') +
-      flat('gv', 'rb') +
-      '<linearGradient id="mtg" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#fff6ea" stop-opacity=".9"/><stop offset="1" stop-color="#fff6ea" stop-opacity="0"/></linearGradient>' +
-      '<filter id="rs"><feGaussianBlur stdDeviation="7 4"/></filter>' +
       '<filter id="rg" y="-50%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>' +
       '<filter id="ref" y="-10%" height="120%"><feGaussianBlur stdDeviation="1 3"/></filter>' +
       `<clipPath id="lk"><rect ${water}/></clipPath>` +
@@ -582,8 +451,6 @@ function dusk(): string {
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
       afterglow +
       `<g class="art sky">${stars}</g>` +
-      `<g class="art aur">${curtains.map((c) => curtain(rnd, c)).join('')}</g>` +
-      '<g class="art sky"><g transform="translate(1380 70)"><path class="mt" d="M0 0L150 -52" stroke="url(#mtg)" stroke-width="1.6" stroke-linecap="round"/></g></g>' +
       fills[0] +
       rimGroup(rims[0]) +
       mist([
@@ -604,8 +471,7 @@ function dusk(): string {
       `<g clip-path="url(#lk)" opacity=".85"><g filter="url(#ref)"><g transform="matrix(1 0 0 -1 0 ${2 * SHORE})">${afterglow}${fills.join('')}</g></g></g>` +
       `<rect ${water} fill="url(#lf)"/>` +
       rimGroup(`<path d="M-40 ${SHORE}H1640" stroke-width="1.2" stroke-opacity=".5"/>`) +
-      mist([[700, SHORE - 2, 700, 18, 45]]) +
-      `<g class="art" stroke-linecap="round">${glitter}</g>`,
+      mist([[700, SHORE - 2, 700, 18, 45]]),
   )
 }
 
@@ -616,14 +482,9 @@ export const SCENES: Record<StyleId, string> = {
   dusk: dusk(),
 }
 
-// Motion off (`/ctxtheme motion off`): each scene held on its reduced-motion frame.
-export const STILL_SCENES = Object.fromEntries(
-  Object.entries(SCENES).map(([id, source]) => [id, source.replace('<style>', '<style>*{animation:none!important}')]),
-) as Record<StyleId, string>
-
 export const SCENE_ALT: Record<StyleId, string> = {
-  ember: 'Glowing coals along the bottom of a warm charcoal background, soft sparks rising from them',
-  contour: 'Orange map lines drawing themselves in, holding, then wiping away, over a blue-slate background',
-  phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies drifting among the stars around it',
-  dusk: 'Violet and orange aurora curtains rippling above layered mountain ridges at dusk, the afterglow mirrored in a still lake below',
+  ember: 'Glowing coals along the bottom of a warm charcoal background, a soft haze above them',
+  contour: 'Orange map lines over a blue-slate background',
+  phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies among the stars around it',
+  dusk: 'Layered mountain ridges under a violet and orange dusk sky, the afterglow mirrored in a still lake below',
 }

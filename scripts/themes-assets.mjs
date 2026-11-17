@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Exports the ctxline themes backdrops to docs/assets/themes/<style>.svg for the
 // site's Themes section: the same SVGs the plugin draws, dark version only (the
-// site shows the dark looks), still animated, still under reduced motion.
+// site shows the dark looks).
 //
 //   node --experimental-strip-types scripts/themes-assets.mjs
 //

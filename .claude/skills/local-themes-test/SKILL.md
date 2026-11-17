@@ -46,28 +46,27 @@ Side effects of a local load: engine writes `desktop-themes/tsconfig.json` and `
 ## 2. Test
 
 Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws it as markdown):
-- `/ctxtheme` → `Current theme: <Name>` (or `off (the app’s own look)`), `Background motion: on|off`, then a markdown list of `ember`, `contour`, `phoenix`, `dusk`; `(current)` on the pick, `(default)` on dusk. Bold, bullets and code drawn — no raw `**` or backticks.
+- `/ctxtheme` → `Current theme: <Name>` (or `off (the app’s own look)`), then a markdown list of `ember`, `contour`, `phoenix`, `dusk`; `(current)` on the pick, `(default)` on dusk. Bold, bullets and code drawn — no raw `**` or backticks.
 - No saved pick (first load) → Dusk applied at session start.
 - `/ctxtheme <style>` for each style → palette + backdrop change at once; reply `Switched to <Name>. It stays on for new sessions.`
 - ` Ember ` (case, spaces) → works. Unknown name → `No style called “<x>”. Pick one of: …`.
 - `/ctxtheme off` → app's own look; new session stays off.
-- Default (nothing saved) → backdrop still. `/ctxtheme motion on` → background redraws once, then moves; reply `Motion on: …`. New session keeps moving. `/ctxtheme motion off` → still again (same frame as reduced motion). `/ctxtheme motion` → reports current. Theme off → reply adds `It applies once a theme is on.`
+- `/ctxtheme motion` → `No style called “motion”` (command removed).
 - New Code session → last pick re-applied.
 - `/resume` an older Code session → pick re-applied (`session.start` runs; found by testing).
 - `/clear` → background gone for that session: known limitation, documented in README (see `CLAUDE.md` → Desktop themes plugin for what was tried). A new Code session brings it back.
 - `/branch` → theme stays or comes back? Untested. Record the finding in `CLAUDE.md` → Desktop themes plugin.
 
 Backdrops (dark mode):
-- `dusk` — orange and violet ribbons sway over soft, blurred hills; no sharp lines anywhere.
-- `ember` — coals along the bottom brighten and dim; soft sparks drift up and fade.
-- `contour` — orange map lines drift; bands light up and fade, about one a second.
+- `dusk` — orange and violet ribbons over soft, blurred hills; no sharp lines anywhere.
+- `ember` — glowing coals along the bottom.
+- `contour` — orange map lines and soft glow bands.
 - `phoenix` — black hole pinned to the right edge, gold halo, striped disk streaming left; disk never crosses the halo. Narrow/tall window → left side cropped, hole stays.
 - Text over the backdrop readable (glass blur/opacity) in chat, prompt box, sidebar.
 
 Modes:
 - App light mode → palette switches to the light version.
 - Backdrop light version follows `prefers-color-scheme` — untested whether the frame follows the app's mode or the OS's. Set app and OS to different modes, check which the backdrop follows, record the finding in `CLAUDE.md` → Desktop themes plugin (replace "untested").
-- OS reduced motion on (Windows: Settings → Accessibility → Visual effects → Animation effects off) → every backdrop holds still.
 
 Live edits:
 - Save `hooks/register.tsx`, `hooks/looks.ts` or `hooks/scenes.ts` → hot reload re-runs `session.start` → saved pick re-applied with the new code.

@@ -56,13 +56,13 @@ function engine(on: any, opts: { store?: boolean; notDrawn?: string; throws?: st
   return { sets, clears: () => clears, store }
 }
 
-test('a first session sets Dusk, palette and a still scene', async ($, on) => {
+test('a first session sets Dusk, palette and its scene', async ($, on) => {
   const { sets } = engine(on)
 
   await $.session.start(START)
 
   expect(sets.length).toBe(1)
-  expect(sets[0].backdrop.scene).toBe('dusk-still')
+  expect(sets[0].backdrop.scene).toBe('dusk')
   expect(sets[0].colors.label).toBe('ctxline Dusk')
 })
 
@@ -84,20 +84,14 @@ test('body text reads on every surface', async () => {
 const UNSAFE =
   /<script|javascript:|href=|<use\b|<image|<foreignObject|<iframe|<object|<embed|<a\b|@import|data:|\son\w+=|<!ENTITY|<!DOCTYPE|url\((?!#)/i
 
-test('every scene is self-contained, holds still on request and never flashes', async () => {
+test('every scene is self-contained and has no motion', async () => {
   for (const id of STYLE_IDS) {
     const svg = SCENES[id]
 
     expect(svg.match(UNSAFE)?.[0]).toBeUndefined()
-    expect(svg).toContain('@media (prefers-reduced-motion: reduce){*{animation:none!important}}')
     expect(SCENE_ALT[id].length).toBeGreaterThan(20)
 
-    // WCAG 2.3.1: no more than three flashes a second, so no cycle under 1/3 s.
-    const cycles = [...svg.matchAll(/animation(?:-duration)?:[^;}"]*?(\d*\.?\d+)(m?s)\b/g)].map(
-      ([, n, unit]) => Number(n) / (unit === 'ms' ? 1000 : 1),
-    )
-    expect(cycles.length).toBeGreaterThan(0)
-    expect(Math.min(...cycles)).toBeGreaterThanOrEqual(1 / 3)
+    expect(svg).not.toMatch(/animation|@keyframes/)
   }
 })
 
@@ -106,7 +100,7 @@ test('an unreadable store still sets Dusk', async ($, on) => {
 
   await $.session.start(START)
 
-  expect(sets[0]?.backdrop.scene).toBe('dusk-still')
+  expect(sets[0]?.backdrop.scene).toBe('dusk')
 })
 
 test('/ctxtheme switches, remembers, lists and turns off', async ($, on) => {
@@ -119,11 +113,11 @@ test('/ctxtheme switches, remembers, lists and turns off', async ($, on) => {
 
   const ran = await run(' Ember ')
   expect(ran.text).toContain('Switched to Ember')
-  expect(sets.at(-1).backdrop.scene).toBe('ember-still')
+  expect(sets.at(-1).backdrop.scene).toBe('ember')
   expect(store.get('style')).toBe('ember')
 
   await $.session.start(START)
-  expect(sets.at(-1).backdrop.scene).toBe('ember-still')
+  expect(sets.at(-1).backdrop.scene).toBe('ember')
 
   const list = await run('')
   expect(list.text).toContain('Current theme: **Ember**')
@@ -170,10 +164,6 @@ test('/ctxtheme says why when nothing draws the theme yet', async ($, on) => {
   expect(ran.text).toContain('Switched to Phoenix, but nothing shows it here yet')
   expect(ran.text).toContain('no desktop client attached')
   expect(store.get('style')).toBe('phoenix')
-
-  const still = await run('motion off')
-  expect(still.text).toContain('Nothing shows it here yet: no desktop client attached')
-  expect(store.get('motion')).toBe('off')
 })
 
 test('/ctxtheme keeps the pick where the theme call throws', async ($, on) => {
@@ -190,55 +180,6 @@ test('/ctxtheme keeps the pick where the theme call throws', async ($, on) => {
   const off = await run('off')
   expect(off.text).toContain('ctxline themes off')
   expect(store.get('style')).toBe('off')
-})
-
-test('backdrops hold still until /ctxtheme motion on, and it remembers', async ($, on) => {
-  const { sets, store } = engine(on)
-  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
-
-  await $.session.start(START)
-  await run('ember')
-  expect(sets.at(-1).backdrop.scene).toBe('ember-still')
-  expect((await run('')).text).toContain('Background motion: **off**')
-
-  const moving = await run('motion on')
-  expect(moving.text).toContain('Motion on')
-  expect(sets.at(-1).backdrop.scene).toBe('ember')
-  expect(store.get('motion')).toBe('on')
-
-  expect((await run('motion')).text).toContain('Background motion is on')
-  expect((await run('')).text).toContain('Background motion: **on**')
-
-  await $.session.start(START)
-  expect(sets.at(-1).backdrop.scene).toBe('ember')
-
-  await run('phoenix')
-  expect(sets.at(-1).backdrop.scene).toBe('phoenix')
-
-  await run('motion off')
-  expect(sets.at(-1).backdrop.scene).toBe('phoenix-still')
-  expect(store.get('motion')).toBe('off')
-
-  await run('off')
-  const before = sets.length
-  const later = await run('motion on')
-  expect(later.text).toContain('It applies once a theme is on')
-  expect(sets.length).toBe(before)
-})
-
-test('/ctxtheme motion on holds for the session when it could not be saved', async ($, on) => {
-  const { sets } = engine(on, { store: false })
-  const run = (args: string) => $.command.run({ command: 'ctxtheme', args } as any)
-
-  await $.session.start(START)
-
-  const moving = await run('motion on')
-  expect(moving.text).toContain('It couldn’t be saved')
-  expect((await run('motion')).text).toContain('Background motion is on')
-  expect((await run('')).text).toContain('Background motion: **on**')
-
-  await run('ember')
-  expect(sets.at(-1).backdrop.scene).toBe('ember')
 })
 
 test('the backdrop draws each scene and leaves other plugins alone', async ($, on) => {
@@ -262,19 +203,6 @@ test('the backdrop draws each scene and leaves other plugins alone', async ($, o
     expect(svg?.props.source.length).toBeLessThan(131072)
     await ui.unmount()
   }
-
-  const still = await $.ui.mount({
-    plugin: PLUGIN,
-    surface: 'desktop',
-    component: 'Backdrop',
-    requestId: 'r3',
-    props: { scene: 'dusk-still', plugin: PLUGIN, glass: false },
-  } as any)
-  const frozen: any = await still.find({ type: 'Svg' } as any)
-
-  expect(frozen?.props.source.startsWith('<svg')).toBe(true)
-  expect(frozen?.props.source).toContain('<style>*{animation:none!important}')
-  await still.unmount()
 
   const other = await $.ui.mount({
     plugin: PLUGIN,

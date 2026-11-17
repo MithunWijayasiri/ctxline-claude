@@ -204,7 +204,7 @@ To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove
 
 ### Themes
 
-A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks: three built around Claude orange and one around gold. Each one has a light and a dark version, and an optional animated background behind the conversation. The colors follow the app's light or dark mode. The background switches with the `prefers-color-scheme` media query.
+A second plugin, `ctxline-desktop-themes` (shown as **ctxline themes**), restyles the desktop app with four dark looks: three built around Claude orange and one around gold. Each one has a light and a dark version, and a still background behind the conversation. The colors follow the app's light or dark mode. The background switches with the `prefers-color-scheme` media query.
 
 <p align="center">
   <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes in dark mode: Dusk, Ember, Contour and Phoenix">
@@ -218,12 +218,12 @@ The preview shows dark mode, with each background caught at one moment. See them
 
 | Style | Look | Background |
 |---|---|---|
-| `dusk` (default) | deep plum | violet and orange aurora ripples over mountain ridges and a still lake |
-| `ember` | warm charcoal | coals along the bottom brighten and dim, soft sparks drift up |
-| `contour` | blue-slate | orange map lines draw themselves in, hold, wipe away; always redrawing |
-| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left, small galaxies drifting round it |
+| `dusk` (default) | deep plum | layered mountain ridges under a violet and orange sky, mirrored in a still lake |
+| `ember` | warm charcoal | glowing coals along the bottom |
+| `contour` | blue-slate | orange topographic map lines |
+| `phoenix` | warm black and gold | a large black hole on the right edge, its striped disk streaming out to the left, small galaxies around it |
 
-Themes show only in Code sessions, starting with the next one you open after installing. A session that's already open, the home screen and the Chat tab keep the app's own look. Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look. The backgrounds hold still by default, because moving ones use noticeable CPU on a laptop. `/ctxtheme motion on` animates them, and `/ctxtheme motion off` stops it again. They also hold still when your system asks for reduced motion.
+Themes show only in Code sessions, starting with the next one you open after installing. A session that's already open, the home screen and the Chat tab keep the app's own look. Switch with `/ctxtheme <style>`. Your pick is remembered for new sessions. `/ctxtheme` on its own lists the styles, and `/ctxtheme off` goes back to the app's own look.
 
 > [!NOTE]
 > `/clear` removes the theme's background for that session. Start a new Code session to get it back.
@@ -262,7 +262,7 @@ No, if you're on Pro or Max. It's what the session would cost at API prices, as 
 
 - **Usage.** Only when the session data has no usage numbers, it calls Anthropic's usage API (the one `/usage` uses) with your local OAuth token. It caches only the percentages, never the token. API-key users skip this.
 - **Desktop plugin.** When a session starts and every 30 seconds, it calls the same usage API for model-specific limits (like Fable) through Claude's own login, so the plugin never sees the token. It keeps only the percentages. API-key users skip this.
-- **Themes plugin.** Nothing. It only saves your style and motion choice in Claude's plugin storage on your machine.
+- **Themes plugin.** Nothing. It only saves your style choice in Claude's plugin storage on your machine.
 - **Updates.** Every 3 days it asks the npm registry for the latest version number. When it installs an update, it downloads the script from GitHub. Neither request carries session data or credentials. `CTXLINE_DISABLE=update` turns both off.
 
 </details>
