@@ -16,7 +16,8 @@ const OFF = 'off'
 
 type Choice = StyleId | typeof OFF
 
-const APPLIED = { plugin: PLUGIN, key: 'applied' } as const
+// plugin validate needs the literal here, not PLUGIN.
+const APPLIED = { plugin: 'ctxline-desktop-themes', key: 'applied' } as const
 
 // An unreadable store falls back to the default rather than no theme at all.
 async function savedChoice($: EngineInterface): Promise<Choice> {
