@@ -2,7 +2,7 @@
   "name": "ctxline-desktop-themes",
   "displayName": "ctxline themes",
   "version": "0.1.0",
-  "description": "Four dark looks for the Claude desktop app, three in Claude orange (Dusk, Ember, Contour) and one in gold (Phoenix), each with a light version and a still background. Switch with /ctxtheme. Learn more at ctxline.js.org",
+  "description": "Four themes for the Claude desktop app. Switch with /ctxtheme; run /ctxtheme off before uninstalling. Learn more at ctxline.js.org",
   "author": { "name": "Mithun Wijayasiri" },
   "homepage": "https://ctxline.js.org",
   "repository": "https://github.com/MithunWijayasiri/ctxline-claude",

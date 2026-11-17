@@ -82,7 +82,9 @@ Live edits:
 
 ## 4. Revert
 
-Undo only what step 1 added; leave anything else changed since (other env vars, other plugin paths) as it is:
+First, in a Code session: `/ctxtheme off` → app's own look. Skipped → app keeps the last theme's colors after the plugin is gone (found by testing; issue #75).
+
+Then undo only what step 1 added; leave anything else changed since (other env vars, other plugin paths) as it is:
 - `CLAUDE_CODE_PLUGIN_DIRS` → step 1 added our path → remove it and its separator from the list; it was already listed before → leave it. Nothing left and the key didn't exist before → delete the key.
 - `CLAUDE_CODE_PLUGIN_DIR_WATCH` → saved value, or delete the key if it didn't exist.
 - `env` didn't exist before and is now empty → delete it.
