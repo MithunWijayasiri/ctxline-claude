@@ -204,6 +204,28 @@
   .opt .cmd code span{white-space:nowrap}
   .notice{background:#fbe9df;border:1px solid var(--accent);border-left-width:5px;font-size:15px}
   .notice .cmd{margin-top:14px}
+
+  /* desktop themes: each card is the plugin's real backdrop (docs/assets/themes, from
+     scripts/themes-assets.mjs) under a small chat drawn in that style's dark palette */
+  .themes{display:grid;grid-template-columns:1fr 1fr;gap:26px 20px;max-width:960px;margin:0 auto}
+  .theme{display:flex;flex-direction:column;gap:12px}
+  .theme .shot{position:relative;aspect-ratio:16/10;max-width:100%;border-radius:16px;overflow:hidden;background:var(--s0);box-shadow:0 22px 44px -26px rgba(28,26,23,.6)}
+  .theme .shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .theme .ui{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:9px;padding:16px 8%;font-size:12.5px;line-height:1.45;color:var(--tp)}
+  .theme .msg{align-self:flex-end;max-width:85%;background:color-mix(in srgb,var(--s2) 90%,transparent);border:1px solid color-mix(in srgb,var(--tp) 8%,transparent);padding:6px 11px;border-radius:11px}
+  .theme .reply code{font-family:var(--mono);font-size:11.5px;color:var(--ac);background:color-mix(in srgb,var(--s2) 85%,transparent);padding:0 4px;border-radius:4px}
+  .theme .box{display:flex;justify-content:space-between;align-items:center;margin-top:4px;background:color-mix(in srgb,var(--s2) 92%,transparent);border:1px solid color-mix(in srgb,var(--tp) 12%,transparent);border-radius:11px;padding:7px 7px 7px 12px;color:var(--tm);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .theme .box i{font-style:normal;font-weight:700;width:24px;height:24px;border-radius:7px;background:var(--ac);color:var(--s0);display:grid;place-items:center}
+  .theme figcaption{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:0 4px}
+  .theme figcaption b{font-size:17px}
+  .theme .def{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-soft);border-radius:5px;padding:0 6px}
+  .theme figcaption code{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:auto}
+  .theme .what{flex-basis:100%;color:var(--muted);font-size:14.5px}
+  .t-dusk{--s0:#141019;--s2:#211a28;--tp:#f1ebf5;--tm:#9d91a8;--ac:#e07f5a}
+  .t-ember{--s0:#17120f;--s2:#261e19;--tp:#f3e9df;--tm:#a69686;--ac:#d97757}
+  .t-contour{--s0:#0f1318;--s2:#1b222b;--tp:#e8edf3;--tm:#8f9aa7;--ac:#d97757}
+  .t-phoenix{--s0:#0c0a08;--s2:#1b1714;--tp:#f7f1e8;--tm:#9f9484;--ac:#e8b05a}
+  @media(max-width:700px){.themes{grid-template-columns:1fr}}
   @media(max-width:640px){
     .opt li code,.opt .cmd code span{white-space:normal}
     .setup code{overflow-wrap:anywhere}
@@ -369,6 +391,7 @@
     <div class="brand"><span class="pulse"></span> <b>ctxline</b>&nbsp;· claude</div>
     <div class="links">
       <a href="#desktop">Desktop</a>
+      <a href="#themes">Themes</a>
       <a href="https://www.npmjs.com/package/ctxline-claude" target="_blank" rel="noopener">npm ↗</a>
       <a href="https://github.com/MithunWijayasiri/ctxline-claude">GitHub ↗</a>
       <a class="kofi-btn" href="https://ko-fi.com/mithunwijayasiri" target="_blank" rel="noopener">❤ Ko-fi</a>
@@ -379,7 +402,7 @@
   <header class="hero">
     <span class="kicker"><span class="dot">●</span>&nbsp; Claude Code · Statusline</span>
     <h1>Everything that matters, on one line.</h1>
-    <p class="sub">See context usage, session limits, weekly allowance, Git status, and active tasks at a glance — without leaving Claude Code.</p>
+    <p class="sub">Context usage, session limits, weekly allowance, Git status and active tasks at a glance.</p>
 
     <div class="term" aria-label="Example statusline">
       <div class="line">
@@ -416,7 +439,7 @@
     <div class="sec-head">
       <span class="kicker">What it shows</span>
       <h2>Nine signals, one line</h2>
-      <p>Read left to right, it's the whole picture. Everything is best-effort and silent — if a source is missing, the line just skips it and still renders. On a narrow terminal it wraps to a second line; widen, and it returns to one.</p>
+      <p>Read left to right. If a source is missing, the line just skips it.</p>
     </div>
     <div class="inspect">
       <div class="term"><div class="line insp-line" id="insp-line" role="tablist" aria-label="Statusline segments"></div></div>
@@ -437,7 +460,7 @@
     <div class="sec-head">
       <span class="kicker">Subagent panel</span>
       <h2>Subagents get their own line too</h2>
-      <p>Keep an eye on delegated work without opening extra panels. Each running subagent gets a compact row showing its name, model, effort level, context usage, and elapsed time.</p>
+      <p>Each running subagent gets a row: name, model, effort, context and elapsed time.</p>
     </div>
     <div class="term subagent-term" aria-label="Example subagent rows">
       <div class="head">
@@ -448,7 +471,7 @@
       <div class="line subrow"><span class="dim">○&nbsp;</span><span>architecture-review</span><span class="sep">│</span><span>Opus&nbsp;5<span class="effort-max">&nbsp;· max</span></span><span class="sep">│</span><span class="context-yellow"><span class="val">C51</span><span class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></span><span class="sep">│</span><span class="dim">⏱ 4m12s</span></div>
       <div class="line subrow"><span class="dim">○&nbsp;</span><span>test-coverage</span><span class="sep">│</span><span>Sonnet&nbsp;5<span class="dim">&nbsp;· high</span></span><span class="sep">│</span><span class="val">C36</span><span class="bar"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></span><span class="sep">│</span><span class="dim">⏱ 1m48s</span></div>
     </div>
-    <p class="insp-hint">Effort only shows when a subagent overrides it — not when it just inherits the session's setting.</p>
+    <p class="insp-hint">Effort shows only when a subagent overrides it.</p>
   </section>
 
   <!-- DESKTOP APP -->
@@ -456,7 +479,7 @@
     <div class="sec-head">
       <span class="kicker">Claude desktop app</span>
       <h2>Also in the desktop app</h2>
-      <p>The Code tab doesn't run statusline scripts, so ctxline ships a plugin instead: a pixel Claude pet, live activity, folder, branch and Git sync, cache hit rate, context size and usage limits, with a thin context line underneath.</p>
+      <p>The Code tab can't run statusline scripts, so ctxline ships a plugin: a pixel pet, live activity, branch, cache rate, context and usage limits.</p>
     </div>
     <div class="term desk" role="img" aria-label="Example Claude desktop app: two rows above the prompt, the first with folder, branch, Git sync and 5-hour and weekly usage, the second with the pet, activity, cache hit rate and context tokens, and a thin line below showing context used">
       <div class="card mine">
@@ -471,7 +494,7 @@
       </div>
     </div>
     <p class="insp-hint">In the mock, the row and thin line above the prompt are ctxline. The rest is Desktop's own.</p>
-    <p class="insp-hint">H and W show how much of the 5-hour and weekly limits is used; a model-specific limit (like F for Fable) joins them on plans that have one.</p>
+    <p class="insp-hint">H and W are 5-hour and weekly usage.</p>
     <div class="setup">
       <div class="opt">
         <span class="kicker">Install the plugin</span>
@@ -489,10 +512,82 @@
       </div>
       <div class="notice">
         <span class="kicker">⚠ Turn on auto-update</span>
-        <p><b>Third-party plugins don't auto-update by default</b>, so you'll stay on the version you installed. The <b>Update</b> button in <b>/plugin</b> only updates once. To turn on auto-update, set <code>autoUpdate</code> in <code>~/.claude/settings.json</code> — paste this into Claude Code to do it for you:</p>
+        <p><b>Third-party plugins don't auto-update by default.</b> Paste this into Claude Code to turn it on:</p>
         <div class="cmd">
           <code><span class="cm">Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline</span></code>
           <button class="copy" onclick="copyCmd(this,'Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.json, set extraKnownMarketplaces.ctxline.autoUpdate to true (if there is no ctxline entry, add one with source github, repo MithunWijayasiri/ctxline-claude). Then run: claude plugin update ctxline-desktop@ctxline')">Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESKTOP THEMES -->
+  <section class="block" id="themes">
+    <div class="sec-head">
+      <span class="kicker">Desktop themes</span>
+      <h2>Four looks to choose from</h2>
+      <p>A second plugin, ctxline themes, restyles the desktop app. Each look has a light version and a still background.</p>
+    </div>
+    <div class="themes">
+      <figure class="theme t-dusk">
+        <div class="shot">
+          <img src="assets/themes/dusk.svg" alt="Dusk: layered plum mountains under a violet and orange sky, mirrored in a still lake" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Dusk</b><span class="def">Default</span><code>/ctxtheme dusk</code><span class="what">Mountains at dusk, mirrored in a still lake.</span></figcaption>
+      </figure>
+      <figure class="theme t-ember">
+        <div class="shot">
+          <img src="assets/themes/ember.svg" alt="Ember: glowing coals along the bottom of a warm charcoal background" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Ember</b><code>/ctxtheme ember</code><span class="what">Glowing coals along the bottom.</span></figcaption>
+      </figure>
+      <figure class="theme t-contour">
+        <div class="shot">
+          <img src="assets/themes/contour.svg" alt="Contour: orange topographic map lines over a blue-slate background" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Contour</b><code>/ctxtheme contour</code><span class="what">Orange topographic map lines.</span></figcaption>
+      </figure>
+      <figure class="theme t-phoenix">
+        <div class="shot">
+          <img src="assets/themes/phoenix.svg" alt="Phoenix: a large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies among the stars around it" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Phoenix</b><code>/ctxtheme phoenix</code><span class="what">A black hole, and small galaxies around it.</span></figcaption>
+      </figure>
+    </div>
+    <div class="setup">
+      <div class="opt">
+        <span class="kicker">Install the themes</span>
+        <p class="way">In the app</p>
+        <ol>
+          <li>Add the marketplace <code>MithunWijayasiri/ctxline-claude</code> (skip if you already did for ctxline-desktop)</li>
+          <li>Install <b>ctxline-desktop-themes</b></li>
+          <li>Start a new Code session (themes don't show in Chat).</li>
+          <li>Run <code>/ctxtheme &lt;style&gt;</code> to switch.</li>
+        </ol>
+        <p class="way">Or with commands</p>
+        <div class="cmd">
+          <code>/plugin marketplace add <span>MithunWijayasiri/ctxline-claude</span><br>/plugin install <span>ctxline-desktop-themes@ctxline</span></code>
+          <button class="copy" onclick="copyCmd(this,'/plugin marketplace add MithunWijayasiri/ctxline-claude\n/plugin install ctxline-desktop-themes@ctxline')">Copy</button>
         </div>
       </div>
     </div>
@@ -503,12 +598,12 @@
     <div class="sec-head">
       <span class="kicker">Under the hood</span>
       <h2>Fast, cached, never breaks</h2>
-      <p>A single zero-dependency Node script. It always prints, and never hangs or throws.</p>
+      <p>A single zero-dependency Node script.</p>
     </div>
     <div class="steps">
       <div class="step"><div class="n">01</div><h4>Reads session</h4><p>Context comes straight from Claude Code's session data on every render.</p></div>
-      <div class="step"><div class="n">02</div><h4>Reads usage</h4><p>5-hour and weekly limits come from the session data — no network. It falls back to Anthropic's usage API when needed; credentials never leave your machine.</p></div>
-      <div class="step"><div class="n">03</div><h4>Caches it</h4><p>The fallback fetch is cached and shared across sessions, with adaptive timeouts so the line stays snappy.</p></div>
+      <div class="step"><div class="n">02</div><h4>Reads usage</h4><p>5-hour and weekly limits come from the session data, with Anthropic's usage API as a fallback.</p></div>
+      <div class="step"><div class="n">03</div><h4>Caches it</h4><p>The fallback is cached and shared across sessions.</p></div>
       <div class="step"><div class="n">04</div><h4>Falls back</h4><p>Every failure path degrades silently to cached or partial output. The statusline always renders.</p></div>
     </div>
   </section>
@@ -642,7 +737,7 @@
     var reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
     // tag elements that should animate
     var sel = '.hero .kicker,.hero h1,.hero .sub,.term,.hero .cmd,.hero small,.hero .platforms,' +
-              '.sec-head,.feat,.step,details,.insp-hint,.insp-panel,.subagent-term';
+              '.sec-head,.feat,.step,details,.insp-hint,.insp-panel,.subagent-term,.theme';
     var els = Array.prototype.slice.call(document.querySelectorAll(sel));
     if(reduce){ return; } // CSS already shows everything; skip JS motion
     els.forEach(function(el){ el.setAttribute('data-anim',''); });

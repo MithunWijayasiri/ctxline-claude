@@ -202,6 +202,27 @@ Turn on auto-update for the ctxline plugin marketplace: in ~/.claude/settings.js
 
 To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove it, run `claude plugin uninstall ctxline-desktop@ctxline`. Source is in [`desktop/`](desktop/).
 
+### Themes
+
+A second plugin, `ctxline-desktop-themes`, adds four themes with a still background each. Light and dark follow the app.
+
+<p align="center">
+  <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes: Dusk, Ember, Contour and Phoenix">
+</p>
+
+```
+/plugin install ctxline-desktop-themes@ctxline
+```
+
+Open a new Code session to see it. Switch with `/ctxtheme dusk|ember|contour|phoenix`, list with `/ctxtheme`, turn off with `/ctxtheme off`. Your pick carries over to new sessions.
+
+> [!NOTE]
+> - `/clear` removes the background for that session. A new session brings it back.
+> - Only one theme plugin can be on at a time.
+> - Permission prompts, the terminal pane and the Changes panel keep the app's look. The theme API doesn't reach them yet.
+
+Update with `claude plugin update ctxline-desktop-themes@ctxline`. Source is in [`desktop-themes/`](desktop-themes/).
+
 ## FAQ
 
 <details>
@@ -230,6 +251,7 @@ No, if you're on Pro or Max. It's what the session would cost at API prices, as 
 
 - **Usage.** Only when the session data has no usage numbers, it calls Anthropic's usage API (the one `/usage` uses) with your local OAuth token. It caches only the percentages, never the token. API-key users skip this.
 - **Desktop plugin.** When a session starts and every 30 seconds, it calls the same usage API for model-specific limits (like Fable) through Claude's own login, so the plugin never sees the token. It keeps only the percentages. API-key users skip this.
+- **Themes plugin.** Nothing. It only saves your style choice in Claude's plugin storage on your machine.
 - **Updates.** Every 3 days it asks the npm registry for the latest version number. When it installs an update, it downloads the script from GitHub. Neither request carries session data or credentials. `CTXLINE_DISABLE=update` turns both off.
 
 </details>

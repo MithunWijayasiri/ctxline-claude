@@ -44,3 +44,17 @@ jobs:
         run: claude plugin validate .
       - name: Validate plugin
         run: claude plugin validate ./desktop
+      - name: Validate themes plugin
+        run: claude plugin validate ./desktop-themes
+      - name: Test themes plugin
+        run: claude plugin test ./desktop-themes
+      - name: Check generated theme files are up to date
+        run: |
+          node scripts/themes-contour.js
+          node --experimental-strip-types scripts/themes-assets.mjs
+          changed="$(git status --porcelain -- docs/assets/themes desktop-themes/hooks/contour-paths.ts)"
+          if [ -n "$changed" ]; then
+            echo "$changed"
+            echo "Re-run the generators and commit their output."
+            exit 1
+          fi
