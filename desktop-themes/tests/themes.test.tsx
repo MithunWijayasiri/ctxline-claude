@@ -91,7 +91,7 @@ test('every scene is self-contained and has no motion', async () => {
     expect(svg.match(UNSAFE)?.[0]).toBeUndefined()
     expect(SCENE_ALT[id].length).toBeGreaterThan(20)
 
-    expect(svg).not.toMatch(/animation|@keyframes/)
+    expect(svg).not.toMatch(/animation|@keyframes|<animate|<set\b/)
   }
 })
 
@@ -189,7 +189,7 @@ test('the backdrop draws each scene and leaves other plugins alone', async ($, o
     return <Text>engine</Text>
   })
 
-  for (const scene of ['ember', 'contour', 'phoenix', 'dusk']) {
+  for (const scene of STYLE_IDS) {
     const ui = await $.ui.mount({
       plugin: PLUGIN,
       surface: 'desktop',
@@ -201,6 +201,7 @@ test('the backdrop draws each scene and leaves other plugins alone', async ($, o
 
     expect(svg?.props.source.startsWith('<svg')).toBe(true)
     expect(svg?.props.source.length).toBeLessThan(131072)
+    expect(svg?.props.alt).toBe(SCENE_ALT[scene])
     await ui.unmount()
   }
 
