@@ -23,7 +23,7 @@ New versions only. Invoking the skill with a version is approval to commit and p
 2. `statusline.js` `VERSION` → `'X.Y.Z'`. Both must match (test-enforced; workflow fails otherwise).
 3. Commit `chore: bump version to X.Y.Z` (single line, via `git commit -F -` heredoc), `git push origin main`.
 
-Desktop plugin version (`desktop/.claude-plugin/plugin.json`) is never bumped here. If `desktop/` changed since the last tag and `version` equals the one at that tag → tell the user before they trigger the workflow (marketplace users only get changes on bump).
+Plugin versions (`desktop/.claude-plugin/plugin.json`, `desktop-themes/.claude-plugin/plugin.json`) are never bumped here. If `desktop/` or `desktop-themes/` changed since the last tag and its `version` equals the one at that tag → tell the user before they trigger the workflow (marketplace users only get changes on bump).
 
 ## 3. Draft notes in chat
 
@@ -38,6 +38,7 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 
 - `ctxline-claude-code-vX.Y.Z.zip` — statusline (same contents as the npm package)
 - `ctxline-claude-desktop-v<plugin.json version>.zip` — Claude desktop plugin v<plugin.json version> (updates itself through the plugin marketplace; not versioned with this release)
+- `ctxline-claude-desktop-themes-v<themes plugin.json version>.zip` — Claude desktop themes plugin v<themes plugin.json version> (updates itself through the plugin marketplace; not versioned with this release)
 
 ## What's Changed
 
@@ -47,15 +48,18 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 ### ctxline-claude-desktop
 * <user-facing bullet>
 
+### ctxline-claude-desktop-themes
+* <user-facing bullet>
+
 **Full Changelog**: https://github.com/MithunWijayasiri/ctxline-claude/compare/vPREV...vX.Y.Z
 ````
 
 Rules:
 - Bullets: plain words, user-visible effect first, no PR numbers, authors, or `feat(...)` prefixes. Name commands/labels in backticks.
 - Drop internal-only changes (skills, tests, CI tweaks) unless users see them (new release assets, npm page, installer output).
-- Split by what changed: `statusline.js`, installers, npm package/readme → `ctxline-claude-code`; `desktop/` → `ctxline-claude-desktop`. Release-wide changes (e.g. new release assets) → `ctxline-claude-code`. Nothing changed in a section → single bullet `No changes.`
+- Split by what changed: `statusline.js`, installers, npm package/readme → `ctxline-claude-code`; `desktop/` → `ctxline-claude-desktop`; `desktop-themes/` → `ctxline-claude-desktop-themes`. Release-wide changes (e.g. new release assets) → `ctxline-claude-code`. Nothing changed in a section → single bullet `No changes.`
 - Statusline output unchanged (no visible diff in `statusline.js`/renders) and `ctxline-claude-code` has other bullets → end them with `Statusline itself is unchanged.` Never add it next to `No changes.`
-- First desktop plugin release or new install path → include the install commands under `ctxline-claude-desktop`.
+- First desktop plugin release or new install path → include the install commands under `ctxline-claude-desktop`. Same for themes under `ctxline-claude-desktop-themes` (`/plugin install ctxline-desktop-themes@ctxline`).
 
 ## 4. Apply to the release
 

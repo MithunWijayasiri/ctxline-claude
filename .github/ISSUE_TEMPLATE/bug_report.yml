@@ -1,0 +1,48 @@
+name: Bug report
+description: Something is broken or renders wrong
+labels: [bug]
+body:
+  - type: dropdown
+    id: project
+    attributes:
+      label: Project
+      description: Which part of ctxline is affected?
+      options:
+        - ctxline-claude-code
+        - ctxline-claude-desktop
+        - ctxline-claude-desktop-themes
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: ctxline-claude version (shown in the statusline update row), or the desktop plugin version from /plugin
+    validations:
+      required: true
+  - type: input
+    id: claude-code
+    attributes:
+      label: Claude Code version and OS
+      placeholder: "2.1.329 · Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include a screenshot or the rendered line if you can.
+    validations:
+      required: true
