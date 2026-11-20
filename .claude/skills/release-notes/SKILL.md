@@ -37,8 +37,8 @@ Gather changes via `git-bot` (digest of commits + merged PR titles): new version
 ### Downloads
 
 - `ctxline-claude-code-vX.Y.Z.zip` — statusline (same contents as the npm package)
-- `ctxline-claude-desktop-v<plugin.json version>.zip` — Claude desktop plugin v<plugin.json version> (updates itself through the plugin marketplace; not versioned with this release)
-- `ctxline-claude-desktop-themes-v<themes plugin.json version>.zip` — Claude desktop themes plugin v<themes plugin.json version> (updates itself through the plugin marketplace; not versioned with this release)
+- `ctxline-claude-desktop-v<plugin.json version>.zip` — Claude desktop plugin v<plugin.json version> (updates through the plugin marketplace when its auto-update is on, or manually from `/plugin` → Marketplaces; not versioned with this release)
+- `ctxline-claude-desktop-themes-v<themes plugin.json version>.zip` — Claude desktop themes plugin v<themes plugin.json version> (updates through the plugin marketplace when its auto-update is on, or manually from `/plugin` → Marketplaces; not versioned with this release)
 
 ## What's Changed
 
@@ -59,7 +59,7 @@ Rules:
 - Drop internal-only changes (skills, tests, CI tweaks) unless users see them (new release assets, npm page, installer output).
 - Split by what changed: `statusline.js`, installers, npm package/readme → `ctxline-claude-code`; `desktop/` → `ctxline-claude-desktop`; `desktop-themes/` → `ctxline-claude-desktop-themes`. Release-wide changes (e.g. new release assets) → `ctxline-claude-code`. Nothing changed in a section → single bullet `No changes.`
 - Statusline output unchanged (no visible diff in `statusline.js`/renders) and `ctxline-claude-code` has other bullets → end them with `Statusline itself is unchanged.` Never add it next to `No changes.`
-- First desktop plugin release or new install path → include the install commands under `ctxline-claude-desktop`. Same for themes under `ctxline-claude-desktop-themes` (`/plugin install ctxline-desktop-themes@ctxline`).
+- First desktop plugin release or new install path → include the install commands under `ctxline-claude-desktop`: `/plugin marketplace add MithunWijayasiri/ctxline-claude`, then `/plugin install ctxline-desktop@ctxline`. Same for themes under `ctxline-claude-desktop-themes`: the same marketplace add, then `/plugin install ctxline-desktop-themes@ctxline`.
 
 ## 4. Apply to the release
 

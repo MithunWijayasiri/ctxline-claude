@@ -88,8 +88,8 @@ jobs:
             echo "### Downloads"
             echo ""
             echo "- \`ctxline-claude-code-v${pkg_version}.zip\` — statusline (same contents as the npm package)"
-            echo "- \`ctxline-claude-desktop-v${desktop_version}.zip\` — Claude desktop plugin v${desktop_version} (updates itself through the plugin marketplace; not versioned with this release)"
-            echo "- \`ctxline-claude-desktop-themes-v${themes_version}.zip\` — Claude desktop themes plugin v${themes_version} (updates itself through the plugin marketplace; not versioned with this release)"
+            echo "- \`ctxline-claude-desktop-v${desktop_version}.zip\` — Claude desktop plugin v${desktop_version} (updates through the plugin marketplace when its auto-update is on, or manually from \`/plugin\` → Marketplaces; not versioned with this release)"
+            echo "- \`ctxline-claude-desktop-themes-v${themes_version}.zip\` — Claude desktop themes plugin v${themes_version} (updates through the plugin marketplace when its auto-update is on, or manually from \`/plugin\` → Marketplaces; not versioned with this release)"
             echo ""
             echo "$NOTES"
           } > body.md
