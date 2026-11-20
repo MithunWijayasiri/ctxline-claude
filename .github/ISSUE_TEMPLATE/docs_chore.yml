@@ -1,0 +1,21 @@
+name: Docs / chore
+description: Documentation, tooling, or cleanup work
+labels: [documentation]
+body:
+  - type: dropdown
+    id: project
+    attributes:
+      label: Project
+      description: Which part of ctxline does this touch?
+      options:
+        - ctxline-claude-code
+        - ctxline-claude-desktop
+        - ctxline-claude-desktop-themes
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What should change
+    validations:
+      required: true

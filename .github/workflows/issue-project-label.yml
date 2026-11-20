@@ -1,0 +1,26 @@
+name: Issue project label
+
+# Issue forms can't map a dropdown to a label, so copy the chosen Project onto the issue.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BODY: ${{ github.event.issue.body }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          project="$(printf '%s\n' "$BODY" | tr -d '\r' | awk '/^### Project/{getline; getline; print; exit}')"
+          case "$project" in
+            ctxline-claude-code|ctxline-claude-desktop|ctxline-claude-desktop-themes)
+              gh issue edit "$NUMBER" --repo "${{ github.repository }}" --add-label "$project" ;;
+            *) echo "No project selected" ;;
+          esac
