@@ -54,7 +54,7 @@ Side effects of a local load (both gitignored, leave them): engine writes `deskt
 
 - Dim transcript line: `ctxline-desktop: ui.render (AbovePrompt) refused: <reason>; the engine drew its own`.
 - Toasts from `$.ui.toast`; thrown HooksErrors include host hints.
-- Known runtime constraints (`Svg isInteractive` flash, `PromptHint` not drawn, etc.): `CLAUDE.md` → Desktop plugin.
+- Known runtime constraints (`Svg isInteractive` flash, `PromptHint` not drawn, etc.): `.claude/rules/desktop-plugin.md`.
 
 ## 4. Revert
 
