@@ -28,7 +28,7 @@
     <svg x="60" y="219" width="36" height="18" viewBox="0 0 24 12" shape-rendering="crispEdges"><g transform="translate(0 2)"><rect x="3" y="0" width="12" height="4" fill="#d97757"/><rect x="1" y="4" width="16" height="2" fill="#d97757"/><rect x="3" y="6" width="12" height="2" fill="#d97757"/><rect x="5" y="2" width="1" height="2" fill="#1f1a17"/><rect x="12" y="2" width="1" height="2" fill="#1f1a17"/><rect x="4" y="8" width="1" height="2" fill="#d97757"/><rect x="6" y="8" width="1" height="1" fill="#d97757"/><rect x="11" y="8" width="1" height="2" fill="#d97757"/><rect x="13" y="8" width="1" height="1" fill="#d97757"/></g></svg>
     <text x="104" y="233"><tspan fill="#d97757" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace">⠹ </tspan><tspan fill="#e8e6df">Bash</tspan><tspan fill="#8f8c84"> npm test · 14s</tspan></text>
     <text x="1220" y="233" text-anchor="end"><tspan fill="#8f8c84">cache </tspan><tspan fill="#e8e6df">94%</tspan><tspan fill="#8f8c84"> · 230k / 1M</tspan></text>
-    <rect x="60" y="252" width="1160" height="3" rx="1.5" fill="#2e3240"></rect>
+    <rect x="60" y="252" width="1160" height="3" rx="1.5" fill="#80808033"></rect>
     <rect x="60" y="252" width="266.800" height="3" rx="1.5" fill="#22c55e"></rect>
 
     <g transform="translate(0 -40)">

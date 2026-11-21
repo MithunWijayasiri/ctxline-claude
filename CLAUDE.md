@@ -81,7 +81,7 @@ No in-plugin update check. Updates come from Claude Code's marketplace auto-upda
 
 `<activity>`: working → `<spinner> <tool> <detail> · <elapsed>` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
 
-Context line: an `Svg` 3 CSS px high (`Box` heights are in cells), `preserveAspectRatio="none"`, stretched to the slot's full width; dim track `#2e3240`, filled to context % used, colored by `contextColor` through `SVG_COLORS` (an `Svg` takes CSS colors, not the theme's named ones). Context from `$.session.usage()` (no `breakdown`; local estimate, no API call).
+Context line: an `Svg` 3 CSS px high (`Box` heights are in cells), `preserveAspectRatio="none"`, stretched to the slot's full width; dim track `#80808033` (see-through gray, suits light and dark), filled to context % used, colored by `contextColor` through `SVG_COLORS` (an `Svg` takes CSS colors, not the theme's named ones). Context from `$.session.usage()` (no `breakdown`; local estimate, no API call).
 
 Sources: `$.session.usage()` (context, `five_hour`/`seven_day`) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD`, `git branch --show-current` via `$.process.run` (folder = basename of `$.session.cwd()`); `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
 
