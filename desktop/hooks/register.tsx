@@ -29,7 +29,7 @@ const ORANGE = '#ff8700'
 const RED = 'red'
 const GREY = '#6b7280'
 const ACCENT = '#d97757'
-const TRACK_COLOR = '#2e3240'
+const TRACK_COLOR = '#80808033' // see-through, so it suits light and dark backgrounds
 // An Svg takes CSS colors, where green and yellow are far darker than the theme's.
 const SVG_COLORS = { [GREEN]: '#22c55e', [YELLOW]: '#eab308', [ORANGE]: ORANGE, [RED]: '#f43f5e' }
 
