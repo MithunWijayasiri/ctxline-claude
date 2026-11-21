@@ -1,5 +1,5 @@
 // Self-contained (`claude plugin validate` refuses imports): keep in step with STYLE_IDS in hooks/looks.ts.
-export type Applied = 'ember' | 'contour' | 'phoenix' | 'dusk' | 'off'
+export type Applied = 'ember' | 'contour' | 'phoenix' | 'dusk' | 'mosaic' | 'keys' | 'off'
 
 declare module 'claude-code' {
   interface PluginState {

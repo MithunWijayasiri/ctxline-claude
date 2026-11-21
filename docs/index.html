@@ -221,10 +221,12 @@
   .theme .def{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-soft);border-radius:5px;padding:0 6px}
   .theme figcaption code{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:auto}
   .theme .what{flex-basis:100%;color:var(--muted);font-size:14.5px}
-  .t-dusk{--s0:#141019;--s2:#211a28;--tp:#f1ebf5;--tm:#9d91a8;--ac:#e07f5a}
+  .t-dusk{--s0:#141019;--s2:#211a28;--tp:#f1ebf5;--tm:#9d91a8;--ac:#a98bf0}
   .t-ember{--s0:#17120f;--s2:#261e19;--tp:#f3e9df;--tm:#a69686;--ac:#d97757}
-  .t-contour{--s0:#0f1318;--s2:#1b222b;--tp:#e8edf3;--tm:#8f9aa7;--ac:#d97757}
+  .t-contour{--s0:#0f1318;--s2:#1b222b;--tp:#e8edf3;--tm:#8f9aa7;--ac:#7fa6d9}
   .t-phoenix{--s0:#0c0a08;--s2:#1b1714;--tp:#f7f1e8;--tm:#9f9484;--ac:#e8b05a}
+  .t-mosaic{--s0:#100f1c;--s2:#1c1b30;--tp:#ecebf7;--tm:#9392b0;--ac:#a093ff}
+  .t-keys{--s0:#0a0c12;--s2:#161a22;--tp:#e9ecf2;--tm:#8b92a1;--ac:#5b9cff}
   @media(max-width:700px){.themes{grid-template-columns:1fr}}
   @media(max-width:640px){
     .opt li code,.opt .cmd code span{white-space:normal}
@@ -525,7 +527,7 @@
   <section class="block" id="themes">
     <div class="sec-head">
       <span class="kicker">Desktop themes</span>
-      <h2>Four looks to choose from</h2>
+      <h2>Six looks to choose from</h2>
       <p>A second plugin, ctxline themes, restyles the desktop app. Each look has a light version and a still background.</p>
     </div>
     <div class="themes">
@@ -572,6 +574,28 @@
           </div>
         </div>
         <figcaption><b>Phoenix</b><code>/ctxtheme phoenix</code><span class="what">A black hole, and small galaxies around it.</span></figcaption>
+      </figure>
+      <figure class="theme t-mosaic">
+        <div class="shot">
+          <img src="assets/themes/mosaic.svg" alt="Mosaic: square indigo pixel tiles evenly across the whole background, a few lit periwinkle" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Mosaic</b><code>/ctxtheme mosaic</code><span class="what">Pixel tiles across the whole screen.</span></figcaption>
+      </figure>
+      <figure class="theme t-keys">
+        <div class="shot">
+          <img src="assets/themes/keys.svg" alt="Keys: tilted keyboards in blue-grey outline across the whole background, a C key lit blue" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Keys</b><code>/ctxtheme keys</code><span class="what">Tilted keyboards in outline.</span></figcaption>
       </figure>
     </div>
     <div class="setup">
