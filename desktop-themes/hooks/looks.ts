@@ -2,7 +2,7 @@ import type { ThemeBackdropGlass, ThemeColors } from 'claude-code'
 
 import { makeColors } from './make-colors.js'
 
-// The six styles, in the order /ctxtheme lists them. Each one is a palette for
+// The styles, in the order /ctxtheme lists them. Each one is a palette for
 // both modes (makeColors turns a few anchors and role seeds into the app's ~100
 // colors) plus a backdrop scene of the same id (scenes.ts).
 

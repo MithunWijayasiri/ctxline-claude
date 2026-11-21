@@ -1,7 +1,7 @@
 import { MAJOR, MINOR } from './contour-paths'
 import type { StyleId } from './looks'
 
-// The six still backdrop scenes. A scene runs no script and loads nothing.
+// The still backdrop scenes. A scene runs no script and loads nothing.
 // Each is dark first, with a `prefers-color-scheme: light` block for the light
 // version. Keep each under 131,072 chars.
 

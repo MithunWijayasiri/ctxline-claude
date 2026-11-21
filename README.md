@@ -204,7 +204,7 @@ To update by hand, run `claude plugin update ctxline-desktop@ctxline`. To remove
 
 ### Themes
 
-A second plugin, `ctxline-desktop-themes`, adds six themes with a still background each. Light and dark follow the app.
+A second plugin, `ctxline-desktop-themes`, adds themes, each with a still background. Light and dark follow the app.
 
 <p align="center">
   <img src="docs/assets/desktop-themes-preview.jpg" alt="The four ctxline themes: Dusk, Ember, Contour and Phoenix">
@@ -214,7 +214,7 @@ A second plugin, `ctxline-desktop-themes`, adds six themes with a still backgrou
 /plugin install ctxline-desktop-themes@ctxline
 ```
 
-Open a new Code session to see it. Switch with `/ctxtheme dusk|ember|contour|phoenix|mosaic|keys`, list with `/ctxtheme`, turn off with `/ctxtheme off`. Your pick carries over to new sessions.
+Open a new Code session to see it. Switch with `/ctxtheme <style>`, list the styles with `/ctxtheme`, turn off with `/ctxtheme off`. Your pick carries over to new sessions.
 
 > [!NOTE]
 > - `/clear` removes the background for that session. A new session brings it back.

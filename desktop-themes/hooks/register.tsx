@@ -4,7 +4,7 @@ import { DEFAULT_STYLE, isStyleId, LOOKS, STYLE_IDS } from './looks'
 import type { StyleId } from './looks'
 import { SCENE_ALT, SCENES } from './scenes'
 
-// ctxline-desktop-themes: six dark looks, each accent matched to its background, for the Claude desktop
+// ctxline-desktop-themes: dark looks, each accent matched to its background, for the Claude desktop
 // app, each with a light version and a still backdrop. `/ctxtheme <style>`
 // switches; the pick is kept in $.store and set again at every session start
 // (a theme is display-only: --resume brings none back).
