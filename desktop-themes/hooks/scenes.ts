@@ -1,7 +1,7 @@
 import { MAJOR, MINOR } from './contour-paths'
 import type { StyleId } from './looks'
 
-// The four still backdrop scenes. A scene runs no script and loads nothing.
+// The still backdrop scenes. A scene runs no script and loads nothing.
 // Each is dark first, with a `prefers-color-scheme: light` block for the light
 // version. Keep each under 131,072 chars.
 
@@ -454,11 +454,149 @@ function dusk(): string {
   )
 }
 
+// ---------- Mosaic: pixel tiles over the whole scene ----------
+
+// Tiles fill the scene evenly. The middle sits under the blurred chat column,
+// so the lit tiles keep to the side strips, where they stay sharp.
+const TILE = 27
+const STRIP = 320
+
+function mosaic(): string {
+  const rnd = seeded(3)
+
+  let tiles = ''
+  for (let y = 0; y < 1000; y += TILE) {
+    for (let x = 0; x < 1600; x += TILE) {
+      if (rnd() >= 0.55) continue
+      const lit = (x < STRIP || x >= 1600 - STRIP) && rnd() < 0.04
+      const opacity = lit ? '1' : (0.12 + rnd() * 0.6).toFixed(2)
+      tiles += `<rect${lit ? ' class="lit"' : ''} x="${x + 2}" y="${y + 2}" width="23" height="23" rx="2" fill-opacity="${opacity}"/>`
+    }
+  }
+
+  const style =
+    '.s0{stop-color:#0f0e1a}.s1{stop-color:#15142a}.tile{fill:#7c76d8}.lit{fill:#a093ff}' +
+    '@media (prefers-color-scheme:light){' +
+    '.s0{stop-color:#efeef6}.s1{stop-color:#e2e1ef}.tile{fill:#6a63c8}.lit{fill:#5847c8}}'
+
+  return svg(
+    'xMidYMid slice',
+    style,
+    '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset="1" class="s1"/></linearGradient></defs>' +
+      '<rect width="1600" height="1000" fill="url(#sky)"/>' +
+      `<g class="art tile">${tiles}</g>`,
+  )
+}
+
+// ---------- Keys: keyboards in outline, tilted, repeated over the whole scene ----------
+
+type Key = [label: string, width: number, shifted?: string]
+type PlacedKey = { label: string; shifted?: string; x: number; y: number; w: number; h: number; isFnRow: boolean }
+
+const KEY_U = 132 // one key unit, gap included
+const KEY_ROWS: Key[][] = [
+  [['esc', 1], ...'F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12'.split(' ').map((k): Key => [k, 1]), ['⏻', 2]],
+  [...'`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+'.split(' ').map((k): Key => [k.charAt(0), 1, k.charAt(1)]), ['⌫', 2]],
+  [['tab', 1.5], ...[...'QWERTYUIOP'].map((k): Key => [k, 1]), ['[', 1, '{'], [']', 1, '}'], ['\\', 1.5, '|']],
+  [['caps', 1.75], ...[...'ASDFGHJKL'].map((k): Key => [k, 1]), [';', 1, ':'], ["'", 1, '"'], ['enter ⏎', 2.25]],
+  [['shift', 2.25], ...[...'ZXCVBNM'].map((k): Key => [k, 1]), [',', 1, '<'], ['.', 1, '>'], ['/', 1, '?'], ['shift', 2.75]],
+  [['fn', 1], ['ctrl', 1], ['⌥', 1], ['⌘', 1.25], ['', 5], ['⌘', 1.25], ['⌥', 1], ['←', 1], ['↑↓', 1], ['→', 1]],
+]
+const BOARD_W = 15 * KEY_U + 60 // a board plus the gap to the next
+const BOARD_H = 5.62 * KEY_U + 60 // the function row is 0.62 high
+const BRICK = 356 // each row's shift against the one below; puts the enter key a row up in the right strip
+const KEY_SCALE = 0.66
+const KEY_TILT = 16
+const LIT_C: [number, number] = [230, 520] // where the lit C key's centre lands
+
+const xml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+
+function keyLayout(): PlacedKey[] {
+  const placed: PlacedKey[] = []
+  let y = 0
+  KEY_ROWS.forEach((row, r) => {
+    const h = r === 0 ? KEY_U * 0.62 : KEY_U
+    let x = 0
+    for (const [label, w, shifted] of row) {
+      placed.push({ label, shifted, x, y, w: w * KEY_U - 12, h: h - 12, isFnRow: r === 0 })
+      x += w * KEY_U
+    }
+    y += h
+  })
+
+  return placed
+}
+
+// A key: its outer edge, the dished top inside it, the legend, and the shifted legend above it.
+// The function row is shorter, with no dish.
+function keyMarkup(k: PlacedKey, cls: string): string {
+  let out = `<g class="${cls}"><rect class="cap" x="${f(k.x)}" y="${f(k.y)}" width="${f(k.w)}" height="${f(k.h)}" rx="14"/>`
+  if (!k.isFnRow) out += `<rect class="dish" x="${f(k.x + 10)}" y="${f(k.y + 6)}" width="${f(k.w - 20)}" height="${f(k.h - 22)}" rx="10"/>`
+  const size = k.isFnRow ? 20 : k.label.length > 2 ? 22 : 30
+  const ly = k.isFnRow ? 36 : k.shifted ? 84 : 46
+  out += `<text x="${f(k.x + 22)}" y="${f(k.y + ly)}" font-size="${size}">${xml(k.label)}</text>`
+  if (k.shifted) out += `<text class="alt" x="${f(k.x + 22)}" y="${f(k.y + 42)}" font-size="20">${xml(k.shifted)}</text>`
+  if (k.label === 'F' || k.label === 'J') out += `<path class="bump" d="M${f(k.x + k.w / 2 - 12)} ${f(k.y + k.h - 26)}h24"/>`
+
+  return out + '</g>'
+}
+
+// Boards in brick rows as one repeating pattern (two rows per tile), placed so
+// one C key centres on LIT_C in the left strip. That C is drawn again lit, and
+// the enter key of the board above it, which lands in the right strip.
+function keys(): string {
+  const placed = keyLayout()
+  const board = placed.map((k) => keyMarkup(k, 'key')).join('')
+  const c = placed.find((k) => k.label === 'C')
+  const enter = placed.find((k) => k.label === 'enter ⏎')
+  if (!c || !enter) throw new Error('keys: no C or enter key')
+
+  const a = (KEY_TILT * Math.PI) / 180
+  const scene = (px: number, py: number): [number, number] => [
+    KEY_SCALE * (px * Math.cos(a) - py * Math.sin(a)),
+    KEY_SCALE * (px * Math.sin(a) + py * Math.cos(a)),
+  ]
+  const [cx, cy] = scene(c.x + c.w / 2, c.y + c.h / 2)
+  const place = `translate(${f(LIT_C[0] - cx)} ${f(LIT_C[1] - cy)}) rotate(${KEY_TILT}) scale(${KEY_SCALE})`
+  const [ex, ey] = scene(enter.x + enter.w / 2 + BRICK, enter.y + enter.h / 2 - BOARD_H)
+  const enterX = LIT_C[0] - cx + ex
+  const enterY = LIT_C[1] - cy + ey
+  if (enterX < 1280 || enterX > 1560 || enterY < 100 || enterY > 900) {
+    throw new Error(`keys: the lit enter key lands at ${f(enterX)},${f(enterY)}, outside the right strip`)
+  }
+  const lit = (k: PlacedKey, cls: string, dx: number, dy: number): string =>
+    `<g transform="${place} translate(${f(dx)} ${f(dy)})">${keyMarkup(k, cls)}</g>`
+
+  const style =
+    '.s0{stop-color:#090b11}.s1{stop-color:#0f121a}' +
+    '.key .cap{fill:none;stroke:#9aa6bd;stroke-opacity:.68;stroke-width:2}' +
+    '.key .dish{fill:none;stroke:#9aa6bd;stroke-opacity:.4;stroke-width:1.2}' +
+    '.key text{fill:#9aa6bd;font-family:Consolas,ui-monospace,monospace}.key .alt{fill-opacity:.6}' +
+    '.bump{fill:none;stroke:#9aa6bd;stroke-width:3;stroke-linecap:round}' +
+    '.hot .cap,.hot .dish{stroke:#5b9cff;stroke-opacity:1}.hot text{fill:#5b9cff}.em .cap{stroke-opacity:1}' +
+    '@media (prefers-color-scheme:light){' +
+    '.s0{stop-color:#eef0f4}.s1{stop-color:#e2e6ec}' +
+    '.key .cap,.key .dish,.bump{stroke:#55607a}.key text{fill:#55607a}' +
+    '.hot .cap,.hot .dish{stroke:#2a5fc0}.hot text{fill:#2a5fc0}}'
+
+  return svg(
+    'xMidYMid slice',
+    style,
+    '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset="1" class="s1"/></linearGradient>' +
+      `<pattern id="board" patternUnits="userSpaceOnUse" width="${f(BOARD_W)}" height="${f(2 * BOARD_H)}" patternTransform="${place}">` +
+      `${board}<g transform="translate(${BRICK} ${f(BOARD_H)})">${board}</g><g transform="translate(${f(BRICK - BOARD_W)} ${f(BOARD_H)})">${board}</g></pattern></defs>` +
+      '<rect width="1600" height="1000" fill="url(#sky)"/>' +
+      `<g class="art"><rect width="1600" height="1000" fill="url(#board)"/>${lit(c, 'key hot', 0, 0)}${lit(enter, 'key em', BRICK, -BOARD_H)}</g>`,
+  )
+}
+
 export const SCENES: Record<StyleId, string> = {
   ember: ember(),
   contour: contour(),
   phoenix: phoenix(),
   dusk: dusk(),
+  mosaic: mosaic(),
+  keys: keys(),
 }
 
 export const SCENE_ALT: Record<StyleId, string> = {
@@ -466,4 +604,6 @@ export const SCENE_ALT: Record<StyleId, string> = {
   contour: 'Orange map lines over a blue-slate background',
   phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies among the stars around it',
   dusk: 'Layered mountain ridges under a violet and orange dusk sky, the afterglow mirrored in a still lake below',
+  mosaic: 'Square indigo pixel tiles of varying strength evenly across the whole background, a few lit periwinkle near the edges',
+  keys: 'Tilted keyboards drawn in blue-grey outline across the whole background, a C key lit blue near the left edge and a brighter enter key near the right',
 }

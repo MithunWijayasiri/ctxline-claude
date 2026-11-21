@@ -2,11 +2,11 @@ import type { ThemeBackdropGlass, ThemeColors } from 'claude-code'
 
 import { makeColors } from './make-colors.js'
 
-// The four styles, in the order /ctxtheme lists them. Each one is a palette for
+// The styles, in the order /ctxtheme lists them. Each one is a palette for
 // both modes (makeColors turns a few anchors and role seeds into the app's ~100
 // colors) plus a backdrop scene of the same id (scenes.ts).
 
-export const STYLE_IDS = ['ember', 'contour', 'phoenix', 'dusk'] as const
+export const STYLE_IDS = ['ember', 'contour', 'phoenix', 'dusk', 'mosaic', 'keys'] as const
 export type StyleId = (typeof STYLE_IDS)[number]
 
 export const DEFAULT_STYLE: StyleId = 'dusk'
@@ -71,7 +71,7 @@ export const LOOKS: Record<StyleId, Look> = {
     label: 'ctxline Contour',
     id: 'ctxline-contour',
     codeTheme: { dark: 'nord', light: 'github-light' },
-    roles: { accent: '#d97757', danger: '#ef6461', success: '#62bb8e', warning: '#e6b553', pro: '#93a2f2' },
+    roles: { accent: '#7fa6d9', danger: '#ef6461', success: '#62bb8e', warning: '#e6b553', pro: '#c493d8' },
     dark: {
       gray: {
         anchors: {
@@ -98,7 +98,7 @@ export const LOOKS: Record<StyleId, Look> = {
           'text-muted': '#5e6a77',
         },
       },
-      roles: { accent: '#c4643f', danger: '#c53d3b', success: '#2f8a5f', warning: '#a4740e', pro: '#5464c9' },
+      roles: { accent: '#3f6aa8', danger: '#c53d3b', success: '#2f8a5f', warning: '#a4740e', pro: '#8a55a8' },
       git: { added: '#2f8a5f', removed: '#c53d3b' },
     },
   }),
@@ -107,7 +107,7 @@ export const LOOKS: Record<StyleId, Look> = {
     label: 'ctxline Phoenix',
     id: 'ctxline-phoenix',
     codeTheme: { dark: 'vitesse-dark', light: 'vitesse-light' },
-    // Gold instead of Claude orange, to match the black hole.
+    // Gold, to match the black hole.
     roles: { accent: '#e8b05a', danger: '#f06a5b', success: '#8fca8a', warning: '#e9c46a', pro: '#c9a0f0' },
     dark: {
       gray: {
@@ -144,7 +144,7 @@ export const LOOKS: Record<StyleId, Look> = {
     label: 'ctxline Dusk',
     id: 'ctxline-dusk',
     codeTheme: { dark: 'rose-pine', light: 'rose-pine-dawn' },
-    roles: { accent: '#e07f5a', danger: '#ec5f6a', success: '#7cc2a0', warning: '#e8b45a', pro: '#b896f0' },
+    roles: { accent: '#a98bf0', danger: '#ec5f6a', success: '#7cc2a0', warning: '#e8b45a', pro: '#e08fb8' },
     dark: {
       gray: {
         anchors: {
@@ -171,8 +171,80 @@ export const LOOKS: Record<StyleId, Look> = {
           'text-muted': '#6c6177',
         },
       },
-      roles: { accent: '#c8603c', danger: '#c23d4c', success: '#2f8768', warning: '#a26f12', pro: '#7650b8' },
+      roles: { accent: '#7650b8', danger: '#c23d4c', success: '#2f8768', warning: '#a26f12', pro: '#a8467a' },
       git: { added: '#2f8768', removed: '#c23d4c' },
+    },
+  }),
+
+  mosaic: look('Mosaic', 'indigo, pixel tiles evenly across the screen', { blur: 16, opacity: 0.55 }, {
+    label: 'ctxline Mosaic',
+    id: 'ctxline-mosaic',
+    codeTheme: { dark: 'tokyo-night', light: 'github-light' },
+    roles: { accent: '#a093ff', danger: '#ec5f6a', success: '#7cc2a0', warning: '#e8b45a', pro: '#e08fb8' },
+    dark: {
+      gray: {
+        anchors: {
+          'surface-0': '#100f1c',
+          'surface-1': '#161526',
+          'surface-2': '#1c1b30',
+          'surface-3': '#23223a',
+          'text-primary': '#ecebf7',
+          'text-secondary': '#c0bfd9',
+          'text-muted': '#9392b0',
+        },
+      },
+      git: { added: '#7cc2a0', removed: '#ec5f6a' },
+    },
+    light: {
+      gray: {
+        anchors: {
+          'surface-0': '#e8e7f2',
+          'surface-1': '#efeef6',
+          'surface-2': '#f8f8fc',
+          'surface-3': '#f8f8fc',
+          'text-primary': '#1a1930',
+          'text-secondary': '#45445f',
+          'text-muted': '#64637f',
+        },
+      },
+      roles: { accent: '#5847c8', danger: '#c23d4c', success: '#2f8768', warning: '#a26f12', pro: '#a8467a' },
+      git: { added: '#2f8768', removed: '#c23d4c' },
+    },
+  }),
+
+  keys: look('Keys', 'blue-black, tilted keyboards in outline across the screen', { blur: 16, opacity: 0.55 }, {
+    label: 'ctxline Keys',
+    id: 'ctxline-keys',
+    codeTheme: { dark: 'github-dark-dimmed', light: 'github-light' },
+    roles: { accent: '#5b9cff', danger: '#ef6461', success: '#6fc39a', warning: '#e6b553', pro: '#c493d8' },
+    dark: {
+      gray: {
+        anchors: {
+          'surface-0': '#0a0c12',
+          'surface-1': '#10131a',
+          'surface-2': '#161a22',
+          'surface-3': '#1c212b',
+          'text-primary': '#e9ecf2',
+          'text-secondary': '#b9bfcc',
+          'text-muted': '#8b92a1',
+        },
+      },
+      git: { added: '#6fc39a', removed: '#ef6461' },
+    },
+    light: {
+      gray: {
+        anchors: {
+          'surface-0': '#e6e9ee',
+          'surface-1': '#eef0f4',
+          'surface-2': '#f8f9fb',
+          'surface-3': '#f8f9fb',
+          'text-primary': '#13161d',
+          'text-secondary': '#3c424e',
+          'text-muted': '#5d6370',
+        },
+      },
+      roles: { accent: '#2a5fc0', danger: '#c53d3b', success: '#2a8560', warning: '#9a6d0b', pro: '#8a55a8' },
+      git: { added: '#2a8560', removed: '#c53d3b' },
     },
   }),
 }
