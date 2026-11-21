@@ -94,7 +94,7 @@ Then add both entries to `~/.claude/settings.json`. The second one draws a row p
 | `$` Cost | Session cost in USD |
 | Task | The in-progress todo |
 
-Segments past model and context appear only when there is data for them. Usage limits show for Pro/Max subscriptions only. Bars change color as you near a limit. On a narrow terminal the line wraps to two (needs Claude Code v2.1.153+).
+Segments past model and context appear only when there is data for them. Usage limits show for Pro/Max subscriptions only. Bars change color as you near a limit. On a narrow terminal the line wraps to two, on Claude Code v2.1.153 or later.
 
 ## Configuration
 
@@ -140,7 +140,7 @@ npx ctxline-claude@latest
 npx ctxline-claude uninstall
 ```
 
-This removes the `statusLine` and `subagentStatusLine` entries from `settings.json` (after a backup), deletes the script, and clears the cache. It leaves other statuslines alone.
+This backs up `settings.json`, removes the `statusLine` and `subagentStatusLine` entries from it, deletes the script, and clears the cache. It leaves other statuslines alone.
 
 <details>
 <summary>Manual uninstall</summary>
@@ -178,8 +178,8 @@ Install it from **Plugins → Add → Add Marketplace** with `MithunWijayasiri/c
 
 The plugin adds, above the prompt:
 
-- A pixel Claude pet (acts out what Claude is doing — typing, looking around, thinking — and falls asleep after an hour idle), then the folder, branch, commits ahead / behind, and what Claude is doing now (tool and elapsed time, or the last turn's length and tool count).
-- On the right, cache hit rate, context tokens used out of the window, and how much of the 5-hour and weekly limits (and a model-specific one, e.g. Fable, on plans that have one) is used.
+- A pixel Claude pet. It types, looks around or thinks to match what Claude is doing, and falls asleep after an hour idle. Then the folder, branch, commits ahead / behind, and what Claude is doing now: the tool and elapsed time, or the last turn's length and tool count.
+- On the right, the cache hit rate, context tokens used out of the window, and how much of the 5-hour and weekly limits is used. Plans with a model-specific limit, such as Fable, show that one too.
 - A thin line under the row that fills as the context window does, going from green to red.
 
 > [!IMPORTANT]

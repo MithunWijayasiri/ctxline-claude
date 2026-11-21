@@ -11,7 +11,7 @@
     {
       "name": "ctxline-desktop-themes",
       "source": "./desktop-themes",
-      "description": "Themes for the Claude desktop app. Switch with /ctxtheme; run /ctxtheme off before uninstalling. Learn more at ctxline.js.org"
+      "description": "Themes for the Claude desktop app. Switch with /ctxtheme. Run /ctxtheme off before uninstalling. Learn more at ctxline.js.org"
     }
   ]
 }
