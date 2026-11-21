@@ -124,6 +124,9 @@ function simplify(pts, tol) {
   return simplify(pts.slice(0, at + 1), tol).slice(0, -1).concat(simplify(pts.slice(at), tol))
 }
 
+// Points snap to the 0.5 output grid first, so relative steps carry no rounding drift.
+const snap = p => [Math.round(p[0] * 2) / 2, Math.round(p[1] * 2) / 2]
+
 // Relative numbers, each pair joined with the least text.
 const num = v => String(Math.round(v * 2) / 2 || 0).replace(/^(-?)0\./, '$1.')
 const sep = s => (s.startsWith('-') ? s : ' ' + s)
@@ -139,9 +142,11 @@ function toPath(lines) {
     const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
     const closed = pts.length > 3 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]
     const ring = closed ? pts.slice(0, -1) : pts
-    let cur = closed ? mid(ring[ring.length - 1], ring[0]) : ring[0]
+    let cur = snap(closed ? mid(ring[ring.length - 1], ring[0]) : ring[0])
     d += `M${num(cur[0])} ${num(cur[1])}`
     const step = (c, to) => {
+      c = snap(c)
+      to = snap(to)
       d += `q${pair(c[0] - cur[0], c[1] - cur[1]).trimStart()}${pair(to[0] - cur[0], to[1] - cur[1])}`
       cur = to
     }
@@ -149,7 +154,7 @@ function toPath(lines) {
       for (let n = 0; n < ring.length; n++) step(ring[n], mid(ring[n], ring[(n + 1) % ring.length]))
     } else {
       for (let n = 1; n < ring.length - 1; n++) step(ring[n], mid(ring[n], ring[n + 1]))
-      const end = ring[ring.length - 1]
+      const end = snap(ring[ring.length - 1])
       d += `l${pair(end[0] - cur[0], end[1] - cur[1]).trimStart()}`
       cur = end
     }
