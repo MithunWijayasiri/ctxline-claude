@@ -533,7 +533,8 @@ function mosaic(): string {
     '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset="1" class="s1"/></linearGradient>' +
       '<radialGradient id="glow"><stop offset="0" class="g0"/><stop offset="1" class="g0" stop-opacity="0"/></radialGradient></defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      `<g class="art"><g class="pool">${pools}</g><g class="halo">${glows}</g><g class="tile">${tiles}</g></g>`,
+      // The whole art at 75%, so the tiles stay calm in both modes.
+      `<g class="art"><g opacity=".75"><g class="pool">${pools}</g><g class="halo">${glows}</g><g class="tile">${tiles}</g></g></g>`,
   )
 }
 
