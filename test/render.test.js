@@ -90,7 +90,7 @@ function fixtureWithRateLimits(remaining, { five = 23.5, seven = 41.2 } = {}) {
     session_id: 'test-session',
     context_window: { remaining_percentage: remaining },
     rate_limits: {
-      five_hour: { used_percentage: five, resets_at: nowSec + 2 * 3600 },
+      ...(five != null && { five_hour: { used_percentage: five, resets_at: nowSec + 2 * 3600 } }),
       seven_day: { used_percentage: seven, resets_at: nowSec + 62 * 3600 }
     }
   });
@@ -432,6 +432,13 @@ test('stdin rate_limits -> 5h/7d render with no cache and no creds', () => {
   assert.match(clean, /W41 ↺ 2d\d{1,2}h/);                      // epoch-seconds -> day-aware countdown
 });
 
+test('stdin rate_limits with seven_day only (weekly-only plan) -> W renders, no H', () => {
+  const { code, clean } = run(fixtureWithRateLimits(40, { five: null }), { usage: true });
+  assert.strictEqual(code, 0);
+  assert.match(clean, /W41 ↺ 2d\d{1,2}h/);
+  assert.doesNotMatch(clean, /\bH\d/);
+});
+
 // Model-scoped weekly limits ("Fable weekly limit at 86%"). The /usage payload reports
 // these in a `limits` array; they never appear on stdin, so they always come from the
 // cache/API path. parseScopedLimits is exercised directly against the real payload shape.
@@ -527,11 +534,12 @@ test('parseUsagePayload parses a real /usage response body into { fiveHour, week
   });
 });
 
-test('parseUsagePayload returns null when five_hour is missing', () => {
-  assert.strictEqual(parseUsagePayload(JSON.stringify({ seven_day: { utilization: 50 } })), null);
+test('parseUsagePayload keeps weekly when five_hour is missing (weekly-only plan)', () => {
+  const parsed = parseUsagePayload(JSON.stringify({ five_hour: null, seven_day: { utilization: 50 } }));
+  assert.deepStrictEqual(parsed, { fiveHour: null, weekly: { percentage: 50, resetsAt: null }, models: [] });
 });
 
-test('parseUsagePayload returns null when five_hour.utilization is non-finite', () => {
+test('parseUsagePayload returns null when neither five_hour nor seven_day is usable', () => {
   assert.strictEqual(parseUsagePayload(JSON.stringify({ five_hour: { utilization: 'NaN' } })), null);
 });
 
