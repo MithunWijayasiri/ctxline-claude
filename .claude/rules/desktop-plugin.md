@@ -33,7 +33,7 @@ Keep current: a `desktop/` change that makes anything here wrong → update this
 
 ## Data sources
 
-- `$.session.usage()` — context (local estimate, no API call) + `five_hour`/`seven_day`; every 30s + after each turn.
+- `$.session.usage({ breakdown: 'summary' })` — context (local estimate, no API call) + `five_hour`/`seven_day`; every 30s + after each turn. Context window = `breakdown.rawMaxTokens` (the `autoCompactWindow` cap `/context` uses), capped at `context.window`; fill % recomputed from tokens when they differ.
 - Scoped weekly limits — only in `/api/oauth/usage`: `$.http.fetch` with `$.session.authorize()` (bearer only; none on an API key); session start + every 30s. Latest fetch failed → letters kept, grey `00%`.
 - Git via `$.process.run`; folder = basename of `$.session.cwd()`.
 - Cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) over main-loop `turn.complete` `usage`; subagent turns (`e.agentId` set) ignored; resets on `session.start` (incl. hot reload).

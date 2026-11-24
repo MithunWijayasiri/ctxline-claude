@@ -103,9 +103,7 @@ async function refresh($: EngineInterface): Promise<void> {
     const found = usage.rateLimits.find(r => r.kind === kind)
     return found && { percent: Math.round(found.percentUsed) }
   }
-  // `context.window` is the model's full window. When the person caps it (`autoCompactWindow`),
-  // /context measures against the compaction window, `breakdown.rawMaxTokens`: use that one so
-  // the token total and the fill line match /context.
+  // rawMaxTokens: the autoCompactWindow cap /context measures against
   const compactWindow = usage.context.breakdown?.rawMaxTokens
   const contextWindow = compactWindow && compactWindow > 0 ? Math.min(compactWindow, usage.context.window) : usage.context.window
   const contextTokens = usage.context.tokens
