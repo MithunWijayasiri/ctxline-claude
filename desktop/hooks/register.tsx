@@ -94,7 +94,7 @@ async function git($: EngineInterface, cwd: string, args: string[]): Promise<str
 async function refresh($: EngineInterface): Promise<void> {
   const cwd = await $.session.cwd()
   const [usage, counts, branch] = await Promise.all([
-    $.session.usage(),
+    $.session.usage({ breakdown: 'summary' }),
     git($, cwd, ['rev-list', '--left-right', '--count', '@{u}...HEAD']),
     git($, cwd, ['branch', '--show-current']),
   ])
@@ -103,14 +103,22 @@ async function refresh($: EngineInterface): Promise<void> {
     const found = usage.rateLimits.find(r => r.kind === kind)
     return found && { percent: Math.round(found.percentUsed) }
   }
+  // rawMaxTokens: the autoCompactWindow cap /context measures against
+  const compactWindow = usage.context.breakdown?.rawMaxTokens
+  const contextWindow = compactWindow && compactWindow > 0 ? Math.min(compactWindow, usage.context.window) : usage.context.window
+  const contextTokens = usage.context.tokens
+  const contextPercent =
+    contextWindow !== usage.context.window && contextTokens !== undefined
+      ? (contextTokens / contextWindow) * 100
+      : usage.context.percent
   const next: Snapshot = {
     folder: cwd.split(/[\\/]/).filter(Boolean).pop() ?? cwd,
     branch: branch || undefined, // empty when HEAD is detached
     ahead,
     behind,
-    contextUsed: Math.max(0, Math.min(100, Math.round(usage.context.percent ?? 0))),
-    contextTokens: usage.context.tokens,
-    contextWindow: usage.context.window,
+    contextUsed: Math.max(0, Math.min(100, Math.round(contextPercent ?? 0))),
+    contextTokens,
+    contextWindow,
     fiveHour: limit('five_hour'),
     sevenDay: limit('seven_day'),
   }
