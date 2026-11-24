@@ -1,7 +1,7 @@
-import { MAJOR, MINOR } from './contour-paths'
+import { MAJOR, MINOR, PEAKS, SHADE_DARK, SHADE_LIT } from './contour-paths'
 import type { StyleId } from './looks'
 
-// The four still backdrop scenes. A scene runs no script and loads nothing.
+// The still backdrop scenes. A scene runs no script and loads nothing.
 // Each is dark first, with a `prefers-color-scheme: light` block for the light
 // version. Keep each under 131,072 chars.
 
@@ -62,25 +62,52 @@ function ember(): string {
   )
 }
 
-// ---------- Contour: orange map lines over a blue-slate ground ----------
+// ---------- Contour: map lines over hillshaded relief ----------
+
+// Lit from the upper right, where the ground's gradient is brightest. Every
+// fifth line is an index line. Summits in the side strips (the middle sits
+// under the blurred chat column) get a warm glow and a spot height.
+const PEAK_STRIP = 340
 
 function contour(): string {
+  const shade = (steps: string[]): string =>
+    steps.map((d, i) => (d ? `<path fill-opacity="${f((i + 1) / steps.length)}" d="${d}"/>` : '')).join('')
+  const summits = PEAKS.filter(
+    ([x, y]) => (x < PEAK_STRIP || x > 1600 - PEAK_STRIP) && x > 40 && x < 1560 && y > 50 && y < 950,
+  )
+  if (summits.length < 2) throw new Error(`contour: only ${summits.length} summits in the side strips`)
+  const marks = summits
+    .map(([x, y, h]) => {
+      const right = x < 800
+      return (
+        `<circle class="pk-glow" cx="${x}" cy="${y}" r="70"/><path class="pk" d="M${x} ${y - 5}l5 9h-10z"/>` +
+        `<text x="${right ? x + 10 : x - 10}" y="${y + 4}"${right ? '' : ' text-anchor="end"'}>${h}</text>`
+      )
+    })
+    .join('')
+
   const style =
-    '.t0{stop-color:#18202b}.t1{stop-color:#0f1318}' +
-    '.mn{fill:none;stroke:rgba(217,119,87,.26);stroke-width:1.1}' +
-    '.mj{fill:none;stroke:rgba(217,119,87,.5);stroke-width:1.5}' +
+    '.t0{stop-color:#18202b}.t1{stop-color:#0f1318}.p0{stop-color:rgba(232,140,98,.45)}.p1{stop-color:rgba(232,140,98,0)}' +
+    '.hl{fill:#9fb4cf;opacity:.16}.sh{fill:#030507;opacity:.4}' +
+    '.mn{fill:none;stroke:rgba(217,119,87,.24);stroke-width:1.1}' +
+    '.mj{fill:none;stroke:rgba(232,135,96,.72);stroke-width:1.6}' +
+    '.pk-glow{fill:url(#peak)}.pk{fill:#f0a07a}text{fill:#f0a07a;font:11px Consolas,ui-monospace,monospace;letter-spacing:.5px}' +
     '@media (prefers-color-scheme:light){' +
-    '.t0{stop-color:#f1f3f4}.t1{stop-color:#e3e8ec}' +
-    '.mn{stroke:rgba(176,92,54,.26)}.mj{stroke:rgba(176,92,54,.5)}}'
+    '.t0{stop-color:#f1f3f4}.t1{stop-color:#e3e8ec}.p0{stop-color:rgba(214,120,80,.3)}' +
+    '.hl{fill:#fff;opacity:.6}.sh{fill:#51627a;opacity:.22}' +
+    '.mn{stroke:rgba(176,92,54,.26)}.mj{stroke:rgba(176,92,54,.6)}.pk,text{fill:#b05c36}}'
 
   return svg(
     'xMidYMid slice',
     style,
     '<defs>' +
       '<radialGradient id="sky" cx=".85" cy=".1" r=".9"><stop offset="0" class="t0"/><stop offset=".75" class="t1"/></radialGradient>' +
+      '<radialGradient id="peak"><stop offset="0" class="p0"/><stop offset="1" class="p1"/></radialGradient>' +
+      '<filter id="relief" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="34"/></filter>' +
       '</defs>' +
       '<rect width="1600" height="1000" fill="url(#sky)"/>' +
-      `<g class="art"><path class="mn" d="${MINOR}"/><path class="mj" d="${MAJOR}"/></g>`,
+      `<g class="art"><g filter="url(#relief)"><g class="hl">${shade(SHADE_LIT)}</g><g class="sh">${shade(SHADE_DARK)}</g></g>` +
+      `<path class="mn" d="${MINOR}"/><path class="mj" d="${MAJOR}"/>${marks}</g>`,
   )
 }
 
@@ -454,16 +481,204 @@ function dusk(): string {
   )
 }
 
+// ---------- Mosaic: pixel tiles lit by soft light pools ----------
+
+// The middle sits under the blurred chat column, so the light pools, the lit
+// tiles and their glow keep to the side strips; the middle stays dim and sparse.
+const TILE = 27
+const POOLS: { x: number; y: number; r: number; k: number }[] = [
+  { x: 170, y: 320, r: 520, k: 1 },
+  { x: 1440, y: 700, r: 560, k: 1 },
+  { x: 230, y: 930, r: 320, k: 0.55 },
+]
+
+// Light at a point, 0..1: each pool falls off smoothly to nothing at its radius.
+function poolLight(x: number, y: number): number {
+  let sum = 0
+  for (const p of POOLS) {
+    const t = Math.hypot(x - p.x, y - p.y) / p.r
+    if (t < 1) sum += p.k * (1 - t * t) ** 2
+  }
+
+  return Math.min(1, sum)
+}
+
+function mosaic(): string {
+  const rnd = seeded(3)
+
+  let glows = ''
+  let tiles = ''
+  for (let y = 0; y < 1000; y += TILE) {
+    for (let x = 0; x < 1600; x += TILE) {
+      const light = poolLight(x + TILE / 2, y + TILE / 2)
+      if (rnd() >= 0.3 + 0.42 * light) continue
+      const lit = light > 0.4 && rnd() < 0.12 * light
+      const opacity = lit ? 1 : 0.08 + rnd() * 0.2 + light * 0.62 * (0.55 + 0.45 * rnd())
+      tiles += `<rect${lit ? ' class="lit"' : ''} x="${x + 2}" y="${y + 2}" width="23" height="23" rx="2" fill-opacity="${opacity.toFixed(2).replace(/^0/, '')}"/>`
+      if (lit) glows += `<circle cx="${x + 13.5}" cy="${y + 13.5}" r="40"/>`
+    }
+  }
+  const pools = POOLS.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="${f(p.r * 0.8 * p.k)}"/>`).join('')
+
+  const style =
+    '.s0{stop-color:#0f0e1a}.s1{stop-color:#15142a}.g0{stop-color:#7a6bff}.tile{fill:#7c76d8}.lit{fill:#b4a9ff}' +
+    '.pool{fill:url(#glow);opacity:.32}.halo{fill:url(#glow);opacity:.55}' +
+    '@media (prefers-color-scheme:light){' +
+    '.s0{stop-color:#efeef6}.s1{stop-color:#e2e1ef}.g0{stop-color:#8f84ff}.tile{fill:#6a63c8}.lit{fill:#5847c8}' +
+    '.pool{opacity:.18}.halo{opacity:.3}}'
+
+  return svg(
+    'xMidYMid slice',
+    style,
+    '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset="1" class="s1"/></linearGradient>' +
+      '<radialGradient id="glow"><stop offset="0" class="g0"/><stop offset="1" class="g0" stop-opacity="0"/></radialGradient></defs>' +
+      '<rect width="1600" height="1000" fill="url(#sky)"/>' +
+      // The whole art at 75%, so the tiles stay calm in both modes.
+      `<g class="art"><g opacity=".75"><g class="pool">${pools}</g><g class="halo">${glows}</g><g class="tile">${tiles}</g></g></g>`,
+  )
+}
+
+// ---------- Keys: keyboards in outline, tilted, repeated over the whole scene ----------
+
+type Key = [label: string, width: number, shifted?: string]
+type PlacedKey = { label: string; shifted?: string; x: number; y: number; w: number; h: number; isFnRow: boolean }
+
+const KEY_U = 132 // one key unit, gap included
+const KEY_ROWS: Key[][] = [
+  [['esc', 1], ...'F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12'.split(' ').map((k): Key => [k, 1]), ['⏻', 2]],
+  [...'`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+'.split(' ').map((k): Key => [k.charAt(0), 1, k.charAt(1)]), ['⌫', 2]],
+  [['tab', 1.5], ...[...'QWERTYUIOP'].map((k): Key => [k, 1]), ['[', 1, '{'], [']', 1, '}'], ['\\', 1.5, '|']],
+  [['caps', 1.75], ...[...'ASDFGHJKL'].map((k): Key => [k, 1]), [';', 1, ':'], ["'", 1, '"'], ['enter ⏎', 2.25]],
+  [['shift', 2.25], ...[...'ZXCVBNM'].map((k): Key => [k, 1]), [',', 1, '<'], ['.', 1, '>'], ['/', 1, '?'], ['shift', 2.75]],
+  [['fn', 1], ['ctrl', 1], ['⌥', 1], ['⌘', 1.25], ['', 5], ['⌘', 1.25], ['⌥', 1], ['←', 1], ['↑↓', 1], ['→', 1]],
+]
+const BOARD_W = 15 * KEY_U + 60 // a board plus the gap to the next
+const BOARD_H = 5.62 * KEY_U + 60 // the function row is 0.62 high
+const BRICK = 356 // each row's shift against the one below; puts the enter key a row up in the right strip
+const KEY_SCALE = 0.66
+const KEY_TILT = 16
+const LIT_C: [number, number] = [230, 520] // where the lit C key's centre lands
+
+const xml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+
+function keyLayout(): PlacedKey[] {
+  const placed: PlacedKey[] = []
+  let y = 0
+  KEY_ROWS.forEach((row, r) => {
+    const h = r === 0 ? KEY_U * 0.62 : KEY_U
+    let x = 0
+    for (const [label, w, shifted] of row) {
+      placed.push({ label, shifted, x, y, w: w * KEY_U - 12, h: h - 12, isFnRow: r === 0 })
+      x += w * KEY_U
+    }
+    y += h
+  })
+
+  return placed
+}
+
+// A key: its outer edge, the dished top inside it, the legend, and the shifted legend above it.
+// The function row is shorter, with no dish.
+function keyMarkup(k: PlacedKey, cls: string): string {
+  let out = `<g class="${cls}"><rect class="cap" x="${f(k.x)}" y="${f(k.y)}" width="${f(k.w)}" height="${f(k.h)}" rx="14"/>`
+  if (!k.isFnRow) out += `<rect class="dish" x="${f(k.x + 10)}" y="${f(k.y + 6)}" width="${f(k.w - 20)}" height="${f(k.h - 22)}" rx="10"/>`
+  const size = k.isFnRow ? 20 : k.label.length > 2 ? 22 : 30
+  const ly = k.isFnRow ? 36 : k.shifted ? 84 : 46
+  out += `<text x="${f(k.x + 22)}" y="${f(k.y + ly)}" font-size="${size}">${xml(k.label)}</text>`
+  if (k.shifted) out += `<text class="alt" x="${f(k.x + 22)}" y="${f(k.y + 42)}" font-size="20">${xml(k.shifted)}</text>`
+  if (k.label === 'F' || k.label === 'J') out += `<path class="bump" d="M${f(k.x + k.w / 2 - 12)} ${f(k.y + k.h - 26)}h24"/>`
+
+  return out + '</g>'
+}
+
+// Boards in brick rows, placed so one C key centres on LIT_C in the left strip.
+// A pattern holds one board per two rows; a second fill shifted by a brick
+// draws the rows between. That C is drawn again lit, and so is the enter key of
+// the board above it, which lands in the right strip.
+// Backlight: a blurred copy of the caps under the board leaks out between the
+// keys, and the legends glow, both strongest round the two lit keys.
+function keys(): string {
+  const placed = keyLayout()
+  const c = placed.find((k) => k.label === 'C')
+  const enter = placed.find((k) => k.label === 'enter ⏎')
+  if (!c || !enter) throw new Error('keys: no C or enter key')
+
+  const a = (KEY_TILT * Math.PI) / 180
+  const scene = (px: number, py: number): [number, number] => [
+    KEY_SCALE * (px * Math.cos(a) - py * Math.sin(a)),
+    KEY_SCALE * (px * Math.sin(a) + py * Math.cos(a)),
+  ]
+  const [cx, cy] = scene(c.x + c.w / 2, c.y + c.h / 2)
+  const place = `translate(${f(LIT_C[0] - cx)} ${f(LIT_C[1] - cy)}) rotate(${KEY_TILT}) scale(${KEY_SCALE})`
+  const [ex, ey] = scene(enter.x + enter.w / 2 + BRICK, enter.y + enter.h / 2 - BOARD_H)
+  const enterX = LIT_C[0] - cx + ex
+  const enterY = LIT_C[1] - cy + ey
+  if (enterX < 1280 || enterX > 1560 || enterY < 100 || enterY > 900) {
+    throw new Error(`keys: the lit enter key lands at ${f(enterX)},${f(enterY)}, outside the right strip`)
+  }
+
+  // Board content sits PAD in from the tile edge, so the blurred backlight isn't cut at it.
+  const PAD = 30
+  const pattern = (id: string, body: string): string =>
+    `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${f(BOARD_W)}" height="${f(2 * BOARD_H)}" patternTransform="${place} translate(-${PAD} -${PAD})"><g transform="translate(${PAD} ${PAD})">${body}</g></pattern>`
+  const [bx, by] = scene(BRICK, BOARD_H)
+  const fill = (id: string): string =>
+    `<rect width="1600" height="1000" fill="url(#${id})"/><rect transform="translate(${f(bx)} ${f(by)})" x="${f(-bx)}" y="${f(-by)}" width="1600" height="1000" fill="url(#${id})"/>`
+
+  const board = placed.map((k) => keyMarkup(k, 'key')).join('')
+  const under = placed.map((k) => `<rect x="${f(k.x)}" y="${f(k.y)}" width="${f(k.w)}" height="${f(k.h)}" rx="14"/>`).join('')
+  const legends = board.replace(/<(?!\/?text)[^>]*>/g, '')
+
+  const lit = (k: PlacedKey, dx: number, dy: number): string =>
+    `<g transform="${place} translate(${f(dx)} ${f(dy)})"><rect class="bloom" x="${f(k.x)}" y="${f(k.y)}" width="${f(k.w)}" height="${f(k.h)}" rx="14" filter="url(#bloom)"/>${keyMarkup(k, 'key hot')}</g>`
+
+  const style =
+    '.s0{stop-color:#090b11}.s1{stop-color:#0f121a}' +
+    '.key .cap{fill:#0c0f16;stroke:#9aa6bd;stroke-opacity:.6;stroke-width:2}' +
+    '.key .dish{fill:none;stroke:#9aa6bd;stroke-opacity:.32;stroke-width:1.2}' +
+    'text{font-family:Consolas,ui-monospace,monospace}.key text{fill:#9aa6bd}.key .alt{fill-opacity:.6}' +
+    '.bump{fill:none;stroke:#9aa6bd;stroke-width:3;stroke-linecap:round}' +
+    '.under{fill:#4a93ff}.lg{fill:#6aa8ff}.alt{fill-opacity:.6}' +
+    '.bloom{fill:#5b9cff}.hot .cap{fill:#0f1a2e}.hot .cap,.hot .dish{stroke:#7ab0ff;stroke-opacity:1}.hot text{fill:#a9cdff}' +
+    '@media (prefers-color-scheme:light){' +
+    '.s0{stop-color:#eef0f4}.s1{stop-color:#e2e6ec}' +
+    '.key .cap{fill:#f7f8fa}.key .cap,.key .dish,.bump{stroke:#55607a}.key text{fill:#55607a}' +
+    '.backlight{display:none}.lg{fill:#2a5fc0}.bloom{opacity:.4}' +
+    '.hot .cap{fill:#e6efff}.hot .cap,.hot .dish{stroke:#2a5fc0}.hot text{fill:#2a5fc0}}'
+
+  return svg(
+    'xMidYMid slice',
+    style,
+    '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset="1" class="s1"/></linearGradient>' +
+      '<radialGradient id="pool"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
+      '<mask id="light" maskUnits="userSpaceOnUse" x="0" y="0" width="1600" height="1000"><rect width="1600" height="1000" fill="#fff" fill-opacity=".1"/>' +
+      `<circle cx="${LIT_C[0]}" cy="${LIT_C[1]}" r="480" fill="url(#pool)"/><circle cx="${f(enterX)}" cy="${f(enterY)}" r="440" fill="url(#pool)"/></mask>` +
+      '<filter id="soft"><feGaussianBlur stdDeviation="7"/></filter>' +
+      '<filter id="bloom" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>' +
+      pattern('under', `<g class="under">${under}</g>`) +
+      pattern('board', board) +
+      pattern('legend', `<g class="lg">${legends}</g>`) +
+      '</defs><rect width="1600" height="1000" fill="url(#sky)"/>' +
+      `<g class="art"><g class="backlight" mask="url(#light)"><g filter="url(#soft)">${fill('under')}</g></g>` +
+      `${fill('board')}<g mask="url(#light)">${fill('legend')}</g>` +
+      `${lit(c, 0, 0)}${lit(enter, BRICK, -BOARD_H)}</g>`,
+  )
+}
+
 export const SCENES: Record<StyleId, string> = {
   ember: ember(),
   contour: contour(),
   phoenix: phoenix(),
   dusk: dusk(),
+  mosaic: mosaic(),
+  keys: keys(),
 }
 
 export const SCENE_ALT: Record<StyleId, string> = {
   ember: 'Glowing coals along the bottom of a warm charcoal background, a soft haze above them',
-  contour: 'Orange map lines over a blue-slate background',
+  contour: 'Orange map lines over softly shaded blue-slate hills lit from the upper right, a few summits near the edges glowing with their spot heights',
   phoenix: 'A large gold black hole on the right edge, its striped disk streaming out to the left, small galaxies among the stars around it',
   dusk: 'Layered mountain ridges under a violet and orange dusk sky, the afterglow mirrored in a still lake below',
+  mosaic: 'Square indigo pixel tiles across the whole background, brightening into soft periwinkle light pools near the edges, a few lit tiles glowing in them',
+  keys: 'Tilted dark keyboards across the whole background, a C key lit blue near the left edge and an enter key lit blue near the right, blue backlight leaking between the keys around them',
 }

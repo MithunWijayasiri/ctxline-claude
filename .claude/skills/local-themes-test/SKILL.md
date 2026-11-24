@@ -53,8 +53,8 @@ Command (the app prefixes every reply with `ctxline-desktop-themes:` and draws i
 - `/ctxtheme off` → app's own look; new session stays off.
 - New Code session → last pick re-applied.
 - `/resume` an older Code session → pick re-applied (`session.start` runs; found by testing).
-- `/clear` → background gone for that session: known limitation, documented in README (see `CLAUDE.md` → Desktop themes plugin for what was tried). A new Code session brings it back.
-- `/branch` → theme stays or comes back? Untested. Record the finding in `CLAUDE.md` → Desktop themes plugin.
+- `/clear` → background gone for that session: known limitation, documented in README (see `.claude/rules/desktop-themes.md` for what was tried). A new Code session brings it back.
+- `/branch` → theme stays or comes back? Untested. Record the finding in `.claude/rules/desktop-themes.md`.
 
 Backdrops (dark mode):
 - `dusk` — layered mountain ridges under violet-orange sky, backlit crests, afterglow mirrored in still lake.
@@ -65,7 +65,7 @@ Backdrops (dark mode):
 
 Modes:
 - App light mode → palette switches to the light version.
-- Backdrop light version follows `prefers-color-scheme` — untested whether the frame follows the app's mode or the OS's. Set app and OS to different modes, check which the backdrop follows, record the finding in `CLAUDE.md` → Desktop themes plugin (replace "untested").
+- Backdrop light version follows `prefers-color-scheme` — untested whether the frame follows the app's mode or the OS's. Set app and OS to different modes, check which the backdrop follows, record the finding in `.claude/rules/desktop-themes.md` (replace "untested").
 
 Live edits:
 - Save `hooks/register.tsx`, `hooks/looks.ts` or `hooks/scenes.ts` → hot reload re-runs `session.start` → saved pick re-applied with the new code.

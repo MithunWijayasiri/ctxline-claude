@@ -13,7 +13,7 @@ dir ⎇ branch ↑N↓M │ model · effort │ C<used> <bar> │ H<pct> ↺ <re
 
 Auto-update (default on; `CTXLINE_DISABLE=autoupdate` off): the detached `update-check` child, on finding a newer npm release, downloads `statusline.js` from GitHub raw at tag `v<latest>`, requires its `VERSION` to equal `<latest>`, and swaps it in via temp file + rename. Only when the running file is `~/.claude/hooks/statusline.js` — a working-tree copy (local testing) is never overwritten. Every release needs its `v<version>` tag pushed, or installs fail and fall back to the nudge.
 
-Repo also ships `ctxline-desktop`, a Claude Code plugin (mod) for the desktop app's Code tab, which doesn't run statusline scripts. See [Desktop plugin](#desktop-plugin). And `ctxline-desktop-themes`, a theme mod for the desktop app. See [Desktop themes plugin](#desktop-themes-plugin).
+Repo also ships `ctxline-desktop`, a Claude Code plugin (mod) for the desktop app's Code tab, which doesn't run statusline scripts. And `ctxline-desktop-themes`, a theme mod for the desktop app. See [Desktop plugins](#desktop-plugins).
 
 ## Commands
 
@@ -57,55 +57,14 @@ Segment sources, color thresholds, layout/wrap rules, full edit-point map: `.cla
 
 `node statusline.js subagent` — one `{"id","content"}` JSON row per running task in the agent panel. Reads only stdin (capped at `SUBAGENT_TIMEOUT_MS`); bad payload → emit nothing, exit 0. Row `name │ Model · effort │ C<used> <bar> │ ⏱ <elapsed>`; every segment past `name` is independently conditional.
 
-## Desktop plugin
+## Desktop plugins
 
-`desktop/` — function-hooks plugin `ctxline-desktop`, own version (`desktop/.claude-plugin/plugin.json`, independent of npm `VERSION`). Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`, `source: "./desktop"`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install ctxline-desktop@ctxline`. Not in npm `files`, not touched by installers.
+Repo root is plugin marketplace `ctxline` (`.claude-plugin/marketplace.json`). Install: `/plugin marketplace add MithunWijayasiri/ctxline-claude` → `/plugin install <plugin>@ctxline`. Both plugins: own `version` (not npm `VERSION`), not in npm `files`, not touched by installers. Marketplace `name` = "from <name>" label + `@` suffix, no spaces. Validate marketplace: `claude plugin validate .`.
 
-Files: `hooks/hooks.json` → `hooks/register.tsx` (the module) → `hooks/pet.ts` (pixel pet SVG frames); `types/index.d.ts` (`PluginState['ctxline-desktop']`: `snap`, `activity`, `frame`, `cache`, `models`; state keys must match plugin name or validation fails).
+- `desktop/` — `ctxline-desktop`, status rows for the Code tab → `.claude/rules/desktop-plugin.md`.
+- `desktop-themes/` — `ctxline-desktop-themes`, colors + backdrops → `.claude/rules/desktop-themes.md`.
 
-Layout (Desktop already shows model/effort — omitted; its own folder/branch/changes display is gone since its latest update, so the plugin draws them). Two rows + a 3px line, no border box:
-
-```text
-<folder> ⎇ <branch> ↑N↓M                                    H <used>% · W <used>% · F <used>%
-<pet> <activity>                                           cache <pct>% · <tokens> / <window>
-━━━━━━━━━━━━━━━━━━━━──────────────────────────────────────────────────────────────────────────
-```
-
-Each row: long item left (shrinks, `truncate-end`), short item right (`flexShrink={0}`) — long branch / tool detail never pushes numbers off. Row 1: folder, branch (hidden on detached HEAD), `↑N` green / `↓M` red (hidden when in sync). Row 2: pet, activity. All inside `AbovePrompt` (a plugin can't draw a separate Desktop card). Desktop wraps instead of truncating (found by testing) → long strings cut in code with `…` (`clip`): folder `MAX_FOLDER_LEN` 24, branch `MAX_BRANCH_LEN` 32, tool detail `MAX_DETAIL_LEN` 40. `<pet>`: pixel Claude (`Svg`, from the terminal logo) — not interactive. While working, acts out the running tool: types (Edit/MultiEdit/Write/NotebookEdit), looks around (Read/Grep/Glob/WebFetch/WebSearch), thinks (`...`, between tools), hops (any other tool). Idle: stands and blinks, sleeps 59 min after the last turn ends (or session start, before the first turn). Frames step on the `frame` atom, ticked every 250ms all session (also drives the spinner).
-
-Row 1 right: `H`/`W` (dim label, plain percent USED, as the CLI) colored by `usageColor`; no reset time. Row 2 right: `cache <pct>%` (once a main-loop turn has usage), `<tokens> / <window>` dim. Items separated by dim `·`. Model-scoped weekly limits (`F` for Fable, one per `weekly_scoped` entry, labeled by the model's initial) follow W, colored by `modelColor` (flat orange, red ≥90 — the CLI's `getScopedColor`); fetched from `/api/oauth/usage` via `$.http.fetch` with the `$.session.authorize()` handle (bearer only — none on an API key) on session start + every 30s, not after turns; shown only when the API returns one; a failed latest fetch → letters kept, grey `00%`.
-
-No in-plugin update check. Updates come from Claude Code's marketplace auto-update (off by default for third-party marketplaces; no enable-auto-update toggle in `/plugin` → Marketplaces (only a one-off Update, found by testing) — user sets `extraKnownMarketplaces.ctxline.autoUpdate: true` in `~/.claude/settings.json`; runs after session start, no interval setting, not settable from repo). Users get a change only when `version` is bumped — bump it with every `desktop/` change meant to ship.
-
-`displayName` (`plugin.json`) is the UI name; `name` must stay kebab-case (no spaces). Marketplace `name` is the "from <name>" label and the `@` suffix in install ids; no spaces allowed. `icon` in `plugin.json` is read only by Anthropic's directory — Desktop ignores it, not set.
-
-`<activity>`: working → `<spinner> <tool> <detail> · <elapsed>` (`thinking` between tools); idle → `last turn <dur> · N tool(s)`; before the first turn (new or resumed session) → `ready · no turns yet`.
-
-Context line: an `Svg` 3 CSS px high (`Box` heights are in cells), `preserveAspectRatio="none"`, stretched to the slot's full width; dim track `#2e3240`, filled to context % used, colored by `contextColor` through `SVG_COLORS` (an `Svg` takes CSS colors, not the theme's named ones). Context from `$.session.usage()` (no `breakdown`; local estimate, no API call).
-
-Sources: `$.session.usage()` (context, `five_hour`/`seven_day`) refreshed every 30s + after each turn; `git rev-list --left-right --count @{u}...HEAD`, `git branch --show-current` via `$.process.run` (folder = basename of `$.session.cwd()`); `prompt.submit`/`tool.call`/`turn.complete` for activity; cache hit = Σ`cache_read` / Σ(input + cache_read + cache_creation) from main-loop `turn.complete` `usage` (subagent turns, `e.agentId` set, ignored). Cache tally resets on `session.start` (incl. hot reload).
-
-Desktop constraints (found by testing): `PromptHint` not drawn; `SessionMode` drawn on its own row below the model picker since Desktop's Claude Code 2.1.296 update — not hooked; everything in `AbovePrompt`. `Svg isInteractive` (needed for SMIL) draws in a sandboxed frame that paints blank for a moment on each source change → visible flash; pet stays a plain image, animated by swapping frames.
-
-Not available in the plugin: task (needs files the mod doesn't read).
-
-Validate: `claude plugin validate .` (marketplace) and `claude plugin validate ./desktop`. No tsconfig in `desktop/` → editor shows "Cannot find module 'claude-code'"; editor-only.
-
-## Desktop themes plugin
-
-`desktop-themes/` — theme mod `ctxline-desktop-themes` (`displayName` "ctxline themes"), own version in its `plugin.json`, listed second in the `ctxline` marketplace. Install: `/plugin install ctxline-desktop-themes@ctxline`. Independent of `ctxline-desktop` (no shared code or state). Not in npm `files`.
-
-Four styles, `ember`, `contour`, `phoenix`, `dusk` (default, `DEFAULT_STYLE`), each a `$.theme.set({ colors, backdrop: { scene, glass } })`. Three use Claude orange as the accent; `phoenix` (a black hole) uses gold, in its palette and its scene:
-
-- `hooks/looks.ts` — palettes via `makeColors` (anchors `surface-0..3`, `text-*`; roles; git), dark + light per style. Each look also sets `codeTheme` (dark + light, Shiki-style names; untested in Desktop, which ignores a name it doesn't offer). Not themable via the API (README notes it): permission prompts, terminal pane, Changes/files side panel, code block background. Check with `makeColors`'s `problems`: no line may start `Desktop won't paint` (Desktop then drops the whole theme); the other lines still paint.
-- `hooks/scenes.ts` — the four backdrop SVGs (scene id = style id), drawn by the `ui.render` `Backdrop` hook as `<Svg isInteractive>` (desktop/mobile only; another plugin's backdrop → `next`). A scene runs no script and has no motion (dropped: CPU, laptop heat); CSS in its own `<style>` only; dark first, light in `@media (prefers-color-scheme: light)` (the hook isn't told the mode — whether the sandboxed frame follows the app's mode is untested); test-enforced: no `animation`/`@keyframes`. Each under 131,072 chars (test-enforced).
-- `hooks/contour-paths.ts` — generated by `node scripts/themes-contour.js` (marching squares → SVG path data for Contour's map lines). Never hand-edit; re-run after changing the script.
-- `hooks/make-colors.js` + `.d.ts` — copied verbatim from the plugin-authoring skill; never edit, re-copy when the build updates.
-- `hooks/register.tsx` — `/ctxtheme [ember|contour|phoenix|dusk|off]` (not `/theme`: built-in, refused); choice in `$.store` key `style` (a style id or `off`), re-applied at every `session.start` (a theme is display-only, `--resume` brings none back). Unreadable store → default style. A throwing `$.theme.set`/`clear` (a window that can't take themes, e.g. the terminal) counts as not drawn; pick still saved. The session's shown style is also kept in `$.state` `applied` (`types/index.d.ts`); the `/ctxtheme` list reads it, so a failed save still lists what's on screen. Known limitation: the desktop app's `/clear` removes the background for that session (README says so). It doesn't clear in-process: it claims a spare session it pre-started (`main.log` "spare … claimed") and attaches. Tried and dropped, neither brings it back (found by testing): a `command.run` hook on `clear` (never runs there), and setting the theme again on `session.attach`. A new Code session or `/resume` re-runs `session.start` and shows it. `off` calls `$.theme.clear()` (clears any plugin's theme — only on the person's ask). Theme outlives the plugin: removed without `/ctxtheme off` → app keeps its colors, even after a restart (found by testing; README says to run `off` first).
-
-Validate + test: `claude plugin validate ./desktop-themes`, `claude plugin test ./desktop-themes` (`tests/themes.test.tsx`; both in CI). Bump `version` with every change meant to ship.
-
-Mirrors — update when a style or scene changes: `docs/assets/themes/<style>.svg` (site `#themes` cards; generated, dark only — run `node --experimental-strip-types scripts/themes-assets.mjs` (Node 22.6+, CI uses 24; the package's `>=18` is too old), never hand-edit; CI regenerates it and `contour-paths.ts` and fails on any change or new file), and, not drift-tested: the `.t-<style>` palette vars and captions in `docs/index.html` `#themes`, `docs/assets/desktop-themes-preview.jpg` (README + PR; hand-captured mockups), README "Themes" section.
+Rules load when a file in their area is read. Working on a plugin → read its rule first; change makes it wrong → update it in the same change.
 
 ## Keep in sync when `statusline.js` changes
 
@@ -120,8 +79,6 @@ Mirrors — update when a style or scene changes: `docs/assets/themes/<style>.sv
 | `CLAUDE.md` | format diagram + legend (top), timing/TTL numbers, stdin fields, export list | the Invariants block hard-codes constants — grep it for any number you change |
 | `package.json` | `version` ↔ the `VERSION` constant | test-enforced; a stale `VERSION` nudges forever (or never) |
 | `desktop/hooks/register.tsx` | usage/context/scoped color thresholds, `parseScopedLimits` | hand-copied, no test — `usageColor`/`contextColor`/`modelColor`/`scopedLimits` drift silently |
-
-Desktop plugin mirrors (hand-authored, not drift-tested) — update when `desktop/` layout changes: `docs/assets/desktop-preview.svg` (README), `docs/index.html` `#desktop` mock, README "Claude desktop app" section.
 
 Triggers: visible output change → test assertions + `npm run preview:svg`; cache shape or stdin fields → both seeds; timing/TTL constants or `module.exports` → the Invariants block above; version bump → `VERSION` in `statusline.js` too.
 

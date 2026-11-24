@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ctxline - Claude Code Statusline">
 <meta property="og:title" content="Claude Code Statusline">
-<meta property="og:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance — live, inside Claude Code and the Claude desktop app.">
+<meta property="og:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance, live in Claude Code and the Claude desktop app.">
 <meta property="og:url" content="https://ctxline.js.org/">
 <meta property="og:image" content="https://ctxline.js.org/assets/og.png">
 <meta property="og:image:width" content="1200">
@@ -20,7 +20,7 @@
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Claude Code Statusline">
-<meta name="twitter:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance — live, inside Claude Code and the Claude desktop app.">
+<meta name="twitter:description" content="Everything that matters, on one line. Context usage, session limits, and weekly allowance, live in Claude Code and the Claude desktop app.">
 <meta name="twitter:image" content="https://ctxline.js.org/assets/og.png">
 
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -179,7 +179,7 @@
     font-family:var(--sans);font-size:clamp(11px,1.5vw,14px);color:var(--term-fg)}
   .desk .card{background:#1f1c15;border-radius:10px;padding:11px 16px;display:flex;flex-direction:column;gap:5px}
   .desk .card.mine{background:none;padding:4px 16px;gap:9px}
-  .desk .ctxline{height:3px;border-radius:1.5px;background:#2e3240}
+  .desk .ctxline{height:3px;border-radius:1.5px;background:#80808033}
   .desk .ctxline i{display:block;height:100%;border-radius:1.5px;background:#22c55e}
   .desk .pet{width:2.4em;height:1.2em;vertical-align:-.25em;margin-right:6px}
   .desk .row{display:flex;align-items:center;justify-content:space-between;gap:12px;white-space:nowrap}
@@ -221,10 +221,12 @@
   .theme .def{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-soft);border-radius:5px;padding:0 6px}
   .theme figcaption code{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:auto}
   .theme .what{flex-basis:100%;color:var(--muted);font-size:14.5px}
-  .t-dusk{--s0:#141019;--s2:#211a28;--tp:#f1ebf5;--tm:#9d91a8;--ac:#e07f5a}
+  .t-dusk{--s0:#141019;--s2:#211a28;--tp:#f1ebf5;--tm:#9d91a8;--ac:#a98bf0}
   .t-ember{--s0:#17120f;--s2:#261e19;--tp:#f3e9df;--tm:#a69686;--ac:#d97757}
-  .t-contour{--s0:#0f1318;--s2:#1b222b;--tp:#e8edf3;--tm:#8f9aa7;--ac:#d97757}
+  .t-contour{--s0:#0f1318;--s2:#1b222b;--tp:#e8edf3;--tm:#8f9aa7;--ac:#7fa6d9}
   .t-phoenix{--s0:#0c0a08;--s2:#1b1714;--tp:#f7f1e8;--tm:#9f9484;--ac:#e8b05a}
+  .t-mosaic{--s0:#100f1c;--s2:#1c1b30;--tp:#ecebf7;--tm:#9392b0;--ac:#a093ff}
+  .t-keys{--s0:#0a0c12;--s2:#161a22;--tp:#e9ecf2;--tm:#8b92a1;--ac:#5b9cff}
   @media(max-width:700px){.themes{grid-template-columns:1fr}}
   @media(max-width:640px){
     .opt li code,.opt .cmd code span{white-space:normal}
@@ -425,7 +427,7 @@
       <code><span class="pr">$</span> npx ctxline-claude</code>
       <button class="copy" onclick="copyCmd(this,'npx ctxline-claude')">Copy</button>
     </div>
-    <small>Then restart Claude Code or start a new session. That's it. <span style="color:var(--faint)">(bunx also works)</span></small>
+    <small>Then restart Claude Code or start a new session. <span style="color:var(--faint)">bunx also works.</span></small>
 
     <div class="platforms">
       <span class="dot">●</span>
@@ -439,7 +441,7 @@
     <div class="sec-head">
       <span class="kicker">What it shows</span>
       <h2>Nine signals, one line</h2>
-      <p>Read left to right. If a source is missing, the line just skips it.</p>
+      <p>Read left to right. If a source is missing, the line skips it.</p>
     </div>
     <div class="inspect">
       <div class="term"><div class="line insp-line" id="insp-line" role="tablist" aria-label="Statusline segments"></div></div>
@@ -525,7 +527,7 @@
   <section class="block" id="themes">
     <div class="sec-head">
       <span class="kicker">Desktop themes</span>
-      <h2>Four looks to choose from</h2>
+      <h2>Pick a look</h2>
       <p>A second plugin, ctxline themes, restyles the desktop app. Each look has a light version and a still background.</p>
     </div>
     <div class="themes">
@@ -553,14 +555,14 @@
       </figure>
       <figure class="theme t-contour">
         <div class="shot">
-          <img src="assets/themes/contour.svg" alt="Contour: orange topographic map lines over a blue-slate background" loading="lazy">
+          <img src="assets/themes/contour.svg" alt="Contour: orange topographic map lines over softly shaded blue-slate hills, a few summits marked with spot heights" loading="lazy">
           <div class="ui" aria-hidden="true">
             <span class="msg">Make the context bar turn red at 90%</span>
             <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
             <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
           </div>
         </div>
-        <figcaption><b>Contour</b><code>/ctxtheme contour</code><span class="what">Orange topographic map lines.</span></figcaption>
+        <figcaption><b>Contour</b><code>/ctxtheme contour</code><span class="what">Topographic lines over shaded hills.</span></figcaption>
       </figure>
       <figure class="theme t-phoenix">
         <div class="shot">
@@ -573,15 +575,37 @@
         </div>
         <figcaption><b>Phoenix</b><code>/ctxtheme phoenix</code><span class="what">A black hole, and small galaxies around it.</span></figcaption>
       </figure>
+      <figure class="theme t-mosaic">
+        <div class="shot">
+          <img src="assets/themes/mosaic.svg" alt="Mosaic: square indigo pixel tiles brightening into soft periwinkle light pools near the edges" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Mosaic</b><code>/ctxtheme mosaic</code><span class="what">Pixel tiles lit by soft light pools.</span></figcaption>
+      </figure>
+      <figure class="theme t-keys">
+        <div class="shot">
+          <img src="assets/themes/keys.svg" alt="Keys: tilted dark keyboards, a C key and an enter key lit blue, backlight leaking between the keys around them" loading="lazy">
+          <div class="ui" aria-hidden="true">
+            <span class="msg">Make the context bar turn red at 90%</span>
+            <span class="reply">I'll add a red band in <code>contextColor</code>.</span>
+            <span class="box"><span>Reply to Claude…</span><i>↑</i></span>
+          </div>
+        </div>
+        <figcaption><b>Keys</b><code>/ctxtheme keys</code><span class="what">Tilted keyboards with a blue backlight.</span></figcaption>
+      </figure>
     </div>
     <div class="setup">
       <div class="opt">
         <span class="kicker">Install the themes</span>
         <p class="way">In the app</p>
         <ol>
-          <li>Add the marketplace <code>MithunWijayasiri/ctxline-claude</code> (skip if you already did for ctxline-desktop)</li>
+          <li>Add the marketplace <code>MithunWijayasiri/ctxline-claude</code>. Skip this if you added it for ctxline-desktop.</li>
           <li>Install <b>ctxline-desktop-themes</b></li>
-          <li>Start a new Code session (themes don't show in Chat).</li>
+          <li>Start a new Code session. Themes don't show in Chat.</li>
           <li>Run <code>/ctxtheme &lt;style&gt;</code> to switch.</li>
         </ol>
         <p class="way">Or with commands</p>
@@ -601,10 +625,10 @@
       <p>A single zero-dependency Node script.</p>
     </div>
     <div class="steps">
-      <div class="step"><div class="n">01</div><h4>Reads session</h4><p>Context comes straight from Claude Code's session data on every render.</p></div>
+      <div class="step"><div class="n">01</div><h4>Reads session</h4><p>Context comes from Claude Code's session data on every render.</p></div>
       <div class="step"><div class="n">02</div><h4>Reads usage</h4><p>5-hour and weekly limits come from the session data, with Anthropic's usage API as a fallback.</p></div>
       <div class="step"><div class="n">03</div><h4>Caches it</h4><p>The fallback is cached and shared across sessions.</p></div>
-      <div class="step"><div class="n">04</div><h4>Falls back</h4><p>Every failure path degrades silently to cached or partial output. The statusline always renders.</p></div>
+      <div class="step"><div class="n">04</div><h4>Falls back</h4><p>If anything fails, it prints cached or partial output instead. The statusline always prints.</p></div>
     </div>
   </section>
 
@@ -612,7 +636,7 @@
   <section class="block">
     <div class="sec-head">
       <span class="kicker">Learn more</span>
-      <p>The rest lives in the docs on GitHub — one click away.</p>
+      <p>The rest is in the docs on GitHub.</p>
     </div>
     <div class="cta cta-stack">
       <a class="btn ghost" href="https://github.com/MithunWijayasiri/ctxline-claude#faq">Got a question? Read the FAQ ↗</a>
@@ -665,22 +689,22 @@
     function bar(on){var s='<span class="bar">';for(var i=0;i<6;i++)s+='<i class="'+(i<on?'on':'')+'"></i>';return s+'</span>';}
     var SIGNALS = [
       {tag:'DIR',     title:'Directory',       field:'workspace.current_dir',
-       desc:'The current working directory — you always know where Claude is operating.',
+       desc:'The current working directory, where Claude is working.',
        tok:'<span class="proj">my-project</span>'},
       {tag:'BRANCH',  title:'Git branch',      field:'.git/HEAD',
-       desc:'Active branch beside the dir, read straight from .git. Long names trim; the ticket ID stays. Adds ↑N↓M commits ahead/behind your upstream when it diverges.',
+       desc:'The active branch, read from .git. ctxline cuts long names but keeps the ticket ID. ↑N↓M shows commits ahead of and behind your upstream when they differ.',
        tok:'<span class="dim">⎇ main</span>&nbsp;<span class="ahead">↑2</span><span class="behind">↓1</span>'},
       {tag:'MODEL',   title:'Active model',    field:'model.display_name',
-       desc:'Opus, Sonnet, or Haiku — plus the context window size at a glance.',
+       desc:'The active model, such as Opus, Sonnet or Haiku.',
        tok:'Opus&nbsp;5.5'},
       {tag:'EFFORT',  title:'Thinking effort', field:'effort.level',
        desc:'The reasoning level. max shows red and ultracode purple, so the heaviest modes stand out.',
        tok:'<span class="dim">· </span><span class="insp-effort-value">high</span>', noSepBefore:true, effort:true},
       {tag:'CONTEXT', title:'Context bar',     field:'context_window.remaining_percentage',
-       desc:'Context-window usage. The bar shifts color as it fills toward the limit.',
+       desc:'Context window used. The bar changes color as it nears the limit.',
        tok:'<span class="val">C45</span> '+bar(3)},
       {tag:'5H',      title:'5-hour session',  field:'rate_limits.five_hour',
-       desc:'Live 5-hour session limit with a reset countdown, read straight from your session data.',
+       desc:'The 5-hour session limit and the time until it resets, read from your session data.',
        tok:'<span class="val">H14</span> <span class="dim">↺ 4h20m</span>'},
       {tag:'7D',      title:'Weekly allowance',field:'rate_limits.seven_day',
        desc:'Your weekly usage and the time remaining until the weekly reset.',
@@ -689,7 +713,7 @@
        desc:'Running session cost in USD. For subscriptions it\'s the equivalent pay-as-you-go API cost, not your actual bill.',
        tok:'<span class="dim">$44.21</span>'},
       {tag:'TASK',    title:'Current task',    field:'todos/<session>-agent.json',
-       desc:'The in-progress to-do surfaces inline whenever there is active work.',
+       desc:'The to-do Claude is working on, when there is one.',
        tok:'<span class="dim">Fixing tests</span>'}
     ];
     var panel=document.getElementById('insp-panel'),
