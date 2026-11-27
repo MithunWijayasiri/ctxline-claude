@@ -144,6 +144,6 @@ export const register: Register = on => {
 
     const { Svg } = $.ui.resolve(e)
 
-    return <Svg source={SCENES[id]} alt={SCENE_ALT[id]} isInteractive />
+    return <Svg source={SCENES[id]} alt={SCENE_ALT[id]} />
   })
 }

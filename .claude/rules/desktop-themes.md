@@ -27,10 +27,10 @@ Keep current: a `desktop-themes/` change that makes anything here wrong → upda
 
 ## Scenes
 
-- Drawn by `ui.render` `Backdrop` hook as `<Svg isInteractive>` (desktop/mobile only; another plugin's backdrop → `next`).
+- Drawn by `ui.render` `Backdrop` hook as plain `<Svg>` image, no `isInteractive`: scenes are still, and its sandboxed frame blanks on each source change → flash (desktop/mobile only; another plugin's backdrop → `next`).
 - Middle sits under the blurred chat column → highlights go in the side strips.
 - No script, no motion (CPU, laptop heat); test-enforced: no `animation`/`@keyframes`. CSS only in the scene's own `<style>`.
-- Dark first, light in `@media (prefers-color-scheme: light)`. Hook isn't told the mode; whether the frame follows the app's mode is untested.
+- Dark first, light in `@media (prefers-color-scheme: light)`. Hook isn't told the mode; backdrop follows the app's light/dark switch (tested without `isInteractive`); app vs OS mode mismatch untested.
 - Each under 131,072 chars (test-enforced).
 
 ## `/ctxtheme [<style>|off]`

@@ -1,7 +1,7 @@
 {
   "name": "ctxline-desktop-themes",
   "displayName": "ctxline themes",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Themes for the Claude desktop app. Switch with /ctxtheme. Run /ctxtheme off before uninstalling. Learn more at ctxline.js.org",
   "author": { "name": "Mithun Wijayasiri" },
   "homepage": "https://ctxline.js.org",
