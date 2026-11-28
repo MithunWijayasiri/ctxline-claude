@@ -285,8 +285,8 @@ function buildUsageBars(raw) {
 function unavailableUsage(cached) {
   const off = { percentage: 0, resetsAt: null, unavailable: true };
   return {
-    fiveHour: off,
-    weekly: off,
+    fiveHour: cached?.data.fiveHour ? off : null,
+    weekly: cached?.data.weekly ? off : null,
     models: (cached?.data.models || []).map(m => ({ ...off, label: m.label }))
   };
 }
@@ -295,6 +295,12 @@ function unavailableUsage(cached) {
 function normalizePercentage(value) {
   if (!Number.isFinite(value)) return null;
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+// /usage segment { utilization, resets_at } -> { percentage, resetsAt }, or null when unusable.
+function utilizationEntry(seg) {
+  const pct = seg ? normalizePercentage(seg.utilization) : null;
+  return pct != null ? { percentage: pct, resetsAt: seg.resets_at || null } : null;
 }
 
 // limits[] -> [{ label, percentage, resetsAt }]; legacy flat keys only when limits yields nothing.
@@ -317,9 +323,8 @@ function parseScopedLimits(usage) {
   }
 
   for (const { key, label } of LEGACY_MODEL_WEEKLY_KEYS) {
-    const seg = usage?.[key];
-    const pct = seg ? normalizePercentage(seg.utilization) : null;
-    if (pct != null) scoped.push({ label, percentage: pct, resetsAt: seg.resets_at || null });
+    const entry = utilizationEntry(usage?.[key]);
+    if (entry) scoped.push({ label, ...entry });
   }
   return scoped;
 }
@@ -346,22 +351,20 @@ function buildUsageFromStdin(data) {
   };
 
   const fiveHour = toEntry(rl.five_hour);
-  if (!fiveHour) return null;          // five_hour is the required bar
-  return { fiveHour, weekly: toEntry(rl.seven_day), models: [] };
+  const weekly = toEntry(rl.seven_day);
+  if (!fiveHour && !weekly) return null;  // weekly-only plans (e.g. Ultra) have no five_hour
+  return { fiveHour, weekly, models: [] };
 }
 
-// /usage response body -> { fiveHour, weekly, models }, or null on unparseable JSON or a
-// missing/non-finite five_hour utilization (that bar is required). Pure, so unit-testable
+// /usage response body -> { fiveHour, weekly, models }, or null on unparseable JSON or when
+// neither five_hour nor seven_day has a finite utilization. Pure, so unit-testable
 // directly — unlike getApiUsage, which needs a live socket.
 function parseUsagePayload(body) {
   try {
     const usage = JSON.parse(body);
-    const fivePct = usage?.five_hour ? normalizePercentage(usage.five_hour.utilization) : null;
-    if (fivePct == null) return null;
-
-    const fiveHour = { percentage: fivePct, resetsAt: usage.five_hour.resets_at || null };
-    const weeklyPct = usage.seven_day ? normalizePercentage(usage.seven_day.utilization) : null;
-    const weekly = weeklyPct != null ? { percentage: weeklyPct, resetsAt: usage.seven_day.resets_at || null } : null;
+    const fiveHour = utilizationEntry(usage?.five_hour);
+    const weekly = utilizationEntry(usage?.seven_day);
+    if (!fiveHour && !weekly) return null;
     const models = parseScopedLimits(usage);
 
     return { fiveHour, weekly, models };
@@ -386,10 +389,11 @@ function readCachedUsage() {
     const cache = JSON.parse(fs.readFileSync(USAGE_CACHE_FILE, 'utf8'));
     if (!cache || !Number.isFinite(cache.timestamp) || cache.timestamp <= 0) return null;
 
-    // fiveHour required; weekly/models optional. Rejects legacy formats lacking fiveHour.
+    // fiveHour or weekly required (weekly-only plans have no fiveHour); models optional.
     const data = cache.data;
     if (!data || typeof data !== 'object') return null;
-    if (!isValidUsageEntry(data.fiveHour)) return null;
+    if (data.fiveHour == null && data.weekly == null) return null;
+    if (data.fiveHour != null && !isValidUsageEntry(data.fiveHour)) return null;
     if (data.weekly != null && !isValidUsageEntry(data.weekly)) return null;
     if (data.models != null) {
       if (!Array.isArray(data.models)) return null;
