@@ -285,8 +285,8 @@ function buildUsageBars(raw) {
 function unavailableUsage(cached) {
   const off = { percentage: 0, resetsAt: null, unavailable: true };
   return {
-    fiveHour: off,
-    weekly: off,
+    fiveHour: cached?.data.fiveHour ? off : null,
+    weekly: cached?.data.weekly ? off : null,
     models: (cached?.data.models || []).map(m => ({ ...off, label: m.label }))
   };
 }
@@ -295,6 +295,12 @@ function unavailableUsage(cached) {
 function normalizePercentage(value) {
   if (!Number.isFinite(value)) return null;
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+// /usage segment { utilization, resets_at } -> { percentage, resetsAt }, or null when unusable.
+function utilizationEntry(seg) {
+  const pct = seg ? normalizePercentage(seg.utilization) : null;
+  return pct != null ? { percentage: pct, resetsAt: seg.resets_at || null } : null;
 }
 
 // limits[] -> [{ label, percentage, resetsAt }]; legacy flat keys only when limits yields nothing.
@@ -317,9 +323,8 @@ function parseScopedLimits(usage) {
   }
 
   for (const { key, label } of LEGACY_MODEL_WEEKLY_KEYS) {
-    const seg = usage?.[key];
-    const pct = seg ? normalizePercentage(seg.utilization) : null;
-    if (pct != null) scoped.push({ label, percentage: pct, resetsAt: seg.resets_at || null });
+    const entry = utilizationEntry(usage?.[key]);
+    if (entry) scoped.push({ label, ...entry });
   }
   return scoped;
 }
@@ -357,12 +362,8 @@ function buildUsageFromStdin(data) {
 function parseUsagePayload(body) {
   try {
     const usage = JSON.parse(body);
-    const toEntry = (seg) => {
-      const pct = seg ? normalizePercentage(seg.utilization) : null;
-      return pct != null ? { percentage: pct, resetsAt: seg.resets_at || null } : null;
-    };
-    const fiveHour = toEntry(usage?.five_hour);
-    const weekly = toEntry(usage?.seven_day);
+    const fiveHour = utilizationEntry(usage?.five_hour);
+    const weekly = utilizationEntry(usage?.seven_day);
     if (!fiveHour && !weekly) return null;
     const models = parseScopedLimits(usage);
 

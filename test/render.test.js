@@ -59,7 +59,7 @@ function seedHome({ cacheAgeMs, percentage = 42, weeklyPercentage = 31 } = {}) {
   seedCredentials(home); // no accessToken -> API skipped
   if (cacheAgeMs != null) {
     seedUsageCache(home, {
-      fiveHour: { percentage, resetsAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
+      fiveHour: percentage == null ? null : { percentage, resetsAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
       // 62h out -> exercises the day-aware countdown (2d14h)
       weekly: { percentage: weeklyPercentage, resetsAt: new Date(Date.now() + 62 * 3600 * 1000).toISOString() }
     }, Date.now() - cacheAgeMs);
@@ -378,6 +378,14 @@ test('old cache + failing API -> dim H00/W00 placeholders, last reading not show
   assert.ok(raw.includes(`${DIM}W00`), 'W placeholder is dim');
   assert.ok(!clean.includes('H57') && !clean.includes('W31'), 'the old reading must not be shown');
   assert.ok(!clean.includes('↺'), 'placeholders carry no reset countdown');
+});
+
+test('old weekly-only cache + failing API -> dim W00 placeholder, no H', () => {
+  const home = seedHome({ cacheAgeMs: 2 * 60 * 1000, percentage: null, weeklyPercentage: 31 });
+  const { code, raw, clean } = run(fixture(40), { home, usage: true });
+  assert.strictEqual(code, 0);
+  assert.ok(raw.includes(`${DIM}W00`), 'W placeholder is dim');
+  assert.doesNotMatch(clean, /\bH\d/);
 });
 
 test('no cache + failing API -> usage omitted (no placeholders before usage ever worked)', () => {
